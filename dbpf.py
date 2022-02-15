@@ -21,6 +21,12 @@ based on DBPF v1.1 format.
 """
 
 class Helpers():
+    # Type IDs (as int)
+    TYPE_UI_DATA = 0
+    TYPE_IMAGE = 2238569388
+    TYPE_ACCEL_DEF = 2732840243
+    TYPE_DIR = 3899334383
+
     def read_at_position(self, start, end):
         """
         From the beginning of the file stream, jump to the specified 'start'
@@ -29,6 +35,27 @@ class Helpers():
         self.stream.seek(0)
         self.stream.seek(start)
         return int.from_bytes(self.stream.read(end - start), "little")
+
+    def read_next_dword(self):
+        """
+        Seek the next 4 bytes (DWORD) in the file stream and return an integer.
+        """
+        return int.from_bytes(self.stream.read(4), "little")
+
+    def get_type(self, type_id):
+        """
+        Parse the Type ID into a string.
+        """
+        types = {
+            self.TYPE_UI_DATA: "UI Data",
+            self.TYPE_IMAGE: "Image File",
+            self.TYPE_ACCEL_DEF: "Accelerator Key Definitions",
+            self.TYPE_DIR: "Directory of Compressed Files",
+        }
+        try:
+            return types[type_id]
+        except KeyError:
+            return f"Unknown ({hex(type_id)})"
 
 
 class Header(Helpers):
@@ -46,6 +73,42 @@ class Header(Helpers):
             raise NotImplementedError("Incompatible package version!")
 
 
+class Index(Helpers):
+    class Entry(object):
+        type_id = 0
+        group_id = 0
+        instance_id = 0
+        file_location = 0
+        file_size = 0
+
+    def __init__(self, stream, header):
+        self.stream = stream
+        self.start = header.index_start_offset
+        self.end = self.start + header.index_size
+        self.count = header.index_entry_count
+        self.entries = []
+
+    def load(self):
+        self.stream.seek(0)
+        self.stream.seek(self.start)
+        self.entries = []
+        for no in range(0, self.count):
+            entry = self.Entry()
+            entry.type_id = self.read_next_dword()
+            entry.group_id = self.read_next_dword()
+            entry.instance_id = self.read_next_dword()
+            entry.file_location = self.read_next_dword()
+            entry.file_size = self.read_next_dword()
+            self.entries.append(entry)
+
+    def get_blob(self, entry):
+        """
+        Returns the bytes for the file from the specified entry.
+        """
+        self.stream.seek(0)
+        self.stream.seek(entry.file_location)
+        return self.stream.read(entry.file_size)
+
 class DBPF(Helpers):
     """
     Handles a DBPF Sims 2 ui.package file.
@@ -56,6 +119,17 @@ class DBPF(Helpers):
         self.path = path
         self.stream = open(path, "rb")
         self.header = Header(self.stream)
+        self.index = Index(self.stream, self.header)
+
+    def list_entries(self):
+        print("Type ID, Group ID, Instance ID, Location, Size")
+        for index, entry in enumerate(self.index.entries):
+            print("Entry", index, "|",
+                  self.get_type(entry.type_id),
+                  hex(entry.group_id),
+                  hex(entry.instance_id),
+                  hex(entry.file_location),
+                  entry.file_size)
 
 
 if __name__ == "__main__":
@@ -64,3 +138,5 @@ if __name__ == "__main__":
     print("Offset", package.header.index_start_offset)
     print("Size", package.header.index_size)
     print("Entries", package.header.index_entry_count)
+    package.index.load()
+    package.list_entries()
