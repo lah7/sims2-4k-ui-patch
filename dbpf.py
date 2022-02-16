@@ -20,6 +20,10 @@ Handles the reading and creation of uncompressed ui.package files,
 based on DBPF v1.1 format.
 """
 
+# **Compression Incomplete!**
+# - New .package files will not support compression.
+# - SimPE is required for extracting the original files.
+
 class Helpers():
     # Type IDs (as int)
     TYPE_UI_DATA = 0
@@ -109,6 +113,70 @@ class Index(Helpers):
         self.stream.seek(entry.file_location)
         return self.stream.read(entry.file_size)
 
+
+class Decompression(Helpers):
+    """
+    Handles the decompression of files from the .ui package, according to
+    the "directory of compressed files" (0xE86B1EEF).
+
+    <!> This implementation is incomplete! It can only list compressed files,
+    ideally it can decompress so we don't need an external tool.
+    """
+    # https://simswiki.info/index.php?title=E86B1EEF
+    # https://simswiki.info/index.php?title=DBPF_Compression
+
+#    TODO: Checklist (at minimum, to be able to read)
+    # ✔️ Read the DBPF header.
+    # ✔️ Read the Index Tables.
+    # ✔️ Check for a DIR record.
+    #   Check for the file you want to extract.
+    #   Is this file compressed? If so, decompress it.
+    #   Read the file data and process accordingly.
+
+    class CompressedEntry(object):
+        type_id = 0
+        group_id = 0
+        instance_id = 0
+        decompressed_size = 0
+
+    def __init__(self, stream, index):
+        self.stream = stream
+        self.index = index
+        self.entries = []
+
+    def _seek_to_directory(self):
+        """
+        Jump to the position where the directory is located, and return the
+        number of entries.
+        """
+        self.stream.seek(0)
+        for entry in self.index.entries:
+            if entry.type_id == self.TYPE_DIR:
+                self.stream.seek(entry.file_location)
+        return int(entry.file_size / 4)
+
+    def load(self):
+        total_compressed = self._seek_to_directory()
+        self.entries = []
+        for no in range(0, total_compressed):
+            entry = self.CompressedEntry()
+            entry.type_id = self.read_next_dword()
+            entry.group_id = self.read_next_dword()
+            entry.instance_id = self.read_next_dword()
+            entry.decompressed_size = self.read_next_dword()
+            self.entries.append(entry)
+
+    def list_compressed(self):
+        # TODO: Seems wrong, lots of unknown entries appear.
+        print("Type ID", "Group ID", "Instance ID", "Decompressed Size")
+        for index, entry in enumerate(self.entries):
+            print("Compressed", index, "|",
+                  self.get_type(entry.type_id),
+                  hex(entry.group_id),
+                  hex(entry.instance_id),
+                  entry.decompressed_size)
+
+
 class DBPF(Helpers):
     """
     Handles a DBPF Sims 2 ui.package file.
@@ -120,6 +188,7 @@ class DBPF(Helpers):
         self.stream = open(path, "rb")
         self.header = Header(self.stream)
         self.index = Index(self.stream, self.header)
+        self.decompression = Decompression(self.stream, self.index)
 
     def list_entries(self):
         print("Type ID, Group ID, Instance ID, Location, Size")
@@ -133,10 +202,14 @@ class DBPF(Helpers):
 
 
 if __name__ == "__main__":
+    # TODO: Add arguments to extract a DBPF file
+    print("Test Mode")
     package = DBPF("ui.package")
     print("Index version", str(package.header.index_version_major) + '.' + str(package.header.index_version_minor))
     print("Offset", package.header.index_start_offset)
     print("Size", package.header.index_size)
     print("Entries", package.header.index_entry_count)
     package.index.load()
+    package.decompression.load()
     package.list_entries()
+    package.decompression.list_compressed()
