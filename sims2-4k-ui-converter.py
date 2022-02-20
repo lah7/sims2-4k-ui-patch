@@ -30,6 +30,9 @@ import glob
 import shutil
 import signal
 
+# In this folder
+import dbpf
+
 # ==== OPTIONS ====
 # The default options are tuned from 1920x1080 to 3840x2160 (4K, 2160p)
 
@@ -55,7 +58,7 @@ def filter_files_by_type(files):
     This function checks for first few bytes of each file and returns a
     dictionary filtered by each known type.
     """
-    print(f"Analyzing {len(files)} files...")
+    print(f"\nAnalyzing {len(files)} files...")
     tga = []
     bmp = []
     jpg = []
@@ -83,6 +86,7 @@ def filter_files_by_type(files):
         "jpg": jpg,
         "png": png,
         "tga": tga,
+        "unknown": unknown,
     }
 
 
@@ -91,8 +95,12 @@ def upscale_fontstyle_ini():
     Parses FontStyle.ini from the input/Fonts folder and writes a new one
     with font sizes increased by the FONT_INCREASE_PT factor.
     """
-    in_path = os.path.join(INPUT_DIR, "Fonts", "FontStyle.ini")
-    out_path = os.path.join(OUTPUT_DIR, "Fonts", "FontStyle.ini")
+    in_path = os.path.join(INPUT_DIR, "FontStyle.ini")
+    out_path = os.path.join(OUTPUT_DIR, "FontStyle.ini")
+
+    if not os.path.exists(in_path):
+        print("Skipping FontStyle.ini as not present in 'input' folder")
+        return
 
     with open(in_path, "r") as f:
         lines = f.readlines()
@@ -105,14 +113,14 @@ def upscale_fontstyle_ini():
             continue
 
         old_size = parts[3]
-        new_size = int(parts[3]) + FONT_INCREASE_PT
+        new_size = (int(parts[3]) * UI_ZOOM_FACTOR) + FONT_INCREASE_PT
         parts[3] = str(new_size)
         output.append('"'.join(parts))
 
     with open(out_path, "w") as f:
         f.writelines(output)
 
-    print("Written new FontStyle.ini")
+    print("\nWritten new FontStyle.ini")
 
 
 def upscale_uiscripts():
@@ -121,24 +129,23 @@ def upscale_uiscripts():
     value (consisting of comma separated values) by UI_ZOOM_FACTOR and
     returns the new data.
     """
-    print("Processing .uiScript files...")
+    print("\nProcessing .uiScript files...")
     file_list = glob.glob(INPUT_DIR + "/**/*.uiScript", recursive=True)
     current = 0
     total = len(file_list)
-    skipped = 0
     print(".", end="")
 
     for path in file_list:
         current += 1
         print(f"\r[{current}/{total}, {int(current/total * 100)}%] Writing: {path.split('/')[-1]}    ", end="")
-        output_path = path.replace(INPUT_DIR, OUTPUT_DIR)
+        output_path = path.replace(INPUT_DIR, TEMP_DIR)
 
         try:
             with open(path, "r") as f:
                 data = f.read()
         except UnicodeDecodeError:
-            # Skip the handful of binary .uiScript files
-            skipped += 1
+            # Encountered a binary .uiScript files, copy them as-is.
+            shutil.copy(path, output_path)
             continue
 
         def _replace_coord_attribute(data, name):
@@ -162,7 +169,6 @@ def upscale_uiscripts():
 
         with open(output_path, "w") as f:
             f.writelines(data)
-    print(f"\n{skipped} binary file(s) were skipped.")
 
 
 def upscale_graphics():
@@ -172,11 +178,17 @@ def upscale_graphics():
     """
     file_list = glob.glob(INPUT_DIR + "/**/*.jpg", recursive=True)
     file_types = filter_files_by_type(file_list)
-    print("Processing graphics...")
+    print("\nProcessing graphics...")
     print("    TGA:", len(file_types["tga"]))
     print("    JPG:", len(file_types["jpg"]))
     print("    PNG:", len(file_types["png"]))
     print("    BMP:", len(file_types["bmp"]))
+    print("     ? :", len(file_types["unknown"]))
+
+    # Copy unknown files as-is
+    for path in file_types["unknown"]:
+        shutil.copy(path, path.replace(INPUT_DIR, TEMP_DIR))
+    del(file_types["unknown"])
 
     current = 0
     total = len(file_types["tga"]) + len(file_types["jpg"]) + len(file_types["png"]) + len(file_types["bmp"])
@@ -187,10 +199,10 @@ def upscale_graphics():
             print(f"\r[{current}/{total}, {int(current/total * 100)}%] Converting {ext.upper()}: {path.split('/')[-1].split('.')[0]}    ", end="")
 
             # Create temporary file so input directory remains untouched
-            tempin = path.replace(INPUT_DIR, OUTPUT_DIR).replace(".jpg", f".tmp.{ext}")
+            tempin = path.replace(INPUT_DIR, TEMP_DIR).replace(".jpg", f".tmp.{ext}")
             shutil.copy(path, tempin)
 
-            # Imagemagick uses the input/output file extension for conversion
+            # Imagemagick needs to know the real file extension to convert
             tempout = tempin.replace(f".tmp.{ext}", f".{ext}")
             os.system(f"convert '{tempin}' -filter {UPSCALE_FILTER} -resize {UI_ZOOM_FACTOR * 100}% '{tempout}'")
             os.remove(tempin)
@@ -202,7 +214,7 @@ def upscale_graphics():
     print("\n")
 
 
-def create_output_dir():
+def create_dirs():
     """
     Replicate the input subdirectories and copy the XML files (which SimPE
     created and we need to reference later)
@@ -210,10 +222,14 @@ def create_output_dir():
     def ignore_files(dir, files):
         ignored = []
         for name in files:
-            if os.path.isfile(os.path.join(dir, name)) and not name.endswith(".xml"):
+            if os.path.isfile(os.path.join(dir, name)) and not name.endswith(".xml") and not name.endswith(".simpe"):
                 ignored.append(name)
         return ignored
-    shutil.copytree(INPUT_DIR, OUTPUT_DIR, ignore=ignore_files)
+
+    shutil.copytree(INPUT_DIR, TEMP_DIR, ignore=ignore_files)
+
+    if not os.path.exists(OUTPUT_DIR):
+        os.makedirs(OUTPUT_DIR)
 
 
 def check_input_files(check_name, ext):
@@ -227,32 +243,84 @@ def check_input_files(check_name, ext):
     return False
 
 
+def create_dbpf_package():
+    """
+    Use the custom DBPF library written specifically for this project to create
+    a new .package file.
+
+    Because the extraction is incomplete (due to compressed files), SimPE's XML
+    files will be used to determine the correct IDs when packing a new file.
+    """
+    print("\nCreating DBPF package...")
+    output_path = os.path.join(OUTPUT_DIR, "ui.package")
+    open(output_path, "wb").close()
+    package = dbpf.DBPF(output_path)
+    xml_files = glob.glob(TEMP_DIR + "/**/*.xml", recursive=True)
+    uuids = []
+
+    def _get_xml_attribute(xml_path, attrib):
+        """
+        Scrape the XML file and returns the value for the attribute.
+        A library would be better, but this is quicker with less overhead for now.
+        """
+        with open(xml_path, "r") as f:
+            for line in f.readlines():
+                if line.strip().startswith(f"<{attrib}>"):
+                    return int(line.split(f"<{attrib}>")[1].split(f"</{attrib}>")[0].strip())
+        return
+
+    for xml_path in xml_files:
+        if xml_path.endswith("package.xml"):
+            continue
+
+        file_path = xml_path.replace(".xml", "")
+        type_id = _get_xml_attribute(xml_path, "number")
+        group_id = _get_xml_attribute(xml_path, "group")
+        instance_id = _get_xml_attribute(xml_path, "instance")
+
+        # Skip duplicate group/instance ID combos
+        # This may happen if multiple extracted ui.package files are processed
+        uuid = str(group_id) + "_" + str(instance_id)
+        if uuid in uuids:
+            print(f"Skipping duplicate group ID {hex(group_id)} with instance ID {hex(instance_id)}")
+            continue
+        uuids.append(uuid)
+
+        # Add file into DBPF package
+        package.add_file_from_path(type_id, group_id, instance_id, file_path)
+
+    package.save(output_path)
+    print("\nPackage successfully saved to output/" + os.path.basename(output_path), "\n")
+
+
 if __name__ == "__main__":
     # Allow CTRL+C to abort script
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     # Paths
     INPUT_DIR = os.path.join(os.path.dirname(__file__), "input")
+    TEMP_DIR = os.path.join(os.path.dirname(__file__), "temp")
     OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
 
     if not os.path.exists(INPUT_DIR):
         print("'input' directory does not exist! See README for instructions.")
         exit(1)
 
-    if os.path.exists(OUTPUT_DIR):
-        #print("'output' directory exists. Please delete this to continue.")
-        #exit(1)
-        print("Deleted old output directory:", OUTPUT_DIR)
-        shutil.rmtree(OUTPUT_DIR)
+    if os.path.exists(TEMP_DIR):
+        print("'output' directory exists. Old files may be overwritten.")
+
+    if os.path.exists(TEMP_DIR):
+        print("Deleting old temporary files...")
+        shutil.rmtree(TEMP_DIR)
 
     # Check files are found
     print("Performing preliminary checks...")
     check_input_files("UI Data (UI)", "uiScript")
     check_input_files("jpg/tga/png Image (IMG)", "jpg")
+    check_input_files("Accelerator Key Definitions", "simpe")
 
     # Write directories for output
-    print("Preparing output directory...")
-    create_output_dir()
+    create_dirs()
 
     # 1. Adjust geometry in *.uiScript files
     upscale_uiscripts()
@@ -263,4 +331,5 @@ if __name__ == "__main__":
     # 3. Enlarge UI graphics (requires 'imagemagick' to be installed)
     upscale_graphics()
 
-    print("Conversion has finished. Ready to create a new .package!\n")
+    # 4. Create a new DBPF compatible package
+    create_dbpf_package()
