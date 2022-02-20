@@ -17,7 +17,7 @@
 #
 """
 Handles the reading and creation of uncompressed ui.package files,
-based on DBPF v1.1 format.
+based on DBPF 1.1 / Index v7.1 format.
 """
 
 # **Compression Incomplete!**
@@ -63,6 +63,7 @@ class Helpers():
 
 
 class Header(Helpers):
+    # For DBPF 1.1 version and 7.1 index only!
     def __init__(self, stream):
         self.stream = stream
         self.major_version = self.read_at_position(4, 8)
@@ -73,9 +74,6 @@ class Header(Helpers):
         self.index_start_offset = self.read_at_position(40, 44)
         self.index_size = self.read_at_position(44, 48)
 
-        if not 1 in [self.major_version, self.minor_version, self.index_version_major, self.index_version_minor]:
-            raise NotImplementedError("Incompatible package version!")
-
 
 class Index(Helpers):
     class Entry(object):
@@ -84,6 +82,7 @@ class Index(Helpers):
         instance_id = 0
         file_location = 0
         file_size = 0
+        blob = bytes()
 
     def __init__(self, stream, header):
         self.stream = stream
@@ -191,14 +190,102 @@ class DBPF(Helpers):
         self.decompression = Decompression(self.stream, self.index)
 
     def list_entries(self):
-        print("Type ID, Group ID, Instance ID, Location, Size")
+        print("        | Type ID,   Group ID,  Instance ID, Location, Size, Label")
         for index, entry in enumerate(self.index.entries):
             print("Entry", index, "|",
-                  self.get_type(entry.type_id),
+                  hex(entry.type_id),
                   hex(entry.group_id),
                   hex(entry.instance_id),
-                  hex(entry.file_location),
-                  entry.file_size)
+                  entry.file_location,
+                  entry.file_size,
+                  "|", self.get_type(entry.type_id))
+
+    def add_file(self, type_id=0, group_id=0, instance_id=0, data=bytes()):
+        """
+        Add new data to the index (for new packages)
+        """
+        entry = self.index.Entry()
+        entry.type_id = type_id
+        entry.group_id = group_id
+        entry.instance_id = instance_id
+        entry.blob = data
+        self.index.entries.append(entry)
+
+    def add_file_from_path(self, type_id, group_id, instance_id, path):
+        """
+        Read path and add the data into index (for new packages)
+        """
+        with open(path, "rb") as f:
+            data = f.read()
+        return self.add_file(type_id, group_id, instance_id, data)
+
+    def save(self, path):
+        """
+        Write a new DBPF to disk (for new packages). The destination file
+        should be empty.
+
+        Internally, the index's file location and size will be determined here.
+        """
+        open(path, "w").close()
+        f = open(path, "wb")
+
+        # The header is 96 bytes
+        f.write(bytes(96))
+
+        def _write_int_at_pos(position, integer):
+            f.seek(position)
+            f.write(integer.to_bytes(integer.bit_length(), "little"))
+
+        def _write_int_next_4_bytes(integer):
+            start = f.tell()
+            end = f.tell() + 4
+            f.write(integer.to_bytes(integer.bit_length(), "little"))
+            f.seek(end)
+
+        # Write header: DBPF
+        f.seek(0)
+        f.write(b'\x44\x42\x50\x46')
+
+        # Write header: Major version
+        _write_int_at_pos(4, 0x1)
+
+        # Write header: Minor version
+        _write_int_at_pos(8, 0x1)
+
+        # Write header: Index version major
+        _write_int_at_pos(32, 0x7)
+
+        # Write header: Index version minor
+        _write_int_at_pos(60, 0x1)
+
+        # Write file data (blobs) for each entry after the header
+        f.seek(96)
+        for entry in self.index.entries:
+            entry.file_location = f.tell()
+            f.write(entry.blob)
+            entry.file_size = f.tell() - entry.file_location
+
+        # Write index after the blobs
+        self.header.index_start_offset = f.tell()
+        self.header.index_entry_count = len(self.index.entries)
+
+        for entry in self.index.entries:
+            _write_int_next_4_bytes(entry.type_id)
+            _write_int_next_4_bytes(entry.group_id)
+            _write_int_next_4_bytes(entry.instance_id)
+            _write_int_next_4_bytes(entry.file_location)
+            _write_int_next_4_bytes(entry.file_size)
+
+        self.header.index_size = f.tell() - self.header.index_start_offset
+
+        # Write header: Index entry count
+        _write_int_at_pos(36, self.header.index_entry_count)
+
+        # Write header: Index start offset
+        _write_int_at_pos(40, self.header.index_start_offset)
+
+        # Write header: Index entry size
+        _write_int_at_pos(44, self.header.index_size)
 
 
 if __name__ == "__main__":
