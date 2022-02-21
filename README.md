@@ -2,44 +2,42 @@
 
 A script to upscale The Sims 2's user interface for 4K (HiDPI) displays.
 
-**Does not work!** This is an experiment that is theortically nearly there, but
-hit a snag.
+> **Work In Progress / Help Wanted**
+>
+> The theory works, but there's a few minor visual glitches to resolve.
+>
+> **If you're a programmer:** I'd hugely appreciate [help with DBPF (de)compression](https://github.com/lah7/sims2-4k-ui-mod/issues?q=is%3Aissue+is%3Aopen+label%3A%22script+bug%22).
+>
+> **If you're a player:** Your best experience is playing in 1080p for the moment.
+> If you don't mind visual glitches, feel free to try this script.
+>
 
 ## About
 
 Through the use of [graphic rules], it's easy to play The Sims 2 with high
-resolutions. However, the buttons, text and interface is super tiny.
+resolutions. However, the buttons, text and interface becomes super tiny.
 
 At time of writing, there are no 4K modifications out there. I discovered that
-the modularity of the game means that in theory, doubling the pixels for UI
-graphics and geometry is sufficient to increase the UI density.
+the modularity of the game means that by doubling the pixels for UI geometry
+and the graphics, you can increase the UI density so it's comfortable for 4K
+resolutions.
 
-This repository contains a script to process UI resources and graphics from the
-game, and upscale them to look good on a 3840x2160 resolution.
-This might work for other resolutions (like 1440p) too by tweaking and running
+This mod is a script that processes UI resources and graphics from your copy of
+the game, and upscales them to look good at a resolution of 3840x2160 (4K/2160p)
+
+Other resolutions (like 1440p) might work by tweaking and running
 the script on your computer.
 
 [graphic rules]: https://simswiki.info/wiki.php?title=Graphics_Rules_(for_The_Sims_2)
 
-## But... I hit a snag!
-
-In theory, the files are processed, it's now a matter of trying to get the
-new content into the game's .package (DBPF 1.1, Index 7.1) format. I could not
-find a command line tool or library that could do this (some were unmaintained and no longer work),
-so I wrote one from scratch.
-
-SimPE cannot be used because it runs out of memory. Ideally we can automate the
-entire process from a single script.
-
-It lacks compression, so the end result is large, and the game rejects the package file.
-
-**If you're a tinkerer and would like to help** get this working, [check out the issues!](https://github.com/lah7/sims-2-4k-ui-mod/issues).
-
-**If you're a player,** please check back another day. Unfortunately, we'll have to
-continue playing in 1080p for now.
-
 ## Download
 
+There are no downloads yet, it's not polished enough.
+
+You can download this repository to run the script if you'd like to take a
+preview.
+
+<!--
 For your convenience, you can download upscaled package file from the [Releases]
 page, assuming the latest patches for the game.
 
@@ -54,17 +52,18 @@ Note that any other mods that modify the user interface may cause a mix of
 normal and high density interface.
 
 [Releases]: https://github.com/lah7/sims-2-4k-ui-mod/releases
+-->
 
 ## Script Usage
 
 You can use this script to upscale any game version, expansion pack, or existing
 UI modification. This works by:
 
-* Increasing the font size in `FontStyle.ini`
-* Extracting `ui.package`
-    * Upscale the graphics using `imagemagick`
+* Increase the font size in `FontStyle.ini`
+* Processing an extracted `ui.package`
+    * Use `imagemagick` to upscale the graphics
     * Double the geometry and sizes of UI elements
-* Generating a new `ui.package`
+* Generate a new `ui.package`
 
 ### 1. Prerequisites
 
@@ -74,7 +73,7 @@ First things first, you'll need:
 * [Imagemagick](https://imagemagick.org/) (to process images)
 * [SimPE](https://sourceforge.net/projects/simpe/) (to extract resources)
 
-This script was designed on a Linux system, since [The Sims 2 works under Wine!](https://github.com/lah7/sims-2-wine-patches).
+This script was designed on a Linux system, since [The Sims 2 works under Wine!](https://github.com/lah7/sims-2-wine-patches)
 It should run on Windows, [WSL2] and Mac too, providing you have the utilities installed
 and accessible in your PATH (so you can run them without typing the full path to
 the executable)
@@ -135,6 +134,6 @@ Thank you to these wiki pages for documenting the UI files and DBPF format:
 * <https://www.wiki.sc4devotion.com/index.php?title=UI>
 * <https://www.wiki.sc4devotion.com/index.php?title=DBPF>
 * <https://simswiki.info/wiki.php?title=DBPF>
-* Compression
+* **Compression**
     * <https://simswiki.info/index.php?title=DBPF_Compression>
     * <https://simswiki.info/index.php?title=E86B1EEF>
