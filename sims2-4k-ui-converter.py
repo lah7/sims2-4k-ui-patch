@@ -253,7 +253,11 @@ def create_dbpf_package():
     """
     print("\nCreating DBPF package...")
     output_path = os.path.join(OUTPUT_DIR, "ui.package")
+
+    if os.path.exists(output_path):
+        os.remove(output_path)
     open(output_path, "wb").close()
+
     package = dbpf.DBPF(output_path)
     xml_files = glob.glob(TEMP_DIR + "/**/*.xml", recursive=True)
     uuids = []
