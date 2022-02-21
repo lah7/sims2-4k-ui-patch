@@ -242,23 +242,7 @@ class DBPF(Helpers):
             f.write(integer.to_bytes(integer.bit_length(), "little"))
             f.seek(end)
 
-        # Write header: DBPF
-        f.seek(0)
-        f.write(b'\x44\x42\x50\x46')
-
-        # Write header: Major version
-        _write_int_at_pos(4, 0x1)
-
-        # Write header: Minor version
-        _write_int_at_pos(8, 0x1)
-
-        # Write header: Index version major
-        _write_int_at_pos(32, 0x7)
-
-        # Write header: Index version minor
-        _write_int_at_pos(60, 0x1)
-
-        # Write file data (blobs) for each entry after the header
+        # Start by writing file data (blobs) after the header
         f.seek(96)
         for entry in self.index.entries:
             entry.file_location = f.tell()
@@ -278,6 +262,19 @@ class DBPF(Helpers):
 
         self.header.index_size = f.tell() - self.header.index_start_offset
 
+        # Write header: DBPF
+        f.seek(0)
+        f.write(b'\x44\x42\x50\x46')
+
+        # Write header: Major version
+        _write_int_at_pos(4, 0x1)
+
+        # Write header: Minor version
+        _write_int_at_pos(8, 0x2)
+
+        # Write header: Index version major
+        _write_int_at_pos(32, 0x7)
+
         # Write header: Index entry count
         _write_int_at_pos(36, self.header.index_entry_count)
 
@@ -286,6 +283,9 @@ class DBPF(Helpers):
 
         # Write header: Index entry size
         _write_int_at_pos(44, self.header.index_size)
+
+        # Write header: Index version minor
+        _write_int_at_pos(60, 0x1)
 
 
 if __name__ == "__main__":
