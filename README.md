@@ -129,6 +129,9 @@ The scripts in this repository are licensed under GPLv3.
 
 ## Acknowledgements
 
+If you wish to let the wider Sims community know, be sure to leave a link
+to this repository!
+
 Thank you to these wiki pages for documenting the UI files and DBPF format:
 
 * <https://www.wiki.sc4devotion.com/index.php?title=UI>
