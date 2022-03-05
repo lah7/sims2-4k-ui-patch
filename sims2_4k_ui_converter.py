@@ -33,21 +33,24 @@ import signal
 # In this folder
 import dbpf
 
-# ==== OPTIONS ====
-# The default options are tuned from 1920x1080 to 3840x2160 (4K, 2160p)
 
-# -- How much to increase the UI dialog geometry and graphics.
-# -- TODO: Test decimal
-UI_ZOOM_FACTOR = 2
+class Properties():
+    # The number to multiply the UI dialog geometry and graphics
+    # -- TODO: Test decimal
+    UI_ZOOM_FACTOR = 2
 
-# -- How many points to increase the font size in addition to the UI_ZOOM_FACTOR
-FONT_INCREASE_PT = 0
+    # How many points to increase the font size in addition to the UI_ZOOM_FACTOR
+    FONT_INCREASE_PT = 0
 
-# Imagemagick executable name
-IMAGEMAGICK = "convert"
+    # What quality to upscale images: point, linear, cubic
+    UPSCALE_FILTER = "point"
 
-# -- What quality to upscale images: point, linear, cubic
-UPSCALE_FILTER = "point"
+    # Paths
+    INPUT_DIR = os.path.join(os.path.dirname(__file__), "input")
+    TEMP_DIR = os.path.join(os.path.dirname(__file__), "temp")
+    OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
+
+PROPS = Properties()
 
 
 def filter_files_by_type(files):
@@ -95,8 +98,8 @@ def upscale_fontstyle_ini():
     Parses FontStyle.ini from the input/Fonts folder and writes a new one
     with font sizes increased by the FONT_INCREASE_PT factor.
     """
-    in_path = os.path.join(INPUT_DIR, "FontStyle.ini")
-    out_path = os.path.join(OUTPUT_DIR, "FontStyle.ini")
+    in_path = os.path.join(PROPS.INPUT_DIR, "FontStyle.ini")
+    out_path = os.path.join(PROPS.OUTPUT_DIR, "FontStyle.ini")
 
     if not os.path.exists(in_path):
         print("Skipping FontStyle.ini as not present in 'input' folder")
@@ -113,7 +116,7 @@ def upscale_fontstyle_ini():
             continue
 
         old_size = parts[3]
-        new_size = (int(parts[3]) * UI_ZOOM_FACTOR) + FONT_INCREASE_PT
+        new_size = (int(parts[3]) * PROPS.UI_ZOOM_FACTOR) + PROPS.FONT_INCREASE_PT
         parts[3] = str(new_size)
         output.append('"'.join(parts))
 
@@ -130,7 +133,7 @@ def upscale_uiscripts():
     returns the new data.
     """
     print("\nProcessing .uiScript files...")
-    file_list = glob.glob(INPUT_DIR + "/**/*.uiScript", recursive=True)
+    file_list = glob.glob(PROPS.INPUT_DIR + "/**/*.uiScript", recursive=True)
     current = 0
     total = len(file_list)
     print(".", end="")
@@ -138,7 +141,7 @@ def upscale_uiscripts():
     for path in file_list:
         current += 1
         print(f"\r[{current}/{total}, {int(current/total * 100)}%] Writing: {path.split('/')[-1]}    ", end="")
-        output_path = path.replace(INPUT_DIR, TEMP_DIR)
+        output_path = path.replace(PROPS.INPUT_DIR, PROPS.TEMP_DIR)
 
         try:
             with open(path, "r") as f:
@@ -159,7 +162,7 @@ def upscale_uiscripts():
                 new_values = []
                 values = part.split("(")[1].split(")")[0]
                 for number in values.split(","):
-                    new_values.append(str(int(number) * UI_ZOOM_FACTOR))
+                    new_values.append(str(int(number) * PROPS.UI_ZOOM_FACTOR))
                 part = f"{name}={part.replace(values, ','.join(new_values))}"
                 output.append(part)
             return "".join(output)
@@ -176,7 +179,7 @@ def upscale_graphics():
     Upscales the specified graphic using Imagemagick ('convert' command)
     with the UPSCALE_FILTER for quality.
     """
-    file_list = glob.glob(INPUT_DIR + "/**/*.jpg", recursive=True)
+    file_list = glob.glob(PROPS.INPUT_DIR + "/**/*.jpg", recursive=True)
     file_types = filter_files_by_type(file_list)
     print("\nProcessing graphics...")
     print("    TGA:", len(file_types["tga"]))
@@ -187,7 +190,7 @@ def upscale_graphics():
 
     # Copy unknown files as-is
     for path in file_types["unknown"]:
-        shutil.copy(path, path.replace(INPUT_DIR, TEMP_DIR))
+        shutil.copy(path, path.replace(PROPS.INPUT_DIR, PROPS.TEMP_DIR))
     del(file_types["unknown"])
 
     current = 0
@@ -199,12 +202,12 @@ def upscale_graphics():
             print(f"\r[{current}/{total}, {int(current/total * 100)}%] Converting {ext.upper()}: {path.split('/')[-1].split('.')[0]}    ", end="")
 
             # Create temporary file so input directory remains untouched
-            tempin = path.replace(INPUT_DIR, TEMP_DIR).replace(".jpg", f".tmp.{ext}")
+            tempin = path.replace(PROPS.INPUT_DIR, PROPS.TEMP_DIR).replace(".jpg", f".tmp.{ext}")
             shutil.copy(path, tempin)
 
             # Imagemagick needs to know the real file extension to convert
             tempout = tempin.replace(f".tmp.{ext}", f".{ext}")
-            os.system(f"convert '{tempin}' -filter {UPSCALE_FILTER} -resize {UI_ZOOM_FACTOR * 100}% '{tempout}'")
+            os.system(f"convert '{tempin}' -filter {PROPS.UPSCALE_FILTER} -resize {PROPS.UI_ZOOM_FACTOR * 100}% '{tempout}'")
             os.remove(tempin)
 
             # Rename the file back to 'JPG'
@@ -226,17 +229,17 @@ def create_dirs():
                 ignored.append(name)
         return ignored
 
-    shutil.copytree(INPUT_DIR, TEMP_DIR, ignore=ignore_files)
+    shutil.copytree(PROPS.INPUT_DIR, PROPS.TEMP_DIR, ignore=ignore_files)
 
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
+    if not os.path.exists(PROPS.OUTPUT_DIR):
+        os.makedirs(PROPS.OUTPUT_DIR)
 
 
 def check_input_files(check_name, ext):
     """
     Perform a prelimitary check that we have everything required for processing.
     """
-    if len(glob.glob(INPUT_DIR + "/**/*." + ext, recursive=True)) > 0:
+    if len(glob.glob(PROPS.INPUT_DIR + "/**/*." + ext, recursive=True)) > 0:
         print("     OK |", check_name)
         return True
     print("MISSING |", check_name)
@@ -252,14 +255,14 @@ def create_dbpf_package():
     files will be used to determine the correct IDs when packing a new file.
     """
     print("\nCreating DBPF package...")
-    output_path = os.path.join(OUTPUT_DIR, "ui.package")
+    output_path = os.path.join(PROPS.OUTPUT_DIR, "ui.package")
 
     if os.path.exists(output_path):
         os.remove(output_path)
     open(output_path, "wb").close()
 
     package = dbpf.DBPF(output_path)
-    xml_files = glob.glob(TEMP_DIR + "/**/*.xml", recursive=True)
+    xml_files = glob.glob(PROPS.TEMP_DIR + "/**/*.xml", recursive=True)
     uuids = []
 
     def _get_xml_attribute(xml_path, attrib):
@@ -301,21 +304,16 @@ if __name__ == "__main__":
     # Allow CTRL+C to abort script
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    # Paths
-    INPUT_DIR = os.path.join(os.path.dirname(__file__), "input")
-    TEMP_DIR = os.path.join(os.path.dirname(__file__), "temp")
-    OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
-
-    if not os.path.exists(INPUT_DIR):
+    if not os.path.exists(PROPS.INPUT_DIR):
         print("'input' directory does not exist! See README for instructions.")
         exit(1)
 
-    if os.path.exists(TEMP_DIR):
+    if os.path.exists(PROPS.TEMP_DIR):
         print("'output' directory exists. Old files may be overwritten.")
 
-    if os.path.exists(TEMP_DIR):
+    if os.path.exists(PROPS.TEMP_DIR):
         print("Deleting old temporary files...")
-        shutil.rmtree(TEMP_DIR)
+        shutil.rmtree(PROPS.TEMP_DIR)
 
     # Check files are found
     print("Performing preliminary checks...")
