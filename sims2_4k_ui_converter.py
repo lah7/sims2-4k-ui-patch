@@ -30,6 +30,7 @@ import os
 import glob
 import shutil
 import signal
+import tempfile
 
 # In this folder
 import dbpf
@@ -48,7 +49,8 @@ class Properties():
 
     # Paths
     INPUT_DIR = os.path.join(os.path.dirname(__file__), "input")
-    TEMP_DIR = os.path.join(os.path.dirname(__file__), "temp")
+    TEMP = tempfile.TemporaryDirectory()
+    TEMP_DIR = os.path.join(TEMP.name, "sims2-4k-ui-mod")
     OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
 
 PROPS = Properties()
@@ -310,7 +312,7 @@ def process_parameters():
     parser.add_argument("--zoom-factor", help="Pixel density to multiply by (e.g. 2)", action="store")
     parser.add_argument("--filter", help="Filter to use when upscaling, (e.g. pointer, linear, cubic)", action="store")
     parser.add_argument("--input-dir", help="Path to extracted, original package files", action="store")
-    parser.add_argument("--temp-dir", help="Path to use while processing", action="store")
+    parser.add_argument("--temp-dir", help="Path to temporarily store files. It won't be deleted afterwards", action="store")
     parser.add_argument("--output-dir", help="Path to save the modified package/files", action="store")
 
     args = parser.parse_args()
@@ -332,13 +334,6 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     process_parameters()
-
-    if os.path.exists(PROPS.TEMP_DIR):
-        print("'output' directory exists. Old files may be overwritten.")
-
-    if os.path.exists(PROPS.TEMP_DIR):
-        print("Deleting old temporary files...")
-        shutil.rmtree(PROPS.TEMP_DIR)
 
     # Check files are found
     print("Performing preliminary checks...")
@@ -364,3 +359,6 @@ if __name__ == "__main__":
 
     # 4. Create a new DBPF compatible package
     create_dbpf_package()
+
+    # Clean up
+    PROPS.TEMP.cleanup()
