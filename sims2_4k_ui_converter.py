@@ -25,6 +25,7 @@ that, and it's as simple as doubling the density of the graphics and fonts.
 
 See the README for instructions on using this script.
 """
+import argparse
 import os
 import glob
 import shutil
@@ -300,9 +301,37 @@ def create_dbpf_package():
     print("\nPackage successfully saved to output/" + os.path.basename(output_path), "\n")
 
 
+def process_parameters():
+    """
+    Processes optional parameters passed by the user.
+    """
+    parser = argparse.ArgumentParser()
+    #parser._optionals.title = "Optional arguments"
+    parser.add_argument("--zoom-factor", help="Pixel density to multiply by (e.g. 2)", action="store")
+    parser.add_argument("--filter", help="Filter to use when upscaling, (e.g. pointer, linear, cubic)", action="store")
+    parser.add_argument("--input-dir", help="Path to extracted, original package files", action="store")
+    parser.add_argument("--temp-dir", help="Path to use while processing", action="store")
+    parser.add_argument("--output-dir", help="Path to save the modified package/files", action="store")
+
+    args = parser.parse_args()
+
+    if args.zoom_factor:
+        PROPS.UI_ZOOM_FACTOR = int(args.zoom_factor)
+    if args.filter:
+        PROPS.UPSCALE_FILTER = args.filter
+    if args.input_dir:
+        PROPS.INPUT_DIR = os.path.realpath(args.input_dir)
+    if args.temp_dir:
+        PROPS.TEMP_DIR = os.path.realpath(args.temp_dir)
+    if args.output_dir:
+        PROPS.OUTPUT_DIR = os.path.realpath(args.output_dir)
+
+
 if __name__ == "__main__":
     # Allow CTRL+C to abort script
     signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+    process_parameters()
 
     if not os.path.exists(PROPS.INPUT_DIR):
         print("'input' directory does not exist! See README for instructions.")

@@ -107,6 +107,10 @@ the **input** folder.
 
 This will process the files and produce a new `ui.package`.
 
+For more parameters, for example, to choose the directories for processing,
+add `--help` at the end. Otherwise, the default will be to process using the
+`input`, `temp` and `output` directories in this folder.
+
 ### 5. Copy into the game
 
 Navigate to the game's UI folder, usually:
