@@ -333,10 +333,6 @@ if __name__ == "__main__":
 
     process_parameters()
 
-    if not os.path.exists(PROPS.INPUT_DIR):
-        print("'input' directory does not exist! See README for instructions.")
-        exit(1)
-
     if os.path.exists(PROPS.TEMP_DIR):
         print("'output' directory exists. Old files may be overwritten.")
 
@@ -346,9 +342,13 @@ if __name__ == "__main__":
 
     # Check files are found
     print("Performing preliminary checks...")
-    check_input_files("UI Data (UI)", "uiScript")
-    check_input_files("jpg/tga/png Image (IMG)", "jpg")
-    check_input_files("Accelerator Key Definitions", "simpe")
+    checks = [
+        check_input_files("UI Data (UI)", "uiScript"),
+        check_input_files("jpg/tga/png Image (IMG)", "jpg"),
+        check_input_files("Accelerator Key Definitions", "simpe"),
+    ]
+    if False in checks:
+        exit(1)
 
     # Write directories for output
     create_dirs()
