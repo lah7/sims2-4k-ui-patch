@@ -13,25 +13,36 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2022 Luke Horwell <code@horwell.me>
+# Copyright (C) 2022-2023 Luke Horwell <code@horwell.me>
 #
 """
-Handles the reading and creation of uncompressed ui.package files,
-based on DBPF 1.1 / Index v7.1 format.
+Handles the reading of ui.package files for The Sims 2, with the ability
+to create uncompressed DBPF files.
+
+Based on DBPF 1.1 / Index v7.1 format.
 """
 
 # **Compression Incomplete!**
 # - New .package files will not support compression.
 # - SimPE is required for extracting the original files.
 
-class Helpers():
+import io
+
+
+class Stream():
+    """
+    Base class for all file stream operations.
+    """
     # Type IDs (as int)
     TYPE_UI_DATA = 0
     TYPE_IMAGE = 2238569388
     TYPE_ACCEL_DEF = 2732840243
     TYPE_DIR = 3899334383
 
-    def read_at_position(self, start, end):
+    def __init__(self, stream: io.BufferedReader):
+        self.stream = stream
+
+    def read_at_position(self, start: int, end: int):
         """
         From the beginning of the file stream, jump to the specified 'start'
         position, read the bytes until the end position and return an integer.
@@ -46,7 +57,7 @@ class Helpers():
         """
         return int.from_bytes(self.stream.read(4), "little")
 
-    def get_type(self, type_id):
+    def get_type(self, type_id: int):
         """
         Parse the Type ID into a string.
         """
@@ -62,10 +73,12 @@ class Helpers():
             return f"Unknown ({hex(type_id)})"
 
 
-class Header(Helpers):
-    # For DBPF 1.1 version and 7.1 index only!
-    def __init__(self, stream):
-        self.stream = stream
+class Header(Stream):
+    """
+    Describe a header for DBPF version 1.1 and 7.1 index.
+    """
+    def __init__(self, stream: io.BufferedReader):
+        super().__init__(stream)
         self.major_version = self.read_at_position(4, 8)
         self.minor_version = self.read_at_position(8, 12)
         self.index_version_major = self.read_at_position(32, 36)
@@ -75,7 +88,7 @@ class Header(Helpers):
         self.index_size = self.read_at_position(44, 48)
 
 
-class Index(Helpers):
+class Index(Stream):
     class Entry(object):
         type_id = 0
         group_id = 0
@@ -85,7 +98,7 @@ class Index(Helpers):
         blob = bytes()
 
     def __init__(self, stream, header):
-        self.stream = stream
+        super().__init__(stream)
         self.start = header.index_start_offset
         self.end = self.start + header.index_size
         self.count = header.index_entry_count
@@ -104,7 +117,7 @@ class Index(Helpers):
             entry.file_size = self.read_next_dword()
             self.entries.append(entry)
 
-    def get_blob(self, entry):
+    def get_blob(self, entry: Entry):
         """
         Returns the bytes for the file from the specified entry.
         """
@@ -113,16 +126,17 @@ class Index(Helpers):
         return self.stream.read(entry.file_size)
 
 
-class Decompression(Helpers):
+class DirectoryFile(Stream):
     """
-    Handles the decompression of files from the .ui package, according to
-    the "directory of compressed files" (0xE86B1EEF).
+    The directory file is included in the DBPF when there are compressed files.
+    This type is 0xE86B1EEF.
 
     <!> This implementation is incomplete! It can only list compressed files,
     ideally it can decompress so we don't need an external tool.
+
+    https://simswiki.info/index.php?title=E86B1EEF
+    https://simswiki.info/index.php?title=DBPF_Compression
     """
-    # https://simswiki.info/index.php?title=E86B1EEF
-    # https://simswiki.info/index.php?title=DBPF_Compression
 
 #    TODO: Checklist (at minimum, to be able to read)
     # ✔️ Read the DBPF header.
@@ -138,8 +152,8 @@ class Decompression(Helpers):
         instance_id = 0
         decompressed_size = 0
 
-    def __init__(self, stream, index):
-        self.stream = stream
+    def __init__(self, stream: io.BufferedReader, index: Index):
+        super().__init__(stream)
         self.index = index
         self.entries = []
 
@@ -176,18 +190,19 @@ class Decompression(Helpers):
                   entry.decompressed_size)
 
 
-class DBPF(Helpers):
+class DBPF(Stream):
     """
     Handles a DBPF Sims 2 ui.package file.
+
+    https://www.wiki.sc4devotion.com/index.php?title=DBPF
+    https://www.wiki.sc4devotion.com/images/e/e8/DBPF_File_Format_v1.1.png
     """
-    # https://www.wiki.sc4devotion.com/index.php?title=DBPF
-    # https://www.wiki.sc4devotion.com/images/e/e8/DBPF_File_Format_v1.1.png
-    def __init__(self, path):
+    def __init__(self, path: str):
         self.path = path
         self.stream = open(path, "rb")
         self.header = Header(self.stream)
         self.index = Index(self.stream, self.header)
-        self.decompression = Decompression(self.stream, self.index)
+        self.compressed_index = DirectoryFile(self.stream, self.index)
 
     def list_entries(self):
         print("        | Type ID,   Group ID,  Instance ID, Location, Size, Label")
@@ -211,7 +226,7 @@ class DBPF(Helpers):
         entry.blob = data
         self.index.entries.append(entry)
 
-    def add_file_from_path(self, type_id, group_id, instance_id, path):
+    def add_file_from_path(self, type_id: int, group_id: int, instance_id: int, path: str):
         """
         Read path and add the data into index (for new packages)
         """
@@ -219,7 +234,7 @@ class DBPF(Helpers):
             data = f.read()
         return self.add_file(type_id, group_id, instance_id, data)
 
-    def save(self, path):
+    def save(self, path: str):
         """
         Write a new DBPF to disk (for new packages). The destination file
         should be empty.
@@ -232,7 +247,7 @@ class DBPF(Helpers):
         # The header is 96 bytes
         f.write(bytes(96))
 
-        def _write_int_at_pos(position, integer):
+        def _write_int_at_pos(position: int, integer: int):
             f.seek(position)
             f.write(integer.to_bytes(integer.bit_length(), "little"))
 
@@ -297,6 +312,6 @@ if __name__ == "__main__":
     print("Size", package.header.index_size)
     print("Entries", package.header.index_entry_count)
     package.index.load()
-    package.decompression.load()
+    package.compressed_index.load()
     package.list_entries()
-    package.decompression.list_compressed()
+    package.compressed_index.list_compressed()

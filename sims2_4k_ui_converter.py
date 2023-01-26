@@ -13,50 +13,49 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2022 Luke Horwell <code@horwell.me>
+# Copyright (C) 2022-2023 Luke Horwell <code@horwell.me>
 #
 """
-This script takes the files from an extracted ui.package (via SimPE),
+This script takes files from an extracted ui.package (via SimPE),
 upscales the fonts & graphics and produces a new package file.
 
-While graphic rules can be defined to allow The Sims 2 to run a a 4K resolution,
-the user interface elements are extremely tiny. This modification aims to fix
-that, and it's as simple as doubling the density of the graphics and fonts.
+While graphic rules can be defined to allow The Sims 2 to run at 4K,
+the user interface elements are extremely tiny.  This modification
+upscales the user interface by doubling the density of the graphics and fonts.
 
 See the README for instructions on using this script.
 """
 import argparse
-import os
 import glob
+import os
 import shutil
 import signal
 import tempfile
 
-# In this folder
 import dbpf
 
 
 class Properties():
     # The number to multiply the UI dialog geometry and graphics
     # -- TODO: Test decimal
-    UI_ZOOM_FACTOR = 2
+    UI_ZOOM_FACTOR: int = 2
 
     # How many points to increase the font size in addition to the UI_ZOOM_FACTOR
-    FONT_INCREASE_PT = 0
+    FONT_INCREASE_PT: int = 0
 
     # What quality to upscale images: point, linear, cubic
-    UPSCALE_FILTER = "point"
+    UPSCALE_FILTER: str = "point"
 
     # Paths
-    INPUT_DIR = os.path.join(os.path.dirname(__file__), "input")
+    INPUT_DIR: str = os.path.join(os.path.dirname(__file__), "input")
     TEMP = tempfile.TemporaryDirectory()
-    TEMP_DIR = os.path.join(TEMP.name, "sims2-4k-ui-mod")
-    OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
+    TEMP_DIR: str = os.path.join(TEMP.name, "sims2-4k-ui-mod")
+    OUTPUT_DIR: str = os.path.join(os.path.dirname(__file__), "output")
 
 PROPS = Properties()
 
 
-def filter_files_by_type(files):
+def filter_files_by_type(files) -> dict:
     """
     The files extracted by SimPE are not actually JPGs. Most are Targa (TGA),
     bu could also be PNGs, Bitmap (.bmp) and JPEGs.
@@ -268,7 +267,7 @@ def create_dbpf_package():
     xml_files = glob.glob(PROPS.TEMP_DIR + "/**/*.xml", recursive=True)
     uuids = []
 
-    def _get_xml_attribute(xml_path, attrib):
+    def _get_xml_attribute(xml_path: str, attrib: str):
         """
         Scrape the XML file and returns the value for the attribute.
         A library would be better, but this is quicker with less overhead for now.
@@ -277,16 +276,16 @@ def create_dbpf_package():
             for line in f.readlines():
                 if line.strip().startswith(f"<{attrib}>"):
                     return int(line.split(f"<{attrib}>")[1].split(f"</{attrib}>")[0].strip())
-        return
+        return 0
 
     for xml_path in xml_files:
         if xml_path.endswith("package.xml"):
             continue
 
-        file_path = xml_path.replace(".xml", "")
-        type_id = _get_xml_attribute(xml_path, "number")
-        group_id = _get_xml_attribute(xml_path, "group")
-        instance_id = _get_xml_attribute(xml_path, "instance")
+        file_path: str = xml_path.replace(".xml", "")
+        type_id: int = _get_xml_attribute(xml_path, "number")
+        group_id: int = _get_xml_attribute(xml_path, "group")
+        instance_id: int = _get_xml_attribute(xml_path, "instance")
 
         # Skip duplicate group/instance ID combos
         # This may happen if multiple extracted ui.package files are processed
