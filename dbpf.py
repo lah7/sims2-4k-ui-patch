@@ -21,12 +21,8 @@ to create uncompressed DBPF files.
 
 Based on DBPF 1.1 / Index v7.1 format.
 """
-
-# **Compression Incomplete!**
-# - New .package files will not support compression.
-# - SimPE is required for extracting the original files.
-
 import io
+from typing import Literal
 
 
 class Stream():
@@ -42,7 +38,7 @@ class Stream():
     def __init__(self, stream: io.BufferedReader):
         self.stream = stream
 
-    def read_at_position(self, start: int, end: int):
+    def read_at_position(self, start: int, end: int) -> int:
         """
         From the beginning of the file stream, jump to the specified 'start'
         position, read the bytes until the end position and return an integer.
@@ -51,13 +47,13 @@ class Stream():
         self.stream.seek(start)
         return int.from_bytes(self.stream.read(end - start), "little")
 
-    def read_next_dword(self):
+    def read_next_dword(self, byteorder: Literal["little", "big"] = "little") -> int:
         """
         Seek the next 4 bytes (DWORD) in the file stream and return an integer.
         """
-        return int.from_bytes(self.stream.read(4), "little")
+        return int.from_bytes(self.stream.read(4), byteorder)
 
-    def get_type(self, type_id: int):
+    def get_type(self, type_id: int) -> str:
         """
         Parse the Type ID into a string.
         """
@@ -95,6 +91,9 @@ class Index(Stream):
         instance_id = 0
         file_location = 0
         file_size = 0
+        is_compressed = False
+
+        # Blob will be empty for existing files, use get_blob().
         blob = bytes()
 
     def __init__(self, stream, header):
@@ -103,11 +102,11 @@ class Index(Stream):
         self.end = self.start + header.index_size
         self.count = header.index_entry_count
         self.entries = []
+        self.dir: DirectoryFile | None = None
 
-    def load(self):
+        # Load entries from package
         self.stream.seek(0)
         self.stream.seek(self.start)
-        self.entries = []
         for no in range(0, self.count):
             entry = self.Entry()
             entry.type_id = self.read_next_dword()
@@ -117,7 +116,22 @@ class Index(Stream):
             entry.file_size = self.read_next_dword()
             self.entries.append(entry)
 
-    def get_blob(self, entry: Entry):
+        # Find DIR file in index, indicating some files are compressed
+        self.stream.seek(0)
+        for entry in self.entries:
+            if entry.type_id == self.TYPE_DIR:
+                self.stream.seek(entry.file_location)
+                self.dir = DirectoryFile(self.stream, entry)
+
+        # If DIR file exists, update entry
+        if self.dir:
+            for entry in self.entries:
+                entry.compressed = False
+                for c_entry in self.dir.entries:
+                    if c_entry.type_id == entry.type_id and c_entry.group_id == entry.group_id and c_entry.instance_id == entry.instance_id:
+                        entry.compressed = True
+
+    def get_blob(self, entry: Entry) -> bytes:
         """
         Returns the bytes for the file from the specified entry.
         """
@@ -131,63 +145,31 @@ class DirectoryFile(Stream):
     The directory file is included in the DBPF when there are compressed files.
     This type is 0xE86B1EEF.
 
-    <!> This implementation is incomplete! It can only list compressed files,
-    ideally it can decompress so we don't need an external tool.
-
     https://simswiki.info/index.php?title=E86B1EEF
     https://simswiki.info/index.php?title=DBPF_Compression
     """
-
-#    TODO: Checklist (at minimum, to be able to read)
-    # ✔️ Read the DBPF header.
-    # ✔️ Read the Index Tables.
-    # ✔️ Check for a DIR record.
-    #   Check for the file you want to extract.
-    #   Is this file compressed? If so, decompress it.
-    #   Read the file data and process accordingly.
-
     class CompressedEntry(object):
         type_id = 0
         group_id = 0
         instance_id = 0
         decompressed_size = 0
 
-    def __init__(self, stream: io.BufferedReader, index: Index):
+    def __init__(self, stream: io.BufferedReader, dir_entry: Index.Entry):
         super().__init__(stream)
-        self.index = index
         self.entries = []
+        self.dir_entry = dir_entry
 
-    def _seek_to_directory(self):
-        """
-        Jump to the position where the directory is located, and return the
-        number of entries.
-        """
-        self.stream.seek(0)
-        for entry in self.index.entries:
-            if entry.type_id == self.TYPE_DIR:
-                self.stream.seek(entry.file_location)
-        return int(entry.file_size / 4)
-
-    def load(self):
-        total_compressed = self._seek_to_directory()
-        self.entries = []
-        for no in range(0, total_compressed):
+        # Found DIR file, read it
+        compressed_count = int(self.dir_entry.file_size / 4)
+        for no in range(0, compressed_count):
             entry = self.CompressedEntry()
             entry.type_id = self.read_next_dword()
             entry.group_id = self.read_next_dword()
             entry.instance_id = self.read_next_dword()
-            entry.decompressed_size = self.read_next_dword()
+            entry.decompressed_size = self.read_next_dword(byteorder="big")
+            if entry.type_id == 0 and entry.group_id == 0 and entry.instance_id == 0:
+                break
             self.entries.append(entry)
-
-    def list_compressed(self):
-        # TODO: Seems wrong, lots of unknown entries appear.
-        print("Type ID", "Group ID", "Instance ID", "Decompressed Size")
-        for index, entry in enumerate(self.entries):
-            print("Compressed", index, "|",
-                  self.get_type(entry.type_id),
-                  hex(entry.group_id),
-                  hex(entry.instance_id),
-                  entry.decompressed_size)
 
 
 class DBPF(Stream):
@@ -202,18 +184,18 @@ class DBPF(Stream):
         self.stream = open(path, "rb")
         self.header = Header(self.stream)
         self.index = Index(self.stream, self.header)
-        self.compressed_index = DirectoryFile(self.stream, self.index)
 
     def list_entries(self):
-        print("        | Type ID,   Group ID,  Instance ID, Location, Size, Label")
+        print("        | Compressed | Type ID | Group ID | Instance ID | Location | Size | Label")
         for index, entry in enumerate(self.index.entries):
             print("Entry", index, "|",
-                  hex(entry.type_id),
-                  hex(entry.group_id),
-                  hex(entry.instance_id),
-                  entry.file_location,
-                  entry.file_size,
-                  "|", self.get_type(entry.type_id))
+                entry.compressed, "|",
+                hex(entry.type_id), "|",
+                hex(entry.group_id), "|",
+                hex(entry.instance_id), "|",
+                entry.file_location, "|",
+                entry.file_size, "|",
+                self.get_type(entry.type_id))
 
     def add_file(self, type_id=0, group_id=0, instance_id=0, data=bytes()):
         """
@@ -311,7 +293,4 @@ if __name__ == "__main__":
     print("Offset", package.header.index_start_offset)
     print("Size", package.header.index_size)
     print("Entries", package.header.index_entry_count)
-    package.index.load()
-    package.compressed_index.load()
     package.list_entries()
-    package.compressed_index.list_compressed()
