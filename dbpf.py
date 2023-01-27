@@ -21,8 +21,8 @@ to create uncompressed DBPF files.
 
 Based on DBPF 1.1 / Index v7.1 format.
 """
+import qfs
 import io
-from typing import Literal
 
 
 class Stream():
@@ -47,11 +47,11 @@ class Stream():
         self.stream.seek(start)
         return int.from_bytes(self.stream.read(end - start), "little")
 
-    def read_next_dword(self, byteorder: Literal["little", "big"] = "little") -> int:
+    def read_next_dword(self) -> int:
         """
         Seek the next 4 bytes (DWORD) in the file stream and return an integer.
         """
-        return int.from_bytes(self.stream.read(4), byteorder)
+        return int.from_bytes(self.stream.read(4), "little")
 
     def get_type(self, type_id: int) -> str:
         """
@@ -91,7 +91,7 @@ class Index(Stream):
         instance_id = 0
         file_location = 0
         file_size = 0
-        is_compressed = False
+        compressed = False
 
         # Blob will be empty for existing files, use get_blob().
         blob = bytes()
@@ -101,8 +101,8 @@ class Index(Stream):
         self.start = header.index_start_offset
         self.end = self.start + header.index_size
         self.count = header.index_entry_count
-        self.entries = []
-        self.dir: DirectoryFile | None = None
+        self.entries: list[Index.Entry] = []
+        self.dir = DirectoryFile(stream, self.Entry())
 
         # Load entries from package
         self.stream.seek(0)
@@ -123,21 +123,13 @@ class Index(Stream):
                 self.stream.seek(entry.file_location)
                 self.dir = DirectoryFile(self.stream, entry)
 
-        # If DIR file exists, update entry
+        # If DIR file exists, update entries
         if self.dir:
             for entry in self.entries:
                 entry.compressed = False
                 for c_entry in self.dir.entries:
                     if c_entry.type_id == entry.type_id and c_entry.group_id == entry.group_id and c_entry.instance_id == entry.instance_id:
                         entry.compressed = True
-
-    def get_blob(self, entry: Entry) -> bytes:
-        """
-        Returns the bytes for the file from the specified entry.
-        """
-        self.stream.seek(0)
-        self.stream.seek(entry.file_location)
-        return self.stream.read(entry.file_size)
 
 
 class DirectoryFile(Stream):
@@ -166,10 +158,16 @@ class DirectoryFile(Stream):
             entry.type_id = self.read_next_dword()
             entry.group_id = self.read_next_dword()
             entry.instance_id = self.read_next_dword()
-            entry.decompressed_size = self.read_next_dword(byteorder="big")
+            entry.decompressed_size = self.read_next_dword()
             if entry.type_id == 0 and entry.group_id == 0 and entry.instance_id == 0:
                 break
             self.entries.append(entry)
+
+    def lookup_entry(self, entry: Index.Entry) -> CompressedEntry:
+        for compress_entry in self.entries:
+            if entry.type_id == compress_entry.type_id and entry.group_id == compress_entry.group_id and entry.instance_id == compress_entry.instance_id:
+                return compress_entry
+        return self.CompressedEntry()
 
 
 class DBPF(Stream):
@@ -215,6 +213,29 @@ class DBPF(Stream):
         with open(path, "rb") as f:
             data = f.read()
         return self.add_file(type_id, group_id, instance_id, data)
+
+    def get_blob(self, entry: Index.Entry) -> bytes:
+        """
+        Returns the bytes for the file from the specified entry.
+        This data could be either compressed or uncompressed.
+        """
+        self.stream.seek(0)
+        self.stream.seek(entry.file_location)
+        return self.stream.read(entry.file_size)
+
+    def extract(self, entry: Index.Entry, path: str):
+        """
+        Extracts a file described by an entry to the specified file path.
+        If the data is compressed, it will be decompressed.
+        """
+        blob = self.get_blob(entry)
+        if entry.compressed:
+            compressed_entry = self.index.dir.lookup_entry(entry)
+            data = qfs.decompress(bytearray(blob), compressed_entry.decompressed_size)
+        else:
+            data = blob
+        with open(path, "wb") as file:
+            file.write(data)
 
     def save(self, path: str):
         """
