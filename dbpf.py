@@ -169,6 +169,14 @@ class DirectoryFile(Stream):
                 return compress_entry
         return self.CompressedEntry()
 
+    def add_entry(self, type_id: int, group_id: int, instance_id: int, decompressed_size: int):
+        entry = self.CompressedEntry()
+        entry.type_id = type_id
+        entry.group_id = group_id
+        entry.instance_id = instance_id
+        entry.decompressed_size = decompressed_size
+        self.entries.append(entry)
+
 
 class DBPF(Stream):
     """
@@ -179,7 +187,12 @@ class DBPF(Stream):
     """
     def __init__(self, path: str):
         self.path = path
-        self.stream = open(path, "rb")
+        try:
+            self.stream = open(path, "rb")
+        except FileNotFoundError:
+            with open(path, "wb") as f:
+                f.write(bytearray(32))
+            self.stream = open(path, "rb")
         self.header = Header(self.stream)
         self.index = Index(self.stream, self.header)
 
@@ -195,7 +208,7 @@ class DBPF(Stream):
                 entry.file_size, "|",
                 self.get_type(entry.type_id))
 
-    def add_file(self, type_id=0, group_id=0, instance_id=0, data=bytes()):
+    def add_file(self, type_id=0, group_id=0, instance_id=0, data=bytes(), compress=False):
         """
         Add new data to the index (for new packages)
         """
@@ -203,6 +216,11 @@ class DBPF(Stream):
         entry.type_id = type_id
         entry.group_id = group_id
         entry.instance_id = instance_id
+        if compress:
+            cdata = qfs.compress(bytearray(data))
+            if len(cdata) < len(data):
+                self.index.dir.add_entry(type_id, group_id, instance_id, len(data))
+                data = cdata
         entry.blob = data
         self.index.entries.append(entry)
 
