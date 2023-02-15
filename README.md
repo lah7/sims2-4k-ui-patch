@@ -17,10 +17,12 @@ the game. Other resolutions (like 1440p) could work too by tweaking the script.
 [graphic rules]: https://simswiki.info/wiki.php?title=Graphics_Rules_(for_The_Sims_2)
 
 
-## Incomplete | Help Wanted
+## Work in Progress...
 
 The theory works, but there's a few minor visual glitches that make the game
 feel buggy or makes it difficult to play.
+
+The patcher tool is currently being worked on. Hang tight!
 
 **If you're a player:** Your best experience is playing in 1080p for now.
 If you don't mind [visual glitches](https://github.com/lah7/sims2-4k-ui-mod/issues?q=is%3Aissue+is%3Aopen+label%3A%22visual+bug%22), feel free to try this script.
@@ -28,7 +30,6 @@ If you don't mind [visual glitches](https://github.com/lah7/sims2-4k-ui-mod/issu
 **If you've like to get involved:**
 
 * [Investigate why some assets are misaligned or didn't scale](https://github.com/lah7/sims2-4k-ui-mod/issues?q=is%3Aissue+is%3Aopen+label%3A%22visual+bug%22)
-* [Help improve DBPF compression/decompression code](https://github.com/lah7/sims2-4k-ui-mod/issues?q=is%3Aissue+is%3Aopen+label%3A%22script+bug%22)
 
 
 <!--
