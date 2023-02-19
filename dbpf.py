@@ -21,8 +21,10 @@ to create uncompressed DBPF files.
 
 Based on DBPF 1.1 / Index v7.1 format.
 """
-import qfs
 import io
+import tempfile
+
+import qfs
 
 
 class Stream():
@@ -185,18 +187,28 @@ class DBPF(Stream):
     https://www.wiki.sc4devotion.com/index.php?title=DBPF
     https://www.wiki.sc4devotion.com/images/e/e8/DBPF_File_Format_v1.1.png
     """
-    def __init__(self, path: str):
-        self.path = path
-        try:
-            self.stream = open(path, "rb")
-        except FileNotFoundError:
+    def __init__(self, path: str = ""):
+        """
+        Load an existing DBPF package into memory, or leave blank to create one.
+        """
+        self.temp = tempfile.NamedTemporaryFile() if not path else None
+        if self.temp:
+            path = self.temp.name
             with open(path, "wb") as f:
                 f.write(bytearray(32))
-            self.stream = open(path, "rb")
+
+        self.stream = open(path, "rb")
         self.header = Header(self.stream)
         self.index = Index(self.stream, self.header)
+        for entry in self.index.entries:
+            entry.blob = self.get_blob(entry)
+
+        self.stream.close()
 
     def list_entries(self):
+        """
+        Example of listing all entries in the index.
+        """
         print("        | Compressed | Type ID | Group ID | Instance ID | Location | Size | Label")
         for index, entry in enumerate(self.index.entries):
             print("Entry", index, "|",
@@ -234,7 +246,7 @@ class DBPF(Stream):
 
     def get_blob(self, entry: Index.Entry) -> bytes:
         """
-        Returns the bytes for the file from the specified entry.
+        Returns the raw bytes for the specified entry.
         This data could be either compressed or uncompressed.
         """
         self.stream.seek(0)
@@ -246,23 +258,27 @@ class DBPF(Stream):
         Extracts a file described by an entry to the specified file path.
         If the data is compressed, it will be decompressed.
         """
-        blob = self.get_blob(entry)
         if entry.compressed:
             compressed_entry = self.index.dir.lookup_entry(entry)
-            data = qfs.decompress(bytearray(blob), compressed_entry.decompressed_size)
+            data = qfs.decompress(bytearray(entry.blob), compressed_entry.decompressed_size)
         else:
-            data = blob
+            data = entry.blob
         with open(path, "wb") as file:
             file.write(data)
 
     def save(self, path: str):
         """
-        Write a new DBPF to disk (for new packages). The destination file
-        should be empty.
+        Write a new DBPF package to disk.
+        If the destination file contains data, it will be overwritten!
 
-        Internally, the index's file location and size will be determined here.
+        File location and size will be determined here.
         """
-        open(path, "w").close()
+        # Check the file is writable, and create if doesn't exist
+        try:
+            open(path, "wb").close()
+        except PermissionError:
+            raise Exception("Permission denied. Check the permissions and try again.")
+
         f = open(path, "wb")
 
         # The header is 96 bytes
@@ -323,13 +339,4 @@ class DBPF(Stream):
         # Write header: Index version minor
         _write_int_at_pos(60, 0x1)
 
-
-if __name__ == "__main__":
-    # TODO: Add arguments to extract a DBPF file
-    print("Test Mode")
-    package = DBPF("ui.package")
-    print("Index version", str(package.header.index_version_major) + '.' + str(package.header.index_version_minor))
-    print("Offset", package.header.index_start_offset)
-    print("Size", package.header.index_size)
-    print("Entries", package.header.index_entry_count)
-    package.list_entries()
+        f.close()
