@@ -125,7 +125,7 @@ class Index(Stream):
                 self.stream.seek(entry.file_location)
                 self.dir = DirectoryFile(self.stream, entry)
 
-        # If DIR file exists, update entries
+        # If DIR file exists, flag the entries that contain compressed data
         if self.dir:
             for entry in self.entries:
                 entry.compressed = False
@@ -152,6 +152,8 @@ class DirectoryFile(Stream):
         super().__init__(stream)
         self.entries = []
         self.dir_entry = dir_entry
+        self.group_id = dir_entry.group_id
+        self.instance_id = dir_entry.instance_id
 
         # Found DIR file, read it
         compressed_count = int(self.dir_entry.file_size / 4)
@@ -178,6 +180,18 @@ class DirectoryFile(Stream):
         entry.instance_id = instance_id
         entry.decompressed_size = decompressed_size
         self.entries.append(entry)
+
+    def get_blob(self):
+        """
+        Return the bytes for the compressed directory record.
+        """
+        blob = bytearray()
+        for entry in self.entries:
+            blob += entry.type_id.to_bytes(4, "little")
+            blob += entry.group_id.to_bytes(4, "little")
+            blob += entry.instance_id.to_bytes(4, "little")
+            blob += entry.decompressed_size.to_bytes(4, "little")
+        return blob
 
 
 class DBPF(Stream):
@@ -231,6 +245,7 @@ class DBPF(Stream):
         if compress:
             cdata = qfs.compress(bytearray(data))
             if len(cdata) < len(data):
+                entry.compressed = True
                 self.index.dir.add_entry(type_id, group_id, instance_id, len(data))
                 data = cdata
         entry.blob = data
@@ -269,15 +284,36 @@ class DBPF(Stream):
     def save(self, path: str):
         """
         Write a new DBPF package to disk.
-        If the destination file contains data, it will be overwritten!
+        If the destination path contains data, it will be overwritten!
 
-        File location and size will be determined here.
+        Low-level data for the DBPF (like file location and file size) is
+        determined here, as well as handling the DIR record for compressed files.
         """
+
         # Check the file is writable, and create if doesn't exist
         try:
             open(path, "wb").close()
         except PermissionError:
             raise Exception("Permission denied. Check the permissions and try again.")
+
+        # Is a DIR record present?
+        has_compressed_data = len(self.index.dir.entries) > 0
+        dir_index = -1
+        for index, entry in enumerate(self.index.entries):
+            if entry.type_id == self.get_type(self.TYPE_DIR):
+                dir_index = index
+                break
+
+        # Update the DIR record if it exists, or create a new one
+        if has_compressed_data and dir_index >= 0:
+            self.index.entries[dir_index].blob = self.index.dir.get_blob()
+        elif has_compressed_data and dir_index < 0:
+            entry = self.index.Entry()
+            entry.type_id = self.TYPE_DIR
+            entry.group_id = self.index.dir.group_id
+            entry.instance_id = self.index.dir.instance_id
+            entry.blob = self.index.dir.get_blob()
+            self.index.entries.append(entry)
 
         f = open(path, "wb")
 
