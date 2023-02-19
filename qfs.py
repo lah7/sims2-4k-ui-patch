@@ -125,7 +125,7 @@ def compress(data: bytearray) -> bytes:
     while index < len(data) - 3:
         # Get all compression candidates
         # (list of offsets for all occurrences of the current 3 bytes)
-        while not end:
+        while True:
             index += 1
             if index >= len(data) - 2:
                 end = True
@@ -139,6 +139,8 @@ def compress(data: bytearray) -> bytes:
             index_list.append(index)
             if index >= last_read_index:
                 break
+        if end:
+            break
 
         # Find the longest repeating byte sequence in the index list (for offset copy)
         offset_copy_count = 0
