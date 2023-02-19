@@ -224,13 +224,13 @@ class DBPF(Stream):
         entry.blob = data
         self.index.entries.append(entry)
 
-    def add_file_from_path(self, type_id: int, group_id: int, instance_id: int, path: str):
+    def add_file_from_path(self, type_id: int, group_id: int, instance_id: int, path: str, compress=False):
         """
         Read path and add the data into index (for new packages)
         """
         with open(path, "rb") as f:
             data = f.read()
-        return self.add_file(type_id, group_id, instance_id, data)
+        return self.add_file(type_id, group_id, instance_id, data, compress)
 
     def get_blob(self, entry: Index.Entry) -> bytes:
         """
