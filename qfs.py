@@ -254,8 +254,8 @@ def compress(data: bytearray) -> bytes:
     output = _write_bytes(output, 6, len(data), 3)
 
     # Did anything actually compress?
-    # if compressed_size >= len(data):
-    #     return data
+    if compressed_size >= len(data):
+        return data
 
     # Strip excess zeros from the end of the output
     del output[compressed_size:]
