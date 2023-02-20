@@ -51,6 +51,21 @@ normal and high density interface.
 [Releases]: https://github.com/lah7/sims-2-4k-ui-mod/releases
 -->
 
+## Tests
+
+Unit tests are an optional check everything is in working order.
+
+You'll need to copy a file from The Sims 2 University into the `tests` folder:
+
+    724723ddc5b020a55bdefc60a7cf1304    The Sims 2 University/TSData/Res/UI/ui.package
+
+_File not included._ With this file, you can run:
+
+    python -m unittest discover ./tests/
+
+This tests the package read, write and compression procedures are working correctly.
+
+
 ## Script Usage
 
 You can use this script to upscale any game version, expansion pack, even if

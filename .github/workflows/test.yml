@@ -1,0 +1,21 @@
+name: Test
+
+on: [push, pull_request]
+
+jobs:
+  tests:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Download Test File
+        run: |
+          wget https://github.com/lah7/sims2-4k-ui-mod/files/10831338/ui.package.zip
+          mv ui.package.zip tests/ui.package.xz
+          xz -d tests/ui.package.xz
+
+      - name: Unit Tests
+        run: |
+          python3 -m unittest discover tests/ -v
