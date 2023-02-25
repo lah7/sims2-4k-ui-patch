@@ -234,7 +234,7 @@ class DBPF(Stream):
                 entry.file_size, "|",
                 self.get_type(entry.type_id))
 
-    def add_file(self, type_id=0, group_id=0, instance_id=0, data=bytes(), compress=False):
+    def add_file(self, type_id=0, group_id=0, instance_id=0, data=bytes(), compress=False) -> Index.Entry:
         """
         Add new data to the index (for new packages)
         """
@@ -250,8 +250,9 @@ class DBPF(Stream):
                 data = cdata
         entry.blob = data
         self.index.entries.append(entry)
+        return entry
 
-    def add_file_from_path(self, type_id: int, group_id: int, instance_id: int, path: str, compress=False):
+    def add_file_from_path(self, type_id: int, group_id: int, instance_id: int, path: str, compress=False) -> Index.Entry:
         """
         Read path and add the data into index (for new packages)
         """

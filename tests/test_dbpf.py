@@ -59,6 +59,19 @@ class DBPFTest(unittest.TestCase):
             md5 = hashlib.md5(f.read()).hexdigest()
         self.assertTrue(md5 == self.tga_md5)
 
+    def test_compress_size(self):
+        """Check a compressed and uncompressed file have different contents"""
+        entry1 = self.package.index.entries[85]
+        if entry1.compressed:
+            raise RuntimeError("Expected an uncompressed entry")
+        uncompressed = entry1.blob
+        uncompressed_md5 = hashlib.md5(uncompressed).hexdigest()
+
+        entry2 = self.package.add_file(0, 0, 0, uncompressed, compress=True)
+        compressed_md5 = hashlib.md5(entry2.blob).hexdigest()
+
+        self.assertFalse(uncompressed_md5 == compressed_md5)
+
     def test_extract_uncompressed(self):
         """Extract an uncompressed file"""
         entry = self.package.index.entries[85]
