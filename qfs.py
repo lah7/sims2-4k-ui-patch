@@ -238,8 +238,8 @@ def compress(data: bytearray) -> bytes:
 
     # Write the header for the compressed data
     def _write_bytes(data, offset, value, count):
-        b = bytearray(value.to_bytes(count, byteorder="little"))
-        for pos, index in enumerate(range(offset, count)):
+        b = bytearray(value.to_bytes(count, byteorder="big"))
+        for index, pos in enumerate(range(offset, offset + count)):
             data[pos] = b[index]
         return data
 
