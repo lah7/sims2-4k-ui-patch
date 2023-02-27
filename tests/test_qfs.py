@@ -22,3 +22,24 @@ class QFSTest(unittest.TestCase):
         input = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()"
         output = qfs.compress(bytearray(input))
         self.assertTrue(output == input)
+
+    def test_header_compressed_size(self):
+        input = b"AAABBBCCCAAAAAABBBCCCDDDAAABBBABABAB"
+        output = qfs.compress(bytearray(input))
+        got = int.from_bytes(output[0:4], byteorder="big")
+        expected = len(bytes(output))
+        self.assertTrue(got == expected)
+
+    def test_header_compression_id(self):
+        input = b"AAABBBCCCAAAAAABBBCCCDDDAAABBBABABAB"
+        output = qfs.compress(bytearray(input))
+        got = int.from_bytes(output[4:6], byteorder="big")
+        expected = 0xFB10
+        self.assertTrue(got == expected)
+
+    def test_header_uncompressed_size(self):
+        input = b"AAABBBCCCAAAAAABBBCCCDDDAAABBBABABAB"
+        output = qfs.compress(bytearray(input))
+        got = int.from_bytes(output[6:9], byteorder="big")
+        expected = len(bytes(input))
+        self.assertTrue(got == expected)
