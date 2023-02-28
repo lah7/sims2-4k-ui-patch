@@ -26,14 +26,14 @@ class QFSTest(unittest.TestCase):
     def test_header_compressed_size(self):
         input = b"AAABBBCCCAAAAAABBBCCCDDDAAABBBABABAB"
         output = qfs.compress(bytearray(input))
-        got = int.from_bytes(output[0:4], byteorder="big")
+        got = int.from_bytes(output[0:4], byteorder="little")
         expected = len(bytes(output))
         self.assertTrue(got == expected)
 
     def test_header_compression_id(self):
         input = b"AAABBBCCCAAAAAABBBCCCDDDAAABBBABABAB"
         output = qfs.compress(bytearray(input))
-        got = int.from_bytes(output[4:6], byteorder="big")
+        got = int.from_bytes(output[4:6], byteorder="little")
         expected = 0xFB10
         self.assertTrue(got == expected)
 
