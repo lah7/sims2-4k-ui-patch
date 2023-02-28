@@ -245,13 +245,13 @@ def compress(data: bytearray) -> bytes:
 
     # -- Offset 00 - Compressed file size
     compressed_size = write_index
-    output = _write_bytes(output, 0, compressed_size, 4, 'little')
+    output = _write_bytes(output, 0, compressed_size, 4, "little")
 
     # -- Offset 04 - Compression ID (QFS)
-    output = _write_bytes(output, 4, 0xFB10, 2, 'little')
+    output = _write_bytes(output, 4, 0xFB10, 2, "little")
 
     # -- Offset 06 - Uncompressed file size
-    output = _write_bytes(output, 6, len(data), 3, 'big')
+    output = _write_bytes(output, 6, len(data), 3, "big")
 
     # Did anything actually compress?
     if compressed_size >= len(data):
