@@ -237,21 +237,21 @@ def compress(data: bytearray) -> bytes:
     last_read_index += copy_count
 
     # Write the header for the compressed data
-    def _write_bytes(data, offset, value, count):
-        b = bytearray(value.to_bytes(count, byteorder="big"))
+    def _write_bytes(data, offset, value, count, endian):
+        b = bytearray(value.to_bytes(count, byteorder=endian))
         for index, pos in enumerate(range(offset, offset + count)):
             data[pos] = b[index]
         return data
 
     # -- Offset 00 - Compressed file size
     compressed_size = write_index
-    output = _write_bytes(output, 0, compressed_size, 4)
+    output = _write_bytes(output, 0, compressed_size, 4, 'little')
 
     # -- Offset 04 - Compression ID (QFS)
-    output = _write_bytes(output, 4, 0xFB10, 2)
+    output = _write_bytes(output, 4, 0xFB10, 2, 'little')
 
     # -- Offset 06 - Uncompressed file size
-    output = _write_bytes(output, 6, len(data), 3)
+    output = _write_bytes(output, 6, len(data), 3, 'big')
 
     # Did anything actually compress?
     if compressed_size >= len(data):
