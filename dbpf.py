@@ -215,13 +215,28 @@ class DBPF(Stream):
         self.header = Header(self.stream)
         self.index = Index(self.stream, self.header)
         for entry in self.index.entries:
-            entry.blob = self.get_blob(entry)
+            entry.blob = self._get_blob(entry)
 
         self.stream.close()
 
-    def list_entries(self):
+    def _get_blob(self, entry: Index.Entry) -> bytes:
         """
-        Example of listing all entries in the index.
+        Returns the raw bytes for the specified entry.
+        This data could be either compressed or uncompressed.
+        """
+        self.stream.seek(0)
+        self.stream.seek(entry.file_location)
+        return self.stream.read(entry.file_size)
+
+    def get_entries(self) -> list[Index.Entry]:
+        """
+        Return a list of entries in the index.
+        """
+        return self.index.entries
+
+    def print_entries(self):
+        """
+        Print all entries in the index.
         """
         print("        | Compressed | Type ID | Group ID | Instance ID | Location | Size | Label")
         for index, entry in enumerate(self.index.entries):
@@ -260,15 +275,6 @@ class DBPF(Stream):
             data = f.read()
         return self.add_file(type_id, group_id, instance_id, data, compress)
 
-    def get_blob(self, entry: Index.Entry) -> bytes:
-        """
-        Returns the raw bytes for the specified entry.
-        This data could be either compressed or uncompressed.
-        """
-        self.stream.seek(0)
-        self.stream.seek(entry.file_location)
-        return self.stream.read(entry.file_size)
-
     def extract(self, entry: Index.Entry, path: str):
         """
         Extracts a file described by an entry to the specified file path.
@@ -290,7 +296,6 @@ class DBPF(Stream):
         Low-level data for the DBPF (like file location and file size) is
         determined here, as well as handling the DIR record for compressed files.
         """
-
         # Check the file is writable, and create if doesn't exist
         try:
             open(path, "wb").close()
