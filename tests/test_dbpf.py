@@ -160,3 +160,47 @@ class DBPFTest(unittest.TestCase):
             md5 = hashlib.md5(f.read()).hexdigest()
 
         self.assertTrue(md5 == self.tga_md5)
+
+    def test_repack_package(self, compress=False):
+        """Verify the integrity of a repacked package"""
+        # Extract all files from original package
+        files = []
+        type_ids = []
+        group_ids = []
+        instance_ids = []
+        checksums = []
+
+        for entry in self.package.index.entries:
+            # Exclude compressed directory index
+            if entry.type_id == dbpf.Stream.TYPE_DIR:
+                continue
+
+            path = self._mktemp()
+            self.package.extract(entry, path)
+            files.append(path)
+            type_ids.append(entry.type_id)
+            group_ids.append(entry.group_id)
+            instance_ids.append(entry.instance_id)
+            with open(path, "rb") as f:
+                checksums.append(hashlib.md5(f.read()).hexdigest())
+
+        # Create new package with same contents
+        pkg = dbpf.DBPF()
+        pkg_path = self._mktemp()
+        for index, path in enumerate(files):
+            with open(path, "rb") as f:
+                blob = f.read()
+            pkg.add_file(type_ids[index], group_ids[index], instance_ids[index], blob, compress)
+        pkg.save(pkg_path)
+
+        # Read and verify checksums in new package
+        pkg2 = dbpf.DBPF(pkg_path)
+        passed = []
+        for index, entry in enumerate(pkg2.index.entries):
+            path = self._mktemp()
+            pkg2.extract(entry, path)
+            with open(path, "rb") as f:
+                md5 = hashlib.md5(f.read()).hexdigest()
+            passed.append(md5 == checksums[index])
+        self.assertTrue(all(passed))
+
