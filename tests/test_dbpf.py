@@ -1,4 +1,5 @@
 import hashlib
+import os
 import tempfile
 import unittest
 
@@ -13,8 +14,11 @@ class DBPFTest(unittest.TestCase):
     Requires files in the test directory (not included):
       - ui.package  (The Sims 2 University/TSData/Res/UI/ui.package)
     """
+    tmp_files = []
+
     def _mktemp(self):
         tmp = tempfile.NamedTemporaryFile()
+        self.tmp_files.append(tmp.name)
         return tmp.name
 
     def setUp(self):
@@ -30,6 +34,13 @@ class DBPFTest(unittest.TestCase):
         # Known uncompressed file (Bitmap)
         self.bmp_index = 85
         self.bmp_md5 = "4d450dd3b45e2cebae3ef949bde06292"
+
+    def tearDown(self) -> None:
+        # Clean up temporary files
+        for name in self.tmp_files:
+            if os.path.exists(name):
+                os.remove(name)
+        return super().tearDown()
 
     def test_read_version(self):
         """Read the index version"""
