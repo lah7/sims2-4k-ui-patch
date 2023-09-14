@@ -258,11 +258,18 @@ class DBPF(Stream):
         entry.group_id = group_id
         entry.instance_id = instance_id
         if compress:
-            cdata = qfs.compress(bytearray(data))
+            try:
+                cdata = qfs.compress(bytearray(data))
+            except IndexError:
+                # Could not be compressed
+                cdata = data
+
+            # Is the file smaller when compressed?
             if len(cdata) < len(data):
                 entry.compressed = True
                 self.index.dir.add_entry(type_id, group_id, instance_id, len(data))
                 data = cdata
+
         entry.blob = data
         self.index.entries.append(entry)
         return entry
