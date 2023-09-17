@@ -94,9 +94,7 @@ class Index(Stream):
         file_location = 0
         file_size = 0
         compressed = False
-
-        # Blob will be empty for existing files, use get_blob().
-        blob = bytes()
+        blob = bytes() # Contains compressed/uncompressed data (for existing) or empty (when new)
 
     def __init__(self, stream, header):
         super().__init__(stream)
@@ -181,7 +179,7 @@ class DirectoryFile(Stream):
         entry.decompressed_size = decompressed_size
         self.entries.append(entry)
 
-    def get_blob(self):
+    def get_blob(self) -> bytes:
         """
         Return the bytes for the compressed directory record.
         """
@@ -249,7 +247,7 @@ class DBPF(Stream):
                 entry.file_size, "|",
                 self.get_type(entry.type_id))
 
-    def add_file(self, type_id=0, group_id=0, instance_id=0, data=bytes(), compress=False) -> Index.Entry:
+    def add_entry(self, type_id=0, group_id=0, instance_id=0, data=bytes(), compress=False) -> Index.Entry:
         """
         Add new data to the index (for new packages)
         """
@@ -274,28 +272,32 @@ class DBPF(Stream):
         self.index.entries.append(entry)
         return entry
 
-    def add_file_from_path(self, type_id: int, group_id: int, instance_id: int, path: str, compress=False) -> Index.Entry:
+    def add_entry_from_file(self, type_id: int, group_id: int, instance_id: int, path: str, compress=False) -> Index.Entry:
         """
         Read path and add the data into index (for new packages)
         """
         with open(path, "rb") as f:
             data = f.read()
-        return self.add_file(type_id, group_id, instance_id, data, compress)
+        return self.add_entry(type_id, group_id, instance_id, data, compress)
 
-    def extract(self, entry: Index.Entry, path: str):
+    def extract_entry(self, entry: Index.Entry) -> bytes:
         """
-        Extracts a file described by an entry to the specified file path.
-        If the data is compressed, it will be decompressed.
+        Return uncompressed bytes for an index entry.
         """
         if entry.compressed:
             compressed_entry = self.index.dir.lookup_entry(entry)
-            data = qfs.decompress(bytearray(entry.blob), compressed_entry.decompressed_size)
-        else:
-            data = entry.blob
-        with open(path, "wb") as file:
-            file.write(data)
+            return qfs.decompress(bytearray(entry.blob), compressed_entry.decompressed_size)
+        return entry.blob
 
-    def save(self, path: str):
+    def extract_entry_to_file(self, entry: Index.Entry, path: str):
+        """
+        Extracts a file from the index to the specified file path.
+        """
+        data = self.extract_entry(entry)
+        with open(path, "wb") as f:
+            f.write(data)
+
+    def save_package(self, path: str):
         """
         Write a new DBPF package to disk.
         If the destination path contains data, it will be overwritten!
