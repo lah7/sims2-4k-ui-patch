@@ -22,14 +22,13 @@ to create uncompressed DBPF files.
 Based on DBPF 1.1 / Index v7.1 format.
 """
 import io
-import tempfile
 
 import qfs
 
 
 class Stream():
     """
-    Base class for all file stream operations.
+    Base class used for other classes to handle file stream operations.
     """
     # Type IDs (as int)
     TYPE_UI_DATA = 0
@@ -37,7 +36,7 @@ class Stream():
     TYPE_ACCEL_DEF = 2732840243
     TYPE_DIR = 3899334383
 
-    def __init__(self, stream: io.BufferedReader):
+    def __init__(self, stream: io.BytesIO):
         self.stream = stream
 
     def read_at_position(self, start: int, end: int) -> int:
@@ -57,7 +56,7 @@ class Stream():
 
     def get_type(self, type_id: int) -> str:
         """
-        Parse the Type ID into a string.
+        Return a string describing this Type ID.
         """
         types = {
             self.TYPE_UI_DATA: "UI Data",
@@ -75,7 +74,7 @@ class Header(Stream):
     """
     Describe a header for DBPF version 1.1 and 7.1 index.
     """
-    def __init__(self, stream: io.BufferedReader):
+    def __init__(self, stream: io.BytesIO):
         super().__init__(stream)
         self.major_version = self.read_at_position(4, 8)
         self.minor_version = self.read_at_position(8, 12)
@@ -93,10 +92,11 @@ class Index(Stream):
         instance_id = 0
         file_location = 0
         file_size = 0
-        compressed = False
-        blob = bytes() # Contains compressed/uncompressed data (for existing) or empty (when new)
+        compress = False
+        data = bytes() # Uncompressed bytes
+        raw = bytes() # Bytes as stored in package, could be compressed or uncompressed
 
-    def __init__(self, stream, header):
+    def __init__(self, stream, header: Header):
         super().__init__(stream)
         self.start = header.index_start_offset
         self.end = self.start + header.index_size
@@ -126,10 +126,10 @@ class Index(Stream):
         # If DIR file exists, flag the entries that contain compressed data
         if self.dir:
             for entry in self.entries:
-                entry.compressed = False
+                entry.compress = False
                 for c_entry in self.dir.entries:
                     if c_entry.type_id == entry.type_id and c_entry.group_id == entry.group_id and c_entry.instance_id == entry.instance_id:
-                        entry.compressed = True
+                        entry.compress = True
 
 
 class DirectoryFile(Stream):
@@ -146,7 +146,7 @@ class DirectoryFile(Stream):
         instance_id = 0
         decompressed_size = 0
 
-    def __init__(self, stream: io.BufferedReader, dir_entry: Index.Entry):
+    def __init__(self, stream: io.BytesIO, dir_entry: Index.Entry):
         super().__init__(stream)
         self.entries = []
         self.dir_entry = dir_entry
@@ -179,7 +179,7 @@ class DirectoryFile(Stream):
         entry.decompressed_size = decompressed_size
         self.entries.append(entry)
 
-    def get_blob(self) -> bytes:
+    def get_bytes(self) -> bytes:
         """
         Return the bytes for the compressed directory record.
         """
@@ -195,7 +195,9 @@ class DirectoryFile(Stream):
 class DBPF(Stream):
     """
     Handles a DBPF Sims 2 ui.package file.
+    This is the main interface to read and write DBPF files.
 
+    DBPF Format Reference:
     https://www.wiki.sc4devotion.com/index.php?title=DBPF
     https://www.wiki.sc4devotion.com/images/e/e8/DBPF_File_Format_v1.1.png
     """
@@ -203,21 +205,22 @@ class DBPF(Stream):
         """
         Load an existing DBPF package into memory, or leave blank to create one.
         """
-        self.temp = tempfile.NamedTemporaryFile() if not path else None
-        if self.temp:
-            path = self.temp.name
-            with open(path, "wb") as f:
-                f.write(bytearray(32))
+        self.stream = io.BytesIO(bytearray(32))
+        if path:
+            with open(path, "rb") as f:
+                self.stream = io.BytesIO(f.read())
 
-        self.stream = open(path, "rb")
         self.header = Header(self.stream)
         self.index = Index(self.stream, self.header)
         for entry in self.index.entries:
-            entry.blob = self._get_blob(entry)
+            entry.raw = self._get_bytes(entry)
+            if entry.compress:
+                compressed_entry = self.index.dir.lookup_entry(entry)
+                entry.data = qfs.decompress(bytearray(entry.raw), compressed_entry.decompressed_size)
+            else:
+                entry.data = entry.raw
 
-        self.stream.close()
-
-    def _get_blob(self, entry: Index.Entry) -> bytes:
+    def _get_bytes(self, entry: Index.Entry) -> bytes:
         """
         Returns the raw bytes for the specified entry.
         This data could be either compressed or uncompressed.
@@ -226,90 +229,81 @@ class DBPF(Stream):
         self.stream.seek(entry.file_location)
         return self.stream.read(entry.file_size)
 
+    def _compress_data(self, entry: Index.Entry) -> bytes:
+        """
+        Returns the raw data for how it'll be stored in the DBPF.
+
+        If the data is intended to be compressed (and is compressable), this
+        will return the compressed data. Otherwise, it'll return original data.
+        """
+        if not entry.compress:
+            return entry.data
+
+        try:
+            cdata = qfs.compress(bytearray(entry.data))
+        except IndexError:
+            # Cannot be compressed
+            cdata = bytes()
+
+        # Is the file smaller when compressed?
+        if len(cdata) < len(entry.data):
+            self.index.dir.add_entry(entry.type_id, entry.group_id, entry.instance_id, len(entry.data))
+            return cdata
+
+        entry.compress = False
+        return entry.data
+
     def get_entries(self) -> list[Index.Entry]:
         """
         Return a list of entries in the index.
         """
         return self.index.entries
 
-    def print_entries(self):
-        """
-        Print all entries in the index.
-        """
-        print("        | Compressed | Type ID | Group ID | Instance ID | Location | Size | Label")
-        for index, entry in enumerate(self.index.entries):
-            print("Entry", index, "|",
-                entry.compressed, "|",
-                hex(entry.type_id), "|",
-                hex(entry.group_id), "|",
-                hex(entry.instance_id), "|",
-                entry.file_location, "|",
-                entry.file_size, "|",
-                self.get_type(entry.type_id))
-
     def add_entry(self, type_id=0, group_id=0, instance_id=0, data=bytes(), compress=False) -> Index.Entry:
         """
-        Add new data to the index (for new packages)
+        Add a new file to the index.
         """
         entry = self.index.Entry()
         entry.type_id = type_id
         entry.group_id = group_id
         entry.instance_id = instance_id
-        if compress:
-            try:
-                cdata = qfs.compress(bytearray(data))
-            except IndexError:
-                # Could not be compressed
-                cdata = data
-
-            # Is the file smaller when compressed?
-            if len(cdata) < len(data):
-                entry.compressed = True
-                self.index.dir.add_entry(type_id, group_id, instance_id, len(data))
-                data = cdata
-
-        entry.blob = data
+        entry.compress = compress
+        entry.data = data
+        entry.raw = data
         self.index.entries.append(entry)
         return entry
 
     def add_entry_from_file(self, type_id: int, group_id: int, instance_id: int, path: str, compress=False) -> Index.Entry:
         """
-        Read path and add the data into index (for new packages)
+        Add a new file to the index, reading bytes from a file on disk.
         """
         with open(path, "rb") as f:
             data = f.read()
         return self.add_entry(type_id, group_id, instance_id, data, compress)
 
-    def extract_entry(self, entry: Index.Entry) -> bytes:
-        """
-        Return uncompressed bytes for an index entry.
-        """
-        if entry.compressed:
-            compressed_entry = self.index.dir.lookup_entry(entry)
-            return qfs.decompress(bytearray(entry.blob), compressed_entry.decompressed_size)
-        return entry.blob
-
-    def extract_entry_to_file(self, entry: Index.Entry, path: str):
-        """
-        Extracts a file from the index to the specified file path.
-        """
-        data = self.extract_entry(entry)
-        with open(path, "wb") as f:
-            f.write(data)
-
     def save_package(self, path: str):
         """
         Write a new DBPF package to disk.
-        If the destination path contains data, it will be overwritten!
+        If the file at the destination path exists, it will be overwritten!
 
-        Low-level data for the DBPF (like file location and file size) is
-        determined here, as well as handling the DIR record for compressed files.
+        Low-level data for the DBPF is handled here, like:
+        - File location and file size within the package.
+        - Generate the DIR record for compressed files.
+        - Compress entries marked as "compress".
         """
         # Check the file is writable, and create if doesn't exist
         try:
             open(path, "wb").close()
         except PermissionError:
             raise Exception("Permission denied. Check the permissions and try again.")
+
+        # Compress data (if applciable)
+        self.index.dir.entries = []
+        for entry in self.index.entries:
+            if entry.compress:
+                entry.raw = self._compress_data(entry)
+            else:
+                entry.raw = entry.data
 
         # Is a DIR record present?
         has_compressed_data = len(self.index.dir.entries) > 0
@@ -321,13 +315,13 @@ class DBPF(Stream):
 
         # Update the DIR record if it exists, or create a new one
         if has_compressed_data and dir_index >= 0:
-            self.index.entries[dir_index].blob = self.index.dir.get_blob()
+            self.index.entries[dir_index].data = self.index.dir.get_bytes()
         elif has_compressed_data and dir_index < 0:
             entry = self.index.Entry()
             entry.type_id = self.TYPE_DIR
             entry.group_id = self.index.dir.group_id
             entry.instance_id = self.index.dir.instance_id
-            entry.blob = self.index.dir.get_blob()
+            entry.raw = self.index.dir.get_bytes()
             self.index.entries.append(entry)
 
         f = open(path, "wb")
@@ -349,7 +343,7 @@ class DBPF(Stream):
         f.seek(96)
         for entry in self.index.entries:
             entry.file_location = f.tell()
-            f.write(entry.blob)
+            f.write(entry.raw)
             entry.file_size = f.tell() - entry.file_location
 
         # Write index after the blobs

@@ -61,61 +61,20 @@ class DBPFTest(unittest.TestCase):
         """Check compressed files can be read from the package"""
         entry = self.package.index.entries[self.tga_index]
 
-        if not entry.compressed:
+        if not entry.compress:
             raise RuntimeError("Expected a compressed entry")
 
-        data = self.package.extract_entry(entry)
-        md5 = hashlib.md5(data).hexdigest()
+        md5 = hashlib.md5(entry.data).hexdigest()
         self.assertTrue(md5 == self.tga_md5)
-
-    def test_extract_compressed_to_file(self):
-        """Extract a file that uses QFS compression"""
-        entry = self.package.index.entries[self.tga_index]
-
-        if not entry.compressed:
-            raise RuntimeError("Expected a compressed entry")
-
-        path = self._mktemp()
-        self.package.extract_entry_to_file(entry, path)
-        with open(path, "rb") as f:
-            md5 = hashlib.md5(f.read()).hexdigest()
-        self.assertTrue(md5 == self.tga_md5)
-
-    def test_compress_size(self):
-        """Check a compressed and uncompressed file have different contents"""
-        entry1 = self.package.index.entries[85]
-
-        if entry1.compressed:
-            raise RuntimeError("Expected an uncompressed entry")
-
-        uncompressed_md5 = hashlib.md5(entry1.blob).hexdigest()
-        entry2 = self.package.add_entry(0, 0, 0, entry1.blob, compress=True)
-        compressed_md5 = hashlib.md5(entry2.blob).hexdigest()
-
-        self.assertFalse(uncompressed_md5 == compressed_md5)
 
     def test_extract_uncompressed(self):
         """Check existing uncompressed files can be read from the package"""
         entry = self.package.index.entries[85]
 
-        if entry.compressed:
+        if entry.compress:
             raise RuntimeError("Expected an uncompressed entry")
 
-        data = self.package.extract_entry(entry)
-        md5 = hashlib.md5(data).hexdigest()
-        self.assertTrue(md5 == self.bmp_md5)
-
-    def test_extract_uncompressed_to_file(self):
-        """Extract an uncompressed file"""
-        entry = self.package.index.entries[85]
-
-        if entry.compressed:
-            raise RuntimeError("Expected an uncompressed entry")
-
-        path = self._mktemp()
-        self.package.extract_entry_to_file(entry, path)
-        with open(path, "rb") as f:
-            md5 = hashlib.md5(f.read()).hexdigest()
+        md5 = hashlib.md5(entry.data).hexdigest()
         self.assertTrue(md5 == self.bmp_md5)
 
     def test_new_package(self):
@@ -142,7 +101,7 @@ class DBPFTest(unittest.TestCase):
             entry.group_id == group_id,
             entry.instance_id == instance_id,
             pkg.get_type(entry.type_id) == "Image File",
-            entry.blob == b"Hello World!",
+            entry.data == b"Hello World!",
         ]
 
         self.assertTrue(all(results))
@@ -152,7 +111,8 @@ class DBPFTest(unittest.TestCase):
         # Extract a file from original package
         entry = self.package.index.entries[self.tga_index]
         tga_path = self._mktemp()
-        self.package.extract_entry_to_file(entry, tga_path)
+        with open(tga_path, "wb") as f:
+            f.write(entry.data)
 
         # Create a new package with one file
         pkg = dbpf.DBPF()
@@ -163,20 +123,18 @@ class DBPFTest(unittest.TestCase):
         # Read and verify checksum
         pkg = dbpf.DBPF(pkg_path)
         entry = pkg.index.entries[0]
-        output_path = self._mktemp()
-        pkg.extract_entry_to_file(entry, output_path)
-        with open(output_path, "rb") as f:
-            md5 = hashlib.md5(f.read()).hexdigest()
+        md5 = hashlib.md5(entry.data).hexdigest()
         self.assertTrue(md5 == self.tga_md5)
 
     def test_new_package_with_compression(self):
-        """Verify the integrity of a file using QFS compression"""
+        """Verify the integrity of a file added to a new package with compression"""
         # Extract a file from original package
         entry = self.package.index.entries[self.tga_index]
         tga_path = self._mktemp()
-        self.package.extract_entry_to_file(entry, tga_path)
+        with open(tga_path, "wb") as f:
+            f.write(entry.data)
 
-        # Create package and add the file (and compress)
+        # Create package; add the file; compress
         pkg = dbpf.DBPF()
         pkg_path = self._mktemp()
         with open(tga_path, "rb") as f:
@@ -187,20 +145,14 @@ class DBPFTest(unittest.TestCase):
         # Read and verify checksum
         pkg = dbpf.DBPF(pkg_path)
         entry = pkg.index.entries[0]
-        output_path = self._mktemp()
-        pkg.extract_entry_to_file(entry, output_path)
-        with open(output_path, "rb") as f:
-            md5 = hashlib.md5(f.read()).hexdigest()
+        md5 = hashlib.md5(entry.data).hexdigest()
 
         self.assertTrue(md5 == self.tga_md5)
 
-    def test_repack_package(self, use_compression=False):
-        """Verify the integrity of a repacked package"""
+    def test_repack_package(self, test_compression=False):
+        """Create a new package by taking all data from the original"""
         # Extract all files from original package
         files = []
-        type_ids = []
-        group_ids = []
-        instance_ids = []
         checksums = []
 
         for entry in self.package.index.entries:
@@ -208,31 +160,29 @@ class DBPFTest(unittest.TestCase):
             if entry.type_id == dbpf.Stream.TYPE_DIR:
                 continue
 
-            path = self._mktemp()
-            self.package.extract_entry_to_file(entry, path)
-            files.append(path)
-            type_ids.append(entry.type_id)
-            group_ids.append(entry.group_id)
-            instance_ids.append(entry.instance_id)
-            with open(path, "rb") as f:
-                checksums.append(hashlib.md5(f.read()).hexdigest())
+            checksum = hashlib.md5(entry.data).hexdigest()
+            checksums.append(checksum)
+            files.append({
+                "type_id": entry.type_id,
+                "group_id": entry.group_id,
+                "instance_id": entry.instance_id,
+                "data": entry.data,
+                "compress": entry.compress,
+                "checksum": checksum,
+            })
 
         # Create new package with same contents
-        pkg = dbpf.DBPF()
+        pkg1 = dbpf.DBPF()
         pkg_path = self._mktemp()
-        for index, path in enumerate(files):
-            with open(path, "rb") as f:
-                blob = f.read()
-            pkg.add_entry(type_ids[index], group_ids[index], instance_ids[index], blob, use_compression)
-        pkg.save_package(pkg_path)
+        for file in files:
+            pkg1.add_entry(file["type_id"], file["group_id"], file["instance_id"], file["data"], test_compression and file["compress"])
+        pkg1.save_package(pkg_path)
 
         # Read and verify checksums in new package
         pkg2 = dbpf.DBPF(pkg_path)
-        passed = []
-        for index, entry in enumerate(pkg2.index.entries):
-            path = self._mktemp()
-            pkg2.extract_entry_to_file(entry, path)
-            with open(path, "rb") as f:
-                md5 = hashlib.md5(f.read()).hexdigest()
-            passed.append(md5 == checksums[index])
-        self.assertTrue(all(passed))
+        new_checksums = []
+        for entry in pkg2.index.entries:
+            md5 = hashlib.md5(entry.data).hexdigest()
+            new_checksums.append(md5)
+
+        self.assertTrue(checksums == new_checksums)
