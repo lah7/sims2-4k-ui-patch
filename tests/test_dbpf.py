@@ -1,3 +1,7 @@
+"""
+Perform tests on the DBPF module to ensure that our mini library
+works as expected to read and write valid ui.package files.
+"""
 import hashlib
 import os
 import tempfile
@@ -138,8 +142,8 @@ class DBPFTest(unittest.TestCase):
         pkg = dbpf.DBPF()
         pkg_path = self._mktemp()
         with open(tga_path, "rb") as f:
-            input = f.read()
-        pkg.add_entry(dbpf.Stream.TYPE_IMAGE, 0x00, 0x00, input, compress=True)
+            data = f.read()
+        pkg.add_entry(dbpf.Stream.TYPE_IMAGE, 0x00, 0x00, data, compress=True)
         pkg.save_package(pkg_path)
 
         # Read and verify checksum

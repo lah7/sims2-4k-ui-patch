@@ -86,7 +86,9 @@ class Header(Stream):
 
 
 class Index(Stream):
+    """Represents the DBPF file index"""
     class Entry(object):
+        """Metadata and data about an individual file in the index"""
         type_id = 0
         group_id = 0
         instance_id = 0
@@ -107,7 +109,7 @@ class Index(Stream):
         # Load entries from package
         self.stream.seek(0)
         self.stream.seek(self.start)
-        for no in range(0, self.count):
+        for _ in range(0, self.count):
             entry = self.Entry()
             entry.type_id = self.read_next_dword()
             entry.group_id = self.read_next_dword()
@@ -141,6 +143,7 @@ class DirectoryFile(Stream):
     https://simswiki.info/index.php?title=DBPF_Compression
     """
     class CompressedEntry(object):
+        """Represents the DIR record"""
         type_id = 0
         group_id = 0
         instance_id = 0
@@ -155,7 +158,7 @@ class DirectoryFile(Stream):
 
         # Found DIR file, read it
         compressed_count = int(self.dir_entry.file_size / 4)
-        for no in range(0, compressed_count):
+        for _ in range(0, compressed_count):
             entry = self.CompressedEntry()
             entry.type_id = self.read_next_dword()
             entry.group_id = self.read_next_dword()
@@ -166,12 +169,19 @@ class DirectoryFile(Stream):
             self.entries.append(entry)
 
     def lookup_entry(self, entry: Index.Entry) -> CompressedEntry:
+        """
+        Read from the DIR records whether there is a compressed entry for this index entry.
+        If not, return an empty record.
+        """
         for compress_entry in self.entries:
             if entry.type_id == compress_entry.type_id and entry.group_id == compress_entry.group_id and entry.instance_id == compress_entry.instance_id:
                 return compress_entry
         return self.CompressedEntry()
 
     def add_entry(self, type_id: int, group_id: int, instance_id: int, decompressed_size: int):
+        """
+        Write to the DIR record that this index metadata is compressed.
+        """
         entry = self.CompressedEntry()
         entry.type_id = type_id
         entry.group_id = group_id
@@ -205,7 +215,7 @@ class DBPF(Stream):
         """
         Load an existing DBPF package into memory, or leave blank to create one.
         """
-        self.stream = io.BytesIO(bytearray(32))
+        super().__init__(io.BytesIO(bytearray(32)))
         if path:
             with open(path, "rb") as f:
                 self.stream = io.BytesIO(f.read())
@@ -294,8 +304,8 @@ class DBPF(Stream):
         # Check the file is writable, and create if doesn't exist
         try:
             open(path, "wb").close()
-        except PermissionError:
-            raise Exception("Permission denied. Check the permissions and try again.")
+        except PermissionError as e:
+            raise PermissionError("Permission denied. Check the permissions and try again.") from e
 
         # Compress data (if applciable)
         self.index.dir.entries = []
@@ -334,7 +344,7 @@ class DBPF(Stream):
             f.write(integer.to_bytes(integer.bit_length(), "little"))
 
         def _write_int_next_4_bytes(integer):
-            start = f.tell()
+            f.tell()
             end = f.tell() + 4
             f.write(integer.to_bytes(integer.bit_length(), "little"))
             f.seek(end)
