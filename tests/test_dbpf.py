@@ -155,38 +155,68 @@ class DBPFTest(unittest.TestCase):
 
     def test_repack_package(self, test_compression=False):
         """Create a new package by taking all data from the original"""
-        # Extract all files from original package
-        files = []
+        pkg1 = dbpf.DBPF()
         checksums = []
-
-        for entry in self.package.index.entries:
+        for entry in self.package.get_entries():
             # Exclude compressed directory index
-            if entry.type_id == dbpf.Stream.TYPE_DIR:
+            if entry.type_id == self.package.TYPE_DIR:
                 continue
 
-            checksum = hashlib.md5(entry.data).hexdigest()
-            checksums.append(checksum)
-            files.append({
-                "type_id": entry.type_id,
-                "group_id": entry.group_id,
-                "instance_id": entry.instance_id,
-                "data": entry.data,
-                "compress": entry.compress,
-                "checksum": checksum,
-            })
+            checksums.append(hashlib.md5(entry.data).hexdigest())
+            pkg1.add_entry(entry.type_id, entry.group_id, entry.instance_id, entry.data, entry.compress and test_compression)
 
-        # Create new package with same contents
-        pkg1 = dbpf.DBPF()
         pkg_path = self._mktemp()
-        for file in files:
-            pkg1.add_entry(file["type_id"], file["group_id"], file["instance_id"], file["data"], test_compression and file["compress"])
         pkg1.save_package(pkg_path)
 
-        # Read and verify checksums in new package
+        # Re-open new package and verify checksums
         pkg2 = dbpf.DBPF(pkg_path)
-        new_checksums = []
-        for entry in pkg2.index.entries:
-            md5 = hashlib.md5(entry.data).hexdigest()
-            new_checksums.append(md5)
+        for entry in pkg2.get_entries():
+            # Exclude compressed directory index
+            if entry.type_id == self.package.TYPE_DIR:
+                continue
 
-        self.assertTrue(checksums == new_checksums)
+            md5 = hashlib.md5(entry.data).hexdigest()
+
+            try:
+                checksums.remove(md5)
+            except ValueError as e:
+                raise ValueError(f"Checksum mismatch: {md5} for type ID {entry.type_id}, group ID {entry.group_id}, instance ID {entry.instance_id}") from e
+
+        # Should be left with no more checksums
+        self.assertEqual(len(checksums), 0, "Checksums mismatch")
+
+    def test_repack_package_compressed(self):
+        """Verify the integrity of a new package by reading files from the original, including compression"""
+        self.test_repack_package(test_compression=True)
+
+    def test_compression_bmp_file(self):
+        """Check uncompressable bitmap file does not get compressed"""
+        bmp_entry = self.package.get_entries()[self.bmp_index]
+
+        pkg_path = self._mktemp()
+        pkg1 = dbpf.DBPF()
+        pkg1.add_entry(bmp_entry.type_id, bmp_entry.group_id, bmp_entry.instance_id, bmp_entry.data, compress=True)
+        pkg1.save_package(pkg_path)
+
+        pkg2 = dbpf.DBPF(pkg_path)
+        entry = pkg2.get_entries()[0]
+        self.assertEqual(bmp_entry.raw, entry.raw)
+
+    def test_compression_bmp_tga_file(self):
+        """Check package integrity with uncompressed bitmap and compressed TGA file"""
+        bmp_entry = self.package.get_entries()[self.bmp_index]
+        tga_entry = self.package.get_entries()[self.tga_index]
+
+        pkg_path = self._mktemp()
+        pkg1 = dbpf.DBPF()
+        pkg1.add_entry(bmp_entry.type_id, bmp_entry.group_id, bmp_entry.instance_id, bmp_entry.data, compress=False)
+        pkg1.add_entry(tga_entry.type_id, tga_entry.group_id, tga_entry.instance_id, tga_entry.data, compress=True)
+        pkg1.save_package(pkg_path)
+
+        pkg2 = dbpf.DBPF(pkg_path)
+        new_bmp_entry = pkg2.get_entries()[0]
+        new_tga_entry = pkg2.get_entries()[1]
+        md5 = hashlib.md5(new_bmp_entry.data).hexdigest()
+        md5 += hashlib.md5(new_tga_entry.data).hexdigest()
+
+        self.assertEqual(md5, self.bmp_md5 + self.tga_md5)
