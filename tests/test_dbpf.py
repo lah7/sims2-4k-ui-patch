@@ -53,7 +53,7 @@ class DBPFTest(unittest.TestCase):
 
     def test_read_index(self):
         """Read a known file from the index"""
-        entry = self.package.index.entries[self.tga_index]
+        entry = self.package.get_entries()[self.tga_index]
         results = [
             entry.group_id == self.tga_group_id,
             entry.instance_id == self.tga_instance_id,
@@ -63,7 +63,7 @@ class DBPFTest(unittest.TestCase):
 
     def test_extract_compressed(self):
         """Check compressed files can be read from the package"""
-        entry = self.package.index.entries[self.tga_index]
+        entry = self.package.get_entries()[self.tga_index]
 
         if not entry.compress:
             raise RuntimeError("Expected a compressed entry")
@@ -73,7 +73,7 @@ class DBPFTest(unittest.TestCase):
 
     def test_extract_uncompressed(self):
         """Check existing uncompressed files can be read from the package"""
-        entry = self.package.index.entries[85]
+        entry = self.package.get_entries()[85]
 
         if entry.compress:
             raise RuntimeError("Expected an uncompressed entry")
@@ -94,7 +94,7 @@ class DBPFTest(unittest.TestCase):
 
         # Read and check
         pkg = dbpf.DBPF(pkg_path)
-        entry = pkg.index.entries[0]
+        entry = pkg.get_entries()[0]
 
         results = [
             # Header data
@@ -113,7 +113,7 @@ class DBPFTest(unittest.TestCase):
     def test_new_package_from_file(self):
         """Verify the integrity of a file added to a new package"""
         # Extract a file from original package
-        entry = self.package.index.entries[self.tga_index]
+        entry = self.package.get_entries()[self.tga_index]
         tga_path = self._mktemp()
         with open(tga_path, "wb") as f:
             f.write(entry.data)
@@ -126,14 +126,14 @@ class DBPFTest(unittest.TestCase):
 
         # Read and verify checksum
         pkg = dbpf.DBPF(pkg_path)
-        entry = pkg.index.entries[0]
+        entry = pkg.get_entries()[0]
         md5 = hashlib.md5(entry.data).hexdigest()
         self.assertTrue(md5 == self.tga_md5)
 
     def test_new_package_with_compression(self):
         """Verify the integrity of a file added to a new package with compression"""
         # Extract a file from original package
-        entry = self.package.index.entries[self.tga_index]
+        entry = self.package.get_entries()[self.tga_index]
         tga_path = self._mktemp()
         with open(tga_path, "wb") as f:
             f.write(entry.data)
@@ -148,7 +148,7 @@ class DBPFTest(unittest.TestCase):
 
         # Read and verify checksum
         pkg = dbpf.DBPF(pkg_path)
-        entry = pkg.index.entries[0]
+        entry = pkg.get_entries()[0]
         md5 = hashlib.md5(entry.data).hexdigest()
 
         self.assertTrue(md5 == self.tga_md5)
