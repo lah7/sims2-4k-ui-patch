@@ -98,6 +98,26 @@ class Index(Stream):
         data = bytes() # Uncompressed bytes
         raw = bytes() # Bytes as stored in package, could be compressed or uncompressed
 
+        def update_raw(self):
+            """
+            Update the raw bytes that'll be stored in the DBPF.
+            If the data is intended to be compressed, that'll happen here.
+            """
+            if not self.compress:
+                self.raw = self.data
+                return
+
+            try:
+                cdata = qfs.compress(bytearray(self.data))
+                if len(cdata) < len(self.data):
+                    self.raw = cdata
+            except IndexError:
+                pass
+
+            # File uncompressible or is larger when compressed
+            self.compress = False
+            self.raw = self.data
+
     def __init__(self, stream, header: Header):
         super().__init__(stream)
         self.start = header.index_start_offset
@@ -143,7 +163,7 @@ class DirectoryFile(Stream):
     https://simswiki.info/index.php?title=DBPF_Compression
     """
     class CompressedEntry(object):
-        """Represents the DIR record"""
+        """Represents a compressed file in the index"""
         type_id = 0
         group_id = 0
         instance_id = 0
@@ -152,12 +172,11 @@ class DirectoryFile(Stream):
     def __init__(self, stream: io.BytesIO, dir_entry: Index.Entry):
         super().__init__(stream)
         self.entries = []
-        self.dir_entry = dir_entry
         self.group_id = dir_entry.group_id
         self.instance_id = dir_entry.instance_id
 
         # Found DIR file, read it
-        compressed_count = int(self.dir_entry.file_size / 4)
+        compressed_count = int(dir_entry.file_size / 4)
         for _ in range(0, compressed_count):
             entry = self.CompressedEntry()
             entry.type_id = self.read_next_dword()
@@ -239,30 +258,6 @@ class DBPF(Stream):
         self.stream.seek(entry.file_location)
         return self.stream.read(entry.file_size)
 
-    def _compress_data(self, entry: Index.Entry) -> bytes:
-        """
-        Returns the raw data for how it'll be stored in the DBPF.
-
-        If the data is intended to be compressed (and is compressable), this
-        will return the compressed data. Otherwise, it'll return original data.
-        """
-        if not entry.compress:
-            return entry.data
-
-        try:
-            cdata = qfs.compress(bytearray(entry.data))
-        except IndexError:
-            # Cannot be compressed
-            cdata = bytes()
-
-        # Is the file smaller when compressed?
-        if len(cdata) < len(entry.data):
-            self.index.dir.add_entry(entry.type_id, entry.group_id, entry.instance_id, len(entry.data))
-            return cdata
-
-        entry.compress = False
-        return entry.data
-
     def get_entries(self) -> list[Index.Entry]:
         """
         Return a list of entries in the index.
@@ -307,33 +302,34 @@ class DBPF(Stream):
         except PermissionError as e:
             raise PermissionError("Permission denied. Check the permissions and try again.") from e
 
-        # Compress data (if applciable)
+        # Compress in-memory data (if applicable)
         self.index.dir.entries = []
-        for entry in self.index.entries:
+        needs_dir_record = False
+
+        for entry in self.get_entries():
+            # Destroy existing DIR record, it will be recreated later
+            if entry.type_id == self.TYPE_DIR:
+                self.index.entries.remove(entry)
+                continue
+
+            if not entry.raw or not entry.data:
+                raise ValueError("Entry contains empty data")
+
+            entry.update_raw()
             if entry.compress:
-                entry.raw = self._compress_data(entry)
-            else:
-                entry.raw = entry.data
+                self.index.dir.add_entry(entry.type_id, entry.group_id, entry.instance_id, len(entry.data))
+                needs_dir_record = True
 
-        # Is a DIR record present?
-        has_compressed_data = len(self.index.dir.entries) > 0
-        dir_index = -1
-        for index, entry in enumerate(self.index.entries):
-            if entry.type_id == self.get_type(self.TYPE_DIR):
-                dir_index = index
-                break
+        # Generate a new DIR record (if applicable)
+        if needs_dir_record:
+            dir_entry = self.index.Entry()
+            dir_entry.type_id = self.TYPE_DIR
+            dir_entry.group_id = self.index.dir.group_id
+            dir_entry.instance_id = self.index.dir.instance_id
+            dir_entry.raw = self.index.dir.get_bytes()
+            self.index.entries.append(dir_entry)
 
-        # Update the DIR record if it exists, or create a new one
-        if has_compressed_data and dir_index >= 0:
-            self.index.entries[dir_index].data = self.index.dir.get_bytes()
-        elif has_compressed_data and dir_index < 0:
-            entry = self.index.Entry()
-            entry.type_id = self.TYPE_DIR
-            entry.group_id = self.index.dir.group_id
-            entry.instance_id = self.index.dir.instance_id
-            entry.raw = self.index.dir.get_bytes()
-            self.index.entries.append(entry)
-
+        # Write the bytes!
         f = open(path, "wb")
 
         # The header is 96 bytes
