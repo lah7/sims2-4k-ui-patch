@@ -16,12 +16,13 @@
 # Copyright (C) 2022-2024 Luke Horwell <code@horwell.me>
 #
 """
-Handles the reading of ui.package files for The Sims 2, with the ability
-to create uncompressed DBPF files.
+Handles the reading of ui.package files for The Sims 2, utilising the
+DBPF format to create, extract and compress packages.
 
 Based on DBPF 1.1 / Index v7.1 format.
 """
 import io
+from typing import Optional
 
 import qfs
 
@@ -94,29 +95,9 @@ class Index(Stream):
         instance_id = 0
         file_location = 0
         file_size = 0
-        compress = False
+        compress = False # Whether this file should be compressed in the package
         data = bytes() # Uncompressed bytes
         raw = bytes() # Bytes as stored in package, could be compressed or uncompressed
-
-        def update_raw(self):
-            """
-            Update the raw bytes that'll be stored in the DBPF.
-            If the data is intended to be compressed, that'll happen here.
-            """
-            if not self.compress:
-                self.raw = self.data
-                return
-
-            try:
-                cdata = qfs.compress(bytearray(self.data))
-                if len(cdata) < len(self.data):
-                    self.raw = cdata
-            except IndexError:
-                pass
-
-            # File uncompressible or is larger when compressed
-            self.compress = False
-            self.raw = self.data
 
     def __init__(self, stream, header: Header):
         super().__init__(stream)
@@ -124,7 +105,7 @@ class Index(Stream):
         self.end = self.start + header.index_size
         self.count = header.index_entry_count
         self.entries: list[Index.Entry] = []
-        self.dir = DirectoryFile(stream, self.Entry())
+        self.dir = DirectoryFile(stream)
 
         # Load entries from package
         self.stream.seek(0)
@@ -142,14 +123,13 @@ class Index(Stream):
         self.stream.seek(0)
         for entry in self.entries:
             if entry.type_id == self.TYPE_DIR:
-                self.stream.seek(entry.file_location)
                 self.dir = DirectoryFile(self.stream, entry)
 
-        # If DIR file exists, flag the entries that contain compressed data
+        # If DIR file exists, flag entries that were compressed
         if self.dir:
             for entry in self.entries:
-                entry.compress = False
-                for c_entry in self.dir.entries:
+                for c_entry in self.dir.files:
+                    assert isinstance(c_entry, DirectoryFile.CompressedFile)
                     if c_entry.type_id == entry.type_id and c_entry.group_id == entry.group_id and c_entry.instance_id == entry.instance_id:
                         entry.compress = True
 
@@ -157,67 +137,90 @@ class Index(Stream):
 class DirectoryFile(Stream):
     """
     The directory file is included in the DBPF when there are compressed files.
-    This type is 0xE86B1EEF.
+    This type is 0xE86B1EEF and describes what is compressed in this package.
 
+    Directory file format:
     https://simswiki.info/index.php?title=E86B1EEF
+
+    The index version of the original game packages is 7.1, but for some reason
+    this doesn't match the documentation which says there should be a
+    resource ID field too. As a result, this class will read/write under
+    index version 7.0 so it is compatible with The Sims 2.
+
+    Compressed files use this header:
     https://simswiki.info/index.php?title=DBPF_Compression
     """
-    class CompressedEntry(object):
-        """Represents a compressed file in the index"""
+    class CompressedFile(object):
+        """Metadata describing a compressed file in the index"""
         type_id = 0
         group_id = 0
         instance_id = 0
         decompressed_size = 0
 
-    def __init__(self, stream: io.BytesIO, dir_entry: Index.Entry):
+        # Index version 7.1 supposedly has this, but The Sims 2 (also index ver. 7.1) doesn't.
+        resource_id = 0
+
+    def __init__(self, stream: io.BytesIO, dir_entry: Optional[Index.Entry] = None):
         super().__init__(stream)
-        self.entries = []
-        self.group_id = dir_entry.group_id
-        self.instance_id = dir_entry.instance_id
+        self.files = []
+        self.group_id = 0
+        self.instance_id = 0
 
-        # Found DIR file, read it
-        compressed_count = int(dir_entry.file_size / 4)
-        for _ in range(0, compressed_count):
-            entry = self.CompressedEntry()
-            entry.type_id = self.read_next_dword()
-            entry.group_id = self.read_next_dword()
-            entry.instance_id = self.read_next_dword()
-            entry.decompressed_size = self.read_next_dword()
-            if entry.type_id == 0 and entry.group_id == 0 and entry.instance_id == 0:
-                break
-            self.entries.append(entry)
+        if dir_entry:
+            self.group_id = dir_entry.group_id
+            self.instance_id = dir_entry.instance_id
 
-    def lookup_entry(self, entry: Index.Entry) -> CompressedEntry:
+            # Found DIR file, read it
+            self.stream.seek(dir_entry.file_location)
+            compressed_count = int(dir_entry.file_size / 16) # (DWORD = 4 bytes) x 4
+            for _ in range(0, compressed_count):
+                entry = self.CompressedFile()
+                entry.type_id = self.read_next_dword()
+                entry.group_id = self.read_next_dword()
+                entry.instance_id = self.read_next_dword()
+                entry.decompressed_size = self.read_next_dword()
+
+                # Index version 7.1 supposedly has this, but The Sims 2 (also index ver. 7.1) doesn't.
+                #entry.resource_id = self.read_next_dword()
+
+                self.files.append(entry)
+
+    def lookup_entry(self, entry: Index.Entry) -> CompressedFile:
         """
-        Read from the DIR records whether there is a compressed entry for this index entry.
+        Read the DIR records and return compressed metadata for this index entry.
         If not, return an empty record.
         """
-        for compress_entry in self.entries:
+        for compress_entry in self.files:
+            assert isinstance(compress_entry, DirectoryFile.CompressedFile)
             if entry.type_id == compress_entry.type_id and entry.group_id == compress_entry.group_id and entry.instance_id == compress_entry.instance_id:
                 return compress_entry
-        return self.CompressedEntry()
+        return self.CompressedFile()
 
     def add_entry(self, type_id: int, group_id: int, instance_id: int, decompressed_size: int):
         """
-        Write to the DIR record that this index metadata is compressed.
+        Add to the record that a particular file is stored as compressed in the package.
         """
-        entry = self.CompressedEntry()
+        entry = self.CompressedFile()
         entry.type_id = type_id
         entry.group_id = group_id
         entry.instance_id = instance_id
         entry.decompressed_size = decompressed_size
-        self.entries.append(entry)
+        self.files.append(entry)
 
     def get_bytes(self) -> bytes:
         """
-        Return the bytes for the compressed directory record.
+        Return the raw bytes for the DIR file as it is stored in the package.
         """
         blob = bytearray()
-        for entry in self.entries:
+        for entry in self.files:
+            assert isinstance(entry, DirectoryFile.CompressedFile)
             blob += entry.type_id.to_bytes(4, "little")
             blob += entry.group_id.to_bytes(4, "little")
             blob += entry.instance_id.to_bytes(4, "little")
             blob += entry.decompressed_size.to_bytes(4, "little")
+
+            # Index version 7.1 supposedly has this, but The Sims 2 (also index ver. 7.1) doesn't.
+            #blob += entry.resource_id.to_bytes(4, "little")
         return blob
 
 
@@ -245,22 +248,65 @@ class DBPF(Stream):
             entry.raw = self._get_bytes(entry)
             if entry.compress:
                 compressed_entry = self.index.dir.lookup_entry(entry)
-                entry.data = qfs.decompress(bytearray(entry.raw), compressed_entry.decompressed_size)
+                try:
+                    entry.data = qfs.decompress(bytearray(entry.raw), compressed_entry.decompressed_size)
+                except IndexError as e:
+                    raise ValueError(f"Decompression failed. File corrupt: Type ID {entry.type_id}, Group ID {entry.group_id}, Instance ID {entry.instance_id}") from e
             else:
                 entry.data = entry.raw
 
     def _get_bytes(self, entry: Index.Entry) -> bytes:
         """
-        Returns the raw bytes for the specified entry.
+        Returns the raw bytes as it is stored in the package.
         This data could be either compressed or uncompressed.
         """
         self.stream.seek(0)
         self.stream.seek(entry.file_location)
         return self.stream.read(entry.file_size)
 
+    def _compress_entry(self, entry: Index.Entry) -> bool:
+        """
+        Compress the data for this file into its raw bytes. This is how it'll
+        be stored in the package. To prevent corruption, the data will
+        be decompressed in memory to verify the compression works.
+
+        Returns a boolean to indicate whether this operation was successful.
+
+        Successfully compressed data will:
+        - Add to the DIR record.
+        - Update the "raw" variable for the entry. The calling function should
+        update the "compressed" variable to the boolean returned by this function.
+        """
+        output = bytearray()
+        decompressed_size = len(entry.data)
+
+        try:
+            output = qfs.compress(bytearray(entry.data))
+        except IndexError:
+            return False
+
+        # Did the compression actually make the file larger instead?
+        if len(output) > decompressed_size:
+            return False
+
+        # Verify decompression
+        # (For example, certain bitmaps might compress, but fail to decompress)
+        try:
+            expected_input = qfs.decompress(bytearray(output), decompressed_size)
+            if expected_input != entry.data:
+                return False
+        except IndexError:
+            return False
+
+        # Add successful compressed file to DIR record
+        entry.raw = output
+        self.index.dir.add_entry(entry.type_id, entry.group_id, entry.instance_id, len(entry.data))
+
+        return True
+
     def get_entries(self) -> list[Index.Entry]:
         """
-        Return a list of entries in the index.
+        Return all the entries from the index.
         """
         return self.index.entries
 
@@ -303,22 +349,25 @@ class DBPF(Stream):
             raise PermissionError("Permission denied. Check the permissions and try again.") from e
 
         # Compress in-memory data (if applicable)
-        self.index.dir.entries = []
+        self.index.dir.files = []
         needs_dir_record = False
 
         for entry in self.get_entries():
-            # Destroy existing DIR record, it will be recreated later
+            # Destroy old DIR record, a new one is created later
             if entry.type_id == self.TYPE_DIR:
                 self.index.entries.remove(entry)
                 continue
 
+            # Entries should have at least one byte of data
             if not entry.raw or not entry.data:
-                raise ValueError("Entry contains empty data")
+                raise ValueError(f"Entry contains no data: Type ID {entry.type_id}, Group ID {entry.group_id}, Instance ID {entry.instance_id}")
 
-            entry.update_raw()
+            # Compress the file now (if applicable)
+            entry.raw = entry.data
             if entry.compress:
-                self.index.dir.add_entry(entry.type_id, entry.group_id, entry.instance_id, len(entry.data))
-                needs_dir_record = True
+                entry.compress = self._compress_entry(entry)
+                if entry.compress:
+                    needs_dir_record = True
 
         # Generate a new DIR record (if applicable)
         if needs_dir_record:
