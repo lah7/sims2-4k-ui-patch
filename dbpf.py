@@ -1,4 +1,9 @@
-#!/usr/bin/python3
+"""
+Handles the reading of ui.package files for The Sims 2, utilising the
+DBPF format to create, extract and compress packages.
+
+Based on DBPF 1.1 / Index v7.1 format.
+"""
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,12 +20,6 @@
 #
 # Copyright (C) 2022-2024 Luke Horwell <code@horwell.me>
 #
-"""
-Handles the reading of ui.package files for The Sims 2, utilising the
-DBPF format to create, extract and compress packages.
-
-Based on DBPF 1.1 / Index v7.1 format.
-"""
 import io
 from typing import Optional
 
