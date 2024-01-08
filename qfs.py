@@ -1,5 +1,6 @@
-#
-# Handles QFS compressed data in DBPF files as used by The Sims 2.
+"""
+Handles QFS compressed data in DBPF files as used by The Sims 2.
+"""
 #
 # Based on the work from:
 #   jDBPFX: https://github.com/memo33/jDBPFX (jdbpfx/util/DBPFPackager.java)
@@ -12,6 +13,13 @@
 # licensed under the General Public License version 3.
 #
 
+# Compression constants
+MAX_OFFSET = 0x20000
+MAX_COPY_COUNT = 0x404
+
+# Compression level (smaller values increase the compression for big files)
+QFS_MAXITER = 128 # 0x80
+
 
 def _copy_array(src: bytearray, src_pos: int, dest: bytearray, dest_pos: int, length: int) -> bytearray:
     for i in range(length):
@@ -21,7 +29,7 @@ def _copy_array(src: bytearray, src_pos: int, dest: bytearray, dest_pos: int, le
 
 def _offset_copy(array: bytearray, offset: int, dest_pos: int, length: int) -> bytearray:
     src_pos = dest_pos - offset
-    if (len(array) < dest_pos + length):
+    if len(array) < dest_pos + length:
         raise ValueError("Error: array too small")
 
     for i in range(length):
@@ -44,7 +52,7 @@ def decompress(compressed_data: bytearray, decompressed_size: int) -> bytes:
         if control1 >= 0 and control1 <= 127:
             control2 = compressed_data[pos]
             pos += 1
-            num_plain_text = (control1 & 0x03)
+            num_plain_text = control1 & 0x03
             decompressed_data = _copy_array(compressed_data, pos, decompressed_data, dest_pos, num_plain_text)
             dest_pos += num_plain_text
             pos += num_plain_text
@@ -66,7 +74,7 @@ def decompress(compressed_data: bytearray, decompressed_size: int) -> bytes:
             decompressed_data = _offset_copy(decompressed_data, offset, dest_pos, num_to_copy_from_offset)
             dest_pos += num_to_copy_from_offset
         elif control1 >= 192 and control1 <= 223:
-            num_plain_text = (control1 & 0x03)
+            num_plain_text = control1 & 0x03
             control2 = compressed_data[pos]
             pos += 1
             control3 = compressed_data[pos]
@@ -86,7 +94,7 @@ def decompress(compressed_data: bytearray, decompressed_size: int) -> bytes:
             dest_pos += num_plain_text
             pos += num_plain_text
         else:
-            num_plain_text = (control1 & 0x03)
+            num_plain_text = control1 & 0x03
             decompressed_data = _copy_array(compressed_data, pos, decompressed_data, dest_pos, num_plain_text)
             dest_pos += num_plain_text
             pos += num_plain_text
@@ -102,11 +110,6 @@ def compress(data: bytearray) -> bytes:
     Make sure to add an entry in the DIR file, and check if the
     data lengths are correct (in event there was nothing to compress)
     """
-    MAX_OFFSET = 0x20000
-    MAX_COPY_COUNT = 0x404
-    # Compression level (smaller values increase the compression for big files)
-    QFS_MAXITER = 0x80
-
     # Contains the latest offset for a combination of two characters
     cmpmap2 = {}
 
@@ -190,23 +193,23 @@ def compress(data: bytearray) -> bytes:
             if offset_copy_count <= 0x0A and copy_offset < 0x400:
                 output[write_index] = ((((copy_offset >> 8) << 5) + ((offset_copy_count - 3) << 2) + copy_count)) & 0xFF
                 write_index += 1
-                output[write_index] = (copy_offset & 0xff)
+                output[write_index] = copy_offset & 0xff
                 write_index += 1
             elif offset_copy_count <= 0x43 and copy_offset < 0x4000:
-                output[write_index] = (0x80 + (offset_copy_count - 4))
+                output[write_index] = 0x80 + (offset_copy_count - 4)
                 write_index += 1
-                output[write_index] = ((copy_count << 6) + (copy_offset >> 8))
+                output[write_index] = (copy_count << 6) + (copy_offset >> 8)
                 write_index += 1
-                output[write_index] = (copy_offset & 0xff)
+                output[write_index] = copy_offset & 0xff
                 write_index += 1
             elif offset_copy_count <= MAX_COPY_COUNT and copy_offset < MAX_OFFSET:
                 output[write_index] = (0xC0 + (((copy_offset >> 16) << 4) + (((offset_copy_count - 5) >> 8) << 2) + copy_count))
                 write_index += 1
-                output[write_index] = ((copy_offset >> 8) & 0xff)
+                output[write_index] = (copy_offset >> 8) & 0xff
                 write_index += 1
-                output[write_index] = (copy_offset & 0xff)
+                output[write_index] = copy_offset & 0xff
                 write_index += 1
-                output[write_index] = ((offset_copy_count - 5) & 0xff)
+                output[write_index] = (offset_copy_count - 5) & 0xff
                 write_index += 1
 
             # Do the offset copy
@@ -254,7 +257,7 @@ def compress(data: bytearray) -> bytes:
     output = _write_bytes(output, 6, len(data), 3, "big")
 
     # Did anything actually compress?
-    if compressed_size >= len(data):
+    if compressed_size > len(data):
         return data
 
     # Strip excess zeros from the end of the output
