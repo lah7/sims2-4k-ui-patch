@@ -303,6 +303,20 @@ class DBPF(Stream):
 
         return True
 
+    @staticmethod
+    def cb_save_progress_updated(text: str, value: int, total: int):
+        """
+        Callback function to update the user-facing view of progress, like a GUI or stdout.
+        This can be optionally be overridden by the caller using the same parameters.
+
+        Parameters required:
+            text    (str)   An action word to describe the operation, e.g. "Writing" or "Compressing"
+            value   (int)   Current entry number being processed
+            total   (int)   Total entries in the package
+        """
+        # Example:
+        # print(f"\r{status}: {value / total*100:.2f}%", end="}")
+
     def get_entries(self) -> list[Index.Entry]:
         """
         Return all the entries from the index.
@@ -351,7 +365,11 @@ class DBPF(Stream):
         self.index.dir.files = []
         needs_dir_record = False
 
+        current_entry = -1
+        total_entries = len(self.get_entries())
         for entry in self.get_entries():
+            current_entry += 1
+
             # Destroy old DIR record, a new one is created later
             if entry.type_id == self.TYPE_DIR:
                 self.index.entries.remove(entry)
@@ -364,6 +382,7 @@ class DBPF(Stream):
             # Compress the file now (if applicable)
             entry.raw = entry.data
             if entry.compress:
+                self.cb_save_progress_updated("Compressing", current_entry, total_entries)
                 entry.compress = self._compress_entry(entry)
                 if entry.compress:
                     needs_dir_record = True
@@ -376,6 +395,8 @@ class DBPF(Stream):
             dir_entry.instance_id = self.index.dir.instance_id
             dir_entry.raw = self.index.dir.get_bytes()
             self.index.entries.append(dir_entry)
+
+        self.cb_save_progress_updated("Writing", 9999, 10000)
 
         # Write the bytes!
         f = open(path, "wb")
