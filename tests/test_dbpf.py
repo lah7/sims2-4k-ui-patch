@@ -27,7 +27,7 @@ class DBPFTest(unittest.TestCase):
 
     def setUp(self):
         """Set up a test against package: The Sims 2 University (TSData/Res/UI/ui.package)"""
-        self.package = dbpf.DBPF("tests/ui.package")
+        self.package = dbpf.DBPF("tests/files/ui.package")
 
         # Known compressed file (TGA Image)
         self.tga_index = 16

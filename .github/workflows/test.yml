@@ -19,8 +19,9 @@ jobs:
       - name: Download Test File
         run: |
           wget https://github.com/lah7/sims2-4k-ui-mod/files/10831338/ui.package.zip
-          mv ui.package.zip tests/ui.package.xz
-          xz -d tests/ui.package.xz
+          mkdir -p tests/files/
+          mv ui.package.zip tests/files/ui.package.xz
+          xz -d tests/files/ui.package.xz
 
       - name: Unit Tests
         run: |
