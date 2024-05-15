@@ -11,5 +11,6 @@
     "python.testing.unittestEnabled": true,
     "pylint.args": [
         "--disable=line-too-long",
-    ]
+    ],
+    "python.analysis.autoImportCompletions": true
 }
