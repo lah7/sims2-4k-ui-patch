@@ -1,155 +1,132 @@
 # The Sims 2 4K UI Mod
 
-A script to upscale The Sims 2's user interface for 4K (HiDPI) displays.
+A patch utility to upscale The Sims 2's user interface for 4K (HiDPI) displays.
+
 
 ## About
 
 Through the use of [graphic rules], it's easy to play The Sims 2 at high
 resolutions, but the buttons, text and interface become super tiny.
 
-At time of writing, there are no 4K modifications out there to fix the UI.
-I discovered that the game's modularity (`ui.package`) allows us to double
-the UI geometry and graphics.
+There were no 4K modifications out there to fix the UI. However, I discovered
+the modularity of the game files allows us to double the UI geometry and graphics,
+such as fonts and various `.package` files.
 
-This "mod" is a script that upscales UI resources and graphics from your copy of
-the game. Other resolutions (like 1440p) could work too by tweaking the script.
+This project is a patcher program to automatically upscale UI resources from your copy of the game.
 
 [graphic rules]: https://simswiki.info/wiki.php?title=Graphics_Rules_(for_The_Sims_2)
 
 
-## Work in Progress...
+## Does it work?
 
-The theory works, but there's a few minor visual glitches that make the game
-feel buggy or makes it difficult to play.
+Yes, but there's [few visual UI glitches] that may degrade the gameplay experience!
 
-The patcher tool is currently being worked on. Hang tight!
+If you've like to **get involved**, [check out the issues] or [report any issues]. Some things are still misaligned or could be improved.
 
-**If you're a player:** Your best experience is playing in 1080p for now.
-If you don't mind [visual glitches](https://github.com/lah7/sims2-4k-ui-mod/issues?q=is%3Aissue+is%3Aopen+label%3A%22visual+bug%22), feel free to try this script.
-
-**If you've like to get involved:**
-
-* [Investigate why some assets are misaligned or didn't scale](https://github.com/lah7/sims2-4k-ui-mod/issues?q=is%3Aissue+is%3Aopen+label%3A%22visual+bug%22)
+[few visual UI glitches]: https://github.com/lah7/sims2-4k-ui-mod/issues?q=is%3Aissue+is%3Aopen+label%3A%22visual+bug%22
+[check out the issues]: https://github.com/lah7/sims2-4k-ui-mod/issues?q=is%3Aissue+is%3Aopen+label%3A%22visual+bug%22
+[report any bugs]: https://github.com/lah7/sims2-4k-ui-mod/issues/new/choose
 
 
-<!--
-## Download
+## Instructions
 
-For your convenience, you can download upscaled package file from the [Releases]
-page, assuming the latest patches for the game.
+Your game files will always be backed up, so you can revert without reinstalling the game,
+or to repatch later using a newer version of this program with fixes and improvements.
 
-There are two parts:
+While patching, you should have **at least 2 GB of RAM free**. It may take
+a while to complete, depending on the single core performance of your CPU.
 
-* Place the .package file for **both** the base game, **and** the expansion pack you play
-into your `Documents\EA Games\The Sims 2\Downloads` folder.
-* Place `FontStyle.ini` into the base game's `C:\Program Files (x86)\EA Games\The Sims 2\TSData\Res\UI\Fonts\FontStyle.ini` folder.
-  * It's recommended to back up this file first (add `.bak` at the end)
+At the moment, the packages are **not compressed**.
+An **additional 7.7 GiB of disk space** is required
+(assuming a retail game with all expansions).
 
-Note that any other mods that modify the user interface may cause a mix of
-normal and high density interface.
 
-[Releases]: https://github.com/lah7/sims-2-4k-ui-mod/releases
--->
+### Windows
 
-## Tests
+1. Download the latest version from the [Releases] page.
+2. Extract the contents and run `sims2-4k-ui-patcher.exe`.
+   * You'll need to run as administrator to modify the game files.
+   * If you don't want to do that, change the permissions of your EA GAMES directory, usually at `C:\Program Files (x86)\EA GAMES`.
+3. Click "Patch"!
 
-Unit tests are an optional check everything is in working order.
 
-You'll need to copy a file from The Sims 2 University into the `tests` folder:
+### Linux/macOS (Wine/Proton)
+
+[The Sims 2 is playable under Wine!] For the best patching performance,
+run this patch program natively under Python.
+
+1. Download the [latest ZIP of this repository](https://github.com/lah7/sims2-4k-ui-mod/archive/refs/heads/master.zip).
+
+2. Extract the contents and run:
+
+       python -m venv venv
+       source venv/bin/activate
+       pip install -r requirements.txt
+       python sims2-4k-ui-patcher.py
+
+Ironically, the patcher interface (built with TK) may not scale well on a 4K display.
+
+[Releases]: https://github.com/lah7/sims2-4k-ui-mod/releases/latest
+[The Sims 2 is playable under Wine!]: https://github.com/lah7/sims-2-wine-patches
+
+
+## Compatibility
+
+This program is compatible with all copies of The Sims 2, expansions and stuff
+packs for PC.
+
+Any downloads or custom content that creates custom user interfaces or modifies
+graphical interface elements via your The Sims 2 save folder are not patched by
+this program. Using such mods may result in mixed UI scaling.
+
+However, any existing UI modifications that were made in the game's installation
+folder (like `TSData/Res/UI/ui.package`) are compatible with this program.
+
+**On a Mac?** We don't know whether [The Sims™ 2: Super Collection](https://apps.apple.com/us/app/the-sims-2-super-collection/id883782620?mt=12)
+is compatible with this program. Please let us know!
+
+
+## Development
+
+This project is written in Python. To start hacking, clone this repository
+ and set up a [virtual environment](https://docs.python.org/3/library/venv.html#creating-virtual-environments)
+ to install [requirements.txt](requirements.txt).
+
+For Windows, [install Python], and run:
+
+    python -m venv venv
+    venv\Scripts\activate
+    pip install -r requirements.txt
+    python sims2_4k_ui_patcher.py
+
+For macOS/Linux instructions, [see above](#linuxmacos-wineproton).
+
+[install Python]: https://www.python.org/downloads/windows/
+
+### Tests
+
+Unit tests check everything is in working order.
+
+You'll need to copy a file from The Sims 2 University into the `tests/files` folder:
 
     724723ddc5b020a55bdefc60a7cf1304    The Sims 2 University/TSData/Res/UI/ui.package
 
-_File not included._ With this file, you can run:
+**File not included.** With this file present, run:
 
     python -m unittest discover ./tests/
 
 This tests the package read, write and compression procedures are working correctly.
 
 
-## Script Usage
-
-You can use this script to upscale any game version, expansion pack, even if
-you have existing UI modifications installed. This works by:
-
-* Increasing the font size in `FontStyle.ini`
-* Extract `ui.package` and then:
-    * Use `imagemagick` to upscale the graphics
-    * Double the geometry and size for UI elements
-* Generate a new `ui.package` (uncompressed, see [#2])
-
-[#2]: https://github.com/lah7/sims2-4k-ui-mod/issues/2
-
-### 1. Prerequisites
-
-First things first, you'll need:
-
-* [Python 3](https://www.python.org/) (to run this script)
-* [Imagemagick](https://imagemagick.org/) (to process images)
-* [SimPE](https://sourceforge.net/projects/simpe/) (to extract resources)
-
-This script was designed on a Linux system, since [The Sims 2 works under Wine!](https://github.com/lah7/sims-2-wine-patches)
-It should run on Windows, [WSL2] and Mac too, providing you have the utilities installed
-and are accessible in your PATH (so you can run them without typing the full path to
-the executable)
-
-[WSL2]: https://docs.microsoft.com/en-us/windows/wsl/about
-
-**Note:** If you play an expansion pack, you'll need to run these steps once for
-the base game, then repeat them all for the expansion pack used to play the game,
-such as _The Sims 2 Mansion and Garden Stuff_ (Sims2EP9.exe)
-
-### 2. Extract with SimPE
-
-> Unfortunately, this step is manual as I hit a snag [(#1)] figuring out how to decompress files without needing SimPE.
-
-[(#1)]: https://github.com/lah7/sims2-4k-ui-mod/issues/1
-
-1. In SimPE, open the game's `TSData/Res/UI/ui.package` (from the game's installation folder)
-1. Select "jpg/tga/png Image" in the resource tree, select all and extract to the **input** folder.
-1. Repeat step 2, but for "UI Data" too.
-1. Repeat step 2, but for "Accelerator Key Definitions" too.
-
-### 3. Copy FontStyle.ini
-
-From the base game's installation folder, copy `TSData\Res\UI\Fonts\FontStyle.ini` into
-the **input** folder.
-
-### 4. Run the script
-
-    python3 ./sims2-4k-ui-converter.py
-
-This will process the files and produce a new `ui.package`.
-
-For more parameters, add `--help` at the end. For example, you can choose the
-directory to use while processing (like a RAM Disk), otherwise, the default will
-use `input`, `temp` and `output` directories in this folder.
-
-### 5. Copy into the game
-
-1. Navigate to the game's UI folder, usually:
-
-        C:\Program Files (x86)\EA Games\The Sims 2\TSData\Res\UI\
-
-    It is **strongly recommended** to backup the original `ui.package` for the game
-(like adding `.bak` to the end of the file)
-
-2. Copy `output/ui.package` into this folder. As the script doesn't support
-compression yet [(#2)], this file is expected to be significantly larger.
-
-[(#2)]: https://github.com/lah7/sims2-4k-ui-mod/issues/2
-
-3. Repeat these steps again for base game or expansion pack that you use to play the game.
-
-
 ## License
 
-The scripts in this repository are licensed under GPLv3.
+[GNU General Public License v3](LICENSE) (GPLv3)
 
 
 ## Acknowledgements
 
-If you wish to let the wider Sims community know, be sure to leave a link
-to this repository!
+If you wish to let the wider Sims community know,
+be sure to leave them a link to this repository!
 
 Thank you to these wiki pages for documenting the UI files and DBPF format:
 
@@ -159,3 +136,5 @@ Thank you to these wiki pages for documenting the UI files and DBPF format:
 * **Compression**
     * <https://simswiki.info/index.php?title=DBPF_Compression>
     * <https://simswiki.info/index.php?title=E86B1EEF>
+
+Thank you to [contributors](https://github.com/lah7/sims2-4k-ui-mod/graphs/contributors) who committed fixes!

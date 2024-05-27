@@ -323,6 +323,15 @@ class DBPF(Stream):
         """
         return self.index.entries
 
+    def get_entry(self, type_id: int, group_id: int, instance_id: int) -> Index.Entry:
+        """
+        Return a single entry from the index.
+        """
+        for entry in self.index.entries:
+            if entry.type_id == type_id and entry.group_id == group_id and entry.instance_id == instance_id:
+                return entry
+        raise ValueError(f"Entry not found: Type ID {type_id}, Group ID {group_id}, Instance ID {instance_id}")
+
     def add_entry(self, type_id=0, group_id=0, instance_id=0, data=bytes(), compress=False) -> Index.Entry:
         """
         Add a new file to the index.
@@ -368,6 +377,7 @@ class DBPF(Stream):
         current_entry = -1
         total_entries = len(self.get_entries())
         for entry in self.get_entries():
+            self.cb_save_progress_updated("Saving", current_entry, total_entries)
             current_entry += 1
 
             # Destroy old DIR record, a new one is created later
