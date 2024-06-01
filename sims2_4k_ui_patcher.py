@@ -32,12 +32,12 @@ import webbrowser
 from tkinter import filedialog, messagebox, ttk
 from typing import List, Optional
 
+import requests
+
 import dbpf
 import gamefile
 import patches
 from gamefile import GameFile
-
-URL = "https://github.com/lah7/sims2-4k-ui-mod"
 
 MAJOR = 0 # For new patches
 MINOR = 1 # For fixed patches
@@ -54,11 +54,15 @@ DEFAULT_PATHS = [
     "EA GAMES",
 ]
 
+PROJECT_URL = "https://github.com/lah7/sims2-4k-ui-mod"
+
 
 class PatcherApplication(tk.Tk):
     """
     A GUI application for patching The Sims 2 game files.
     """
+    update_available = False
+
     # A list of games/files to work with
     ea_games_dir = ""
     game_dir_names = []
@@ -114,7 +118,7 @@ class PatcherApplication(tk.Tk):
         self.version.pack(fill=tk.X)
         self.set_enabled(self.version, False)
 
-        self.link = tk.Label(self.info_frame, text=URL, fg="blue", cursor="hand2")
+        self.link = tk.Label(self.info_frame, text=PROJECT_URL, fg="blue", cursor="hand2")
         self.link.pack()
         self.link.bind("<Button-1>", lambda e: self._open_homepage())
 
@@ -150,9 +154,33 @@ class PatcherApplication(tk.Tk):
 
         self.controls = [self.btn_browse, self.btn_patch, self.btn_revert, self.input_dir]
         self.update()
+        self._check_for_updates()
+
+    def _check_for_updates(self):
+        """
+        Check the GitHub repository for a newer version and quietly inform the user.
+        """
+        try:
+            r = requests.get("https://raw.githubusercontent.com/lah7/sims2-4k-ui-mod/master/version.txt", timeout=3)
+        except (requests.exceptions.RequestException, requests.exceptions.Timeout):
+            return
+
+        if r.status_code == 200:
+            latest_version = r.text.split("\n")[0]
+            latest_ver_parts = latest_version.split(".")
+            try:
+                if int(latest_ver_parts[0]) > MAJOR or int(latest_ver_parts[1]) > MINOR:
+                    self.version.config(text=f"{VERSION} (New version available: v{latest_version})")
+                    self.set_enabled(self.version, True)
+                    self.update_available = True
+            except (TypeError, ValueError):
+                return
 
     def _open_homepage(self):
-        webbrowser.open(URL)
+        if self.update_available:
+            webbrowser.open(f"{PROJECT_URL}/releases/latest")
+        else:
+            webbrowser.open(PROJECT_URL)
 
     def _browse(self):
         """

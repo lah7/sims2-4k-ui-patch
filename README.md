@@ -40,6 +40,8 @@ At the moment, the packages are **not compressed**.
 An **additional 7.7 GiB of disk space** is required
 (assuming a retail game with all expansions).
 
+The program automatically checks this repository for an update, to ensure you have the latest version.
+
 
 ### Windows
 
