@@ -13,8 +13,22 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-            python-version: '3.11'
+            python-version: '3.12'
             architecture: 'x64'
+
+      - name: Cache Python Environment
+        uses: actions/cache@v3
+        with:
+          path: venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-venv
+
+      - name: Install Dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
 
       - name: Download Test File
         run: |
@@ -23,6 +37,7 @@ jobs:
           mv ui.package.zip tests/files/ui.package.xz
           xz -d tests/files/ui.package.xz
 
-      - name: Unit Tests
+      - name: Run Unit Tests
         run: |
+          source venv/bin/activate
           python3 -m unittest discover tests/ -v
