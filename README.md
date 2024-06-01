@@ -130,13 +130,18 @@ This tests the package read, write and compression procedures are working correc
 If you wish to let the wider Sims community know,
 be sure to leave them a link to this repository!
 
-Thank you to these wiki pages for documenting the UI files and DBPF format:
+**Thank you to the following:**
+
+These wiki pages for documenting the UI, DBPF and compression format:
 
 * <https://www.wiki.sc4devotion.com/index.php?title=UI>
 * <https://www.wiki.sc4devotion.com/index.php?title=DBPF>
 * <https://simswiki.info/wiki.php?title=DBPF>
-* **Compression**
-    * <https://simswiki.info/index.php?title=DBPF_Compression>
-    * <https://simswiki.info/index.php?title=E86B1EEF>
+* <https://simswiki.info/index.php?title=DBPF_Compression>
+* <https://simswiki.info/index.php?title=E86B1EEF>
 
-Thank you to [contributors](https://github.com/lah7/sims2-4k-ui-patch/graphs/contributors) who committed fixes!
+This implementation of the QFS compression algorithm, which we ported to Python:
+
+* https://github.com/memo33/jDBPFX (Java, GPLv3)
+
+And [contributors](https://github.com/lah7/sims2-4k-ui-patch/graphs/contributors) who committed fixes!
