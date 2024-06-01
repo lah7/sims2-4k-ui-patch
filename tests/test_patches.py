@@ -55,7 +55,7 @@ class PatchesTest(unittest.TestCase):
 
         dummy_file = GameFile(tmp_path)
         dummy_file.backup_path = self._get_test_file_path("FontStyle-A.ini")
-        patches.upscale_fontstyle_ini(dummy_file)
+        patches.upscale_fontstyle_ini(dummy_file, write_meta_file=False)
 
         # Compare output with expected output
         expected = self._get_test_file_data("FontStyle-B.ini")

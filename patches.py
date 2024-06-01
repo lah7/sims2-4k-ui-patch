@@ -182,7 +182,7 @@ def upscale_package_contents(file: GameFile, package: dbpf.DBPF, ui_update_progr
     file.write_meta_file()
 
 
-def upscale_fontstyle_ini(file: GameFile):
+def upscale_fontstyle_ini(file: GameFile, write_meta_file=True):
     """
     Parses FontStyle.ini (from the Fonts folder) and writes a new one with
     new font sizes.
@@ -212,4 +212,5 @@ def upscale_fontstyle_ini(file: GameFile):
         f.writelines(output)
 
     file.patched = True
-    file.write_meta_file()
+    if write_meta_file:
+        file.write_meta_file()
