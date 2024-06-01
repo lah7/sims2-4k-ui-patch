@@ -1,4 +1,4 @@
-# The Sims 2 4K UI Mod
+# 4K UI Patch for The Sims 2
 
 A patch utility to upscale The Sims 2's user interface for 4K (HiDPI) displays.
 
@@ -23,9 +23,9 @@ Yes, but there's [few visual UI glitches] that may degrade the gameplay experien
 
 If you've like to **get involved**, [check out the issues] or [report any issues]. Some things are still misaligned or could be improved.
 
-[few visual UI glitches]: https://github.com/lah7/sims2-4k-ui-mod/issues?q=is%3Aissue+is%3Aopen+label%3A%22visual+bug%22
-[check out the issues]: https://github.com/lah7/sims2-4k-ui-mod/issues?q=is%3Aissue+is%3Aopen+label%3A%22visual+bug%22
-[report any bugs]: https://github.com/lah7/sims2-4k-ui-mod/issues/new/choose
+[few visual UI glitches]: https://github.com/lah7/sims2-4k-ui-patch/issues?q=is%3Aissue+is%3Aopen+label%3A%22visual+bug%22
+[check out the issues]: https://github.com/lah7/sims2-4k-ui-patch/issues?q=is%3Aissue+is%3Aopen+label%3A%22visual+bug%22
+[report any issues]: https://github.com/lah7/sims2-4k-ui-patch/issues/new/choose
 
 
 ## Instructions
@@ -57,7 +57,7 @@ The program automatically checks this repository for an update, to ensure you ha
 [The Sims 2 is playable under Wine!] For the best patching performance,
 run this patch program natively under Python.
 
-1. Download the [latest ZIP of this repository](https://github.com/lah7/sims2-4k-ui-mod/archive/refs/heads/master.zip).
+1. Download the [latest ZIP of this repository](https://github.com/lah7/sims2-4k-ui-patch/archive/refs/heads/master.zip).
 
 2. Extract the contents and run:
 
@@ -68,7 +68,7 @@ run this patch program natively under Python.
 
 Ironically, the patcher interface (built with TK) may not scale well on a 4K display.
 
-[Releases]: https://github.com/lah7/sims2-4k-ui-mod/releases/latest
+[Releases]: https://github.com/lah7/sims2-4k-ui-patch/releases/latest
 [The Sims 2 is playable under Wine!]: https://github.com/lah7/sims-2-wine-patches
 
 
@@ -139,4 +139,4 @@ Thank you to these wiki pages for documenting the UI files and DBPF format:
     * <https://simswiki.info/index.php?title=DBPF_Compression>
     * <https://simswiki.info/index.php?title=E86B1EEF>
 
-Thank you to [contributors](https://github.com/lah7/sims2-4k-ui-mod/graphs/contributors) who committed fixes!
+Thank you to [contributors](https://github.com/lah7/sims2-4k-ui-patch/graphs/contributors) who committed fixes!

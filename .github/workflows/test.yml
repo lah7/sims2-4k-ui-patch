@@ -18,7 +18,7 @@ jobs:
 
       - name: Download Test File
         run: |
-          wget https://github.com/lah7/sims2-4k-ui-mod/files/10831338/ui.package.zip
+          wget https://github.com/lah7/sims2-4k-ui-patch/files/10831338/ui.package.zip
           mkdir -p tests/files/
           mv ui.package.zip tests/files/ui.package.xz
           xz -d tests/files/ui.package.xz

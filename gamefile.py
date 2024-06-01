@@ -98,7 +98,7 @@ class GameFile():
             raise RuntimeError("Not patched or backup file missing!")
 
         with open(self.meta_path, "w", encoding="utf-8") as f:
-            f.write("# This file was patched by lah7/sims2-4k-ui-mod.\n")
+            f.write("# This file was patched by lah7/sims2-4k-ui-patch.\n")
             f.write("# It is recommended to keep this file (and the .bak) so you can update the patches or revert without reinstalling the game.\n")
             f.write("# Do not change the contents of this file!\n")
             f.write("\n")

@@ -54,7 +54,7 @@ DEFAULT_PATHS = [
     "EA GAMES",
 ]
 
-PROJECT_URL = "https://github.com/lah7/sims2-4k-ui-mod"
+PROJECT_URL = "https://github.com/lah7/sims2-4k-ui-patch"
 
 
 class PatcherApplication(tk.Tk):
@@ -161,7 +161,7 @@ class PatcherApplication(tk.Tk):
         Check the GitHub repository for a newer version and quietly inform the user.
         """
         try:
-            r = requests.get("https://raw.githubusercontent.com/lah7/sims2-4k-ui-mod/master/version.txt", timeout=3)
+            r = requests.get("https://raw.githubusercontent.com/lah7/sims2-4k-ui-patch/master/version.txt", timeout=3)
         except (requests.exceptions.RequestException, requests.exceptions.Timeout):
             return
 
