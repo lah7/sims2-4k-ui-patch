@@ -11,18 +11,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
             python-version: '3.12'
             architecture: 'x64'
 
-      - name: Cache Python Environment
-        uses: actions/cache@v3
+      - name: Cache Dependencies
+        uses: actions/cache@v4
         with:
           path: venv
           key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-venv
 
       - name: Install Dependencies
         run: |
