@@ -1,3 +1,5 @@
 Pillow
-pyinstaller
 requests
+
+# Build only
+cx_Freeze

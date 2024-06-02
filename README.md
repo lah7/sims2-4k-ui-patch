@@ -45,31 +45,39 @@ The program automatically checks this repository for an update, to ensure you ha
 
 ### Windows
 
-1. Download the latest version from the [Releases] page.
+1. Download the latest `windows-x64` asset from the [Releases] page.
 2. Extract the contents and run `sims2-4k-ui-patcher.exe`.
    * You'll need to run as administrator to modify the game files.
    * If you don't want to do that, change the permissions of your EA GAMES directory, usually at `C:\Program Files (x86)\EA GAMES`.
 3. Click "Patch"!
 
+To run the program, you may need to install [Microsoft Visual C++ Redistributable (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe).
 
-### Linux/macOS (Wine/Proton)
 
-[The Sims 2 is playable under Wine!] For the best patching performance,
-run this patch program natively under Python.
+### Linux
 
-1. Download the [latest ZIP of this repository](https://github.com/lah7/sims2-4k-ui-patch/archive/refs/heads/master.zip).
+For users who play The Sims 2 under the Wine/Proton compatibility layer. [It works well with DXVK!](https://github.com/lah7/sims2-wine-patches/blob/master/README-D9VK.md)
 
-2. Extract the contents and run:
-
-       python -m venv venv
-       source venv/bin/activate
-       pip install -r requirements.txt
-       python sims2-4k-ui-patcher.py
+1. Download the latest `linux-x64` asset from the [Releases] page.
+2. Extract the contents and run `./sims2-4k-ui-patcher`.
+    * You may need to mark it as executable first (e.g. right click -> Properties -> Permissions tab).
+3. Find your "EA GAMES" directory, e.g. a wine prefix at `~/.wine/drive_c/Program Files (x86)/EA GAMES`.
+4. Click "Patch"!
 
 Ironically, the patcher interface (built with TK) may not scale well on a 4K display.
 
+
+### macOS
+
+We don't have a pre-built binary for macOS, but you can run the Python script directly. See [Development](#development) for instructions.
+
+This patch program will work fine if you play the game under a Wine compatibility layer.
+
+If you purchased the [The Sims™ 2: Super Collection](https://apps.apple.com/us/app/the-sims-2-super-collection/id883782620?mt=12),
+we don't know whether files are exposed in a way that is compatible with this program. Please let us know!
+
+
 [Releases]: https://github.com/lah7/sims2-4k-ui-patch/releases/latest
-[The Sims 2 is playable under Wine!]: https://github.com/lah7/sims-2-wine-patches
 
 
 ## Compatibility
@@ -84,26 +92,37 @@ this program. Using such mods may result in mixed UI scaling.
 However, any existing UI modifications that were made in the game's installation
 folder (like `TSData/Res/UI/ui.package`) are compatible with this program.
 
-**On a Mac?** We don't know whether [The Sims™ 2: Super Collection](https://apps.apple.com/us/app/the-sims-2-super-collection/id883782620?mt=12)
-is compatible with this program. Please let us know!
-
 
 ## Development
 
 This project is written in Python. To start hacking, clone this repository
- and set up a [virtual environment](https://docs.python.org/3/library/venv.html#creating-virtual-environments)
- to install [requirements.txt](requirements.txt).
+and set up a [virtual environment](https://docs.python.org/3/library/venv.html#creating-virtual-environments)
+to install [requirements.txt](requirements.txt).
 
-For Windows, [install Python], and run:
+For Windows, [install Python 3](https://www.python.org/downloads/windows/), and run:
 
     python -m venv venv
     venv\Scripts\activate
+    pip install --upgrade pip
     pip install -r requirements.txt
     python sims2_4k_ui_patcher.py
 
-For macOS/Linux instructions, [see above](#linuxmacos-wineproton).
+For Linux, your distribution likely already has Python 3 installed:
 
-[install Python]: https://www.python.org/downloads/windows/
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install --upgrade pip
+    pip install -r requirements.txt
+    python3 sims2-4k-ui-patcher.py
+
+For macOS, [install Python 3](https://www.python.org/downloads/macos/), and run:
+
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install --upgrade pip
+    pip install -r requirements.txt
+    python3 sims2-4k-ui-patcher.py
+
 
 ### Tests
 

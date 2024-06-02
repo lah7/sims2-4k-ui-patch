@@ -1,0 +1,81 @@
+name: Build
+
+on: [push, pull_request]
+
+jobs:
+  windows_x64:
+    name: Windows x64
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+            python-version: '3.12'
+            architecture: 'x64'
+
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        with:
+          path: venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements.txt') }}
+
+      - name: Install Dependencies
+        run: |
+          python -m venv venv
+          .\venv\Scripts\activate
+          pip install -r requirements.txt
+
+      - name: Build
+        run: |
+          .\venv\Scripts\activate
+          python setup.py build
+          copy version.txt dist\
+          copy assets\github.url "dist\View on GitHub.url"
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+            name: "build-windows-x64"
+            path: "dist"
+
+
+  linux_x64:
+    name: Linux x64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+            python-version: '3.12'
+            architecture: 'x64'
+
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        with:
+          path: venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements.txt') }}
+
+      - name: Install Dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Build
+        run: |
+          source venv/bin/activate
+          python setup.py build
+          cp version.txt dist/
+          echo "https://github.com/lah7/sims2-4k-ui-patch" > "dist/View on GitHub.txt"
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+            name: "build-linux-x64"
+            path: "dist"
