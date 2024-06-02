@@ -47,7 +47,7 @@ IMAGE_FORMAT_TGA = "TGA"
 IMAGE_UNKNOWN = "Unknown"
 
 
-def _get_image_file_type(data: bytes) -> str:
+def get_image_file_type(data: bytes) -> str:
     """
     The file in the DBPF package is simply "Image File".
     Read the header to get the real file type.
@@ -78,7 +78,7 @@ def _upscale_graphic(entry: dbpf.Index.Entry) -> bytes:
 
     UPSCALE_FILTER may influence the resulting quality of the image.
     """
-    file_type = _get_image_file_type(entry.data)
+    file_type = get_image_file_type(entry.data)
 
     if file_type == IMAGE_UNKNOWN:
         print(f"Unknown image format: Type ID {entry.type_id}, Group ID {entry.group_id}, Instance ID {entry.instance_id}")
