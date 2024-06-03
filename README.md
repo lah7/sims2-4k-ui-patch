@@ -30,15 +30,16 @@ If you've like to **get involved**, [check out the issues] or [report any issues
 
 ## Instructions
 
-Your game files will always be backed up, so you can revert without reinstalling the game,
+Your game files are always backed up, so you can revert without reinstalling the game,
 or to repatch later using a newer version of this program with fixes and improvements.
 
 While patching, you should have **at least 2 GB of RAM free**. It may take
 a while to complete, depending on the single core performance of your CPU.
 
-At the moment, the packages are **not compressed**.
-An **additional 7.7 GiB of disk space** is required
-(assuming a retail game with all expansions).
+The game originally compressed its package files with QFS compression.
+You can optionally turn this on, but it will take longer to complete.
+Without compression, a retail game with all expansions and backup files
+would use an **additional 7.7 GiB of disk space**.
 
 The program automatically checks this repository for an update, to ensure you have the latest version.
 

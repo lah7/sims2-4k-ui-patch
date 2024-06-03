@@ -107,6 +107,14 @@ class PatcherApplication(tk.Tk):
         self.treeview.configure(yscrollcommand=vsb.set)
         vsb.pack(side=tk.RIGHT, fill=tk.Y)
 
+        # Create group box for options
+        self.groupbox3 = ttk.LabelFrame(self, text="Options")
+        self.groupbox3.pack(padx=8, pady=8, fill=tk.BOTH, expand=True)
+        def _toggle_compress():
+            patches.COMPRESS_PACKAGE = self.compress_option.instate(["selected"])
+        self.compress_option = ttk.Checkbutton(self.groupbox3, text="Compress package (takes significantly longer)", variable=tk.BooleanVar(value=False), command=_toggle_compress)
+        self.compress_option.pack(padx=8, pady=8, side=tk.LEFT)
+
         # Create bottom footer
         self.footer = tk.Frame(self, borderwidth=1, relief=tk.SUNKEN)
         self.footer.pack(fill=tk.BOTH, expand=True)
@@ -493,4 +501,3 @@ class ProgressWindow(tk.Toplevel):
 if __name__ == "__main__":
     app = PatcherApplication()
     app.mainloop()
-
