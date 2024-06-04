@@ -17,8 +17,8 @@ Handles QFS compressed data in DBPF files as used by The Sims 2.
 MAX_OFFSET = 0x20000
 MAX_COPY_COUNT = 0x404
 
-# Compression level (smaller values increase the compression for big files)
-QFS_MAXITER = 128 # 0x80
+# Compression level (up to 255, higher = increased compression = longer processing)
+QFS_MAXITER = 20
 
 
 def _copy_array(src: bytearray, src_pos: int, dest: bytearray, dest_pos: int, length: int) -> bytearray:
