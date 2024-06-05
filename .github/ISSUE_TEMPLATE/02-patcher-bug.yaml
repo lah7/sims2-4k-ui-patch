@@ -1,0 +1,46 @@
+name: Report a bug with the patcher
+description: A problem or crash with the patcher program
+labels: ["patcher bug"]
+body:
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - "Windows 11"
+        - "Windows 10"
+        - "macOS (Intel)"
+        - "macOS (Apple Silicon)"
+        - "Linux"
+    validations:
+      required: true
+
+  - type: input
+    id: program_version
+    attributes:
+      label: Patcher Program Version
+      description: Can be found in the bottom-left corner of the application.
+      placeholder: 'v0.1.0'
+    validations:
+      required: true
+
+  - type: input
+    id: python_version
+    attributes:
+      label: Python Version
+      description: If installed on your computer.
+      placeholder: '3.12'
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the problem
+    validations:
+      required: true
+
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Traceback
+      description: If this was a crash, please copy and paste the output here.
+      render: true
