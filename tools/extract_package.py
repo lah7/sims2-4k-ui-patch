@@ -24,18 +24,18 @@ def extract(package_path: str, output_dir: str):
         path = os.path.join(output_dir, f"{entry.type_id}-{entry.group_id}-{entry.instance_id}")
 
         # Append file extension (where known)
-        if entry.type_id == dbpf.Stream.TYPE_IMAGE:
+        if entry.type_id == dbpf.TYPE_IMAGE:
             image_ext = patches.get_image_file_type(entry.data)
             if image_ext != patches.IMAGE_UNKNOWN:
                 path += "." + image_ext.lower()
 
-        elif entry.type_id == dbpf.Stream.TYPE_UI_DATA:
+        elif entry.type_id == dbpf.TYPE_UI_DATA:
             path += ".uidata"
 
-        elif entry.type_id == dbpf.Stream.TYPE_ACCEL_DEF:
+        elif entry.type_id == dbpf.TYPE_ACCEL_DEF:
             path += ".acceldef"
 
-        elif entry.type_id == dbpf.Stream.TYPE_DIR:
+        elif entry.type_id == dbpf.TYPE_DIR:
             continue
 
         with open(os.path.join(path), "wb") as f:

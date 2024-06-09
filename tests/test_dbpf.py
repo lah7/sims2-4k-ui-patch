@@ -57,7 +57,7 @@ class DBPFTest(unittest.TestCase):
         results = [
             entry.group_id == self.tga_group_id,
             entry.instance_id == self.tga_instance_id,
-            self.package.get_type(entry.type_id) == "Image File",
+            self.package.get_type_as_string(entry.type_id) == "Image File",
         ]
         self.assertTrue(all(results))
 
@@ -105,7 +105,7 @@ class DBPFTest(unittest.TestCase):
         pkg_path = self._mktemp()
         group_id = 0x01
         instance_id = 0x02
-        type_id = dbpf.Stream.TYPE_IMAGE
+        type_id = dbpf.TYPE_IMAGE
         data = b"Hello World!"
         pkg.add_entry(type_id, group_id, instance_id, data)
         pkg.save_package(pkg_path)
@@ -122,7 +122,7 @@ class DBPFTest(unittest.TestCase):
             # Entry data
             entry.group_id == group_id,
             entry.instance_id == instance_id,
-            pkg.get_type(entry.type_id) == "Image File",
+            pkg.get_type_as_string(entry.type_id) == "Image File",
             entry.data == b"Hello World!",
         ]
 
@@ -139,7 +139,7 @@ class DBPFTest(unittest.TestCase):
         # Create a new package with one file
         pkg = dbpf.DBPF()
         pkg_path = self._mktemp()
-        pkg.add_entry_from_file(dbpf.Stream.TYPE_IMAGE, 0x00, 0x00, tga_path)
+        pkg.add_entry_from_file(dbpf.TYPE_IMAGE, 0x00, 0x00, tga_path)
         pkg.save_package(pkg_path)
 
         # Read and verify checksum
@@ -156,7 +156,7 @@ class DBPFTest(unittest.TestCase):
         # Create package; add the file; compress
         pkg = dbpf.DBPF()
         pkg_path = self._mktemp()
-        pkg.add_entry(dbpf.Stream.TYPE_IMAGE, 0x00, 0x00, entry.data, compress=True)
+        pkg.add_entry(dbpf.TYPE_IMAGE, 0x00, 0x00, entry.data, compress=True)
         pkg.save_package(pkg_path)
 
         # Read and verify checksum
@@ -172,7 +172,7 @@ class DBPFTest(unittest.TestCase):
         checksums = []
         for entry in self.package.get_entries():
             # Exclude compressed directory index
-            if entry.type_id == self.package.TYPE_DIR:
+            if entry.type_id == dbpf.TYPE_DIR:
                 continue
 
             checksums.append(hashlib.md5(entry.data).hexdigest())
@@ -185,7 +185,7 @@ class DBPFTest(unittest.TestCase):
         pkg2 = dbpf.DBPF(pkg_path)
         for index, entry in enumerate(pkg2.get_entries()):
             # Exclude compressed directory index
-            if entry.type_id == self.package.TYPE_DIR:
+            if entry.type_id == dbpf.TYPE_DIR:
                 continue
 
             md5 = hashlib.md5(entry.data).hexdigest()
@@ -206,7 +206,7 @@ class DBPFTest(unittest.TestCase):
         """Verify a package with compressed files contains a DIR entry"""
         pkg = dbpf.DBPF()
         pkg_path = self._mktemp()
-        pkg.add_entry(dbpf.Stream.TYPE_UI_DATA, 0x00, 0x00, b"AAABBBCCCAAAAAABBBCCCDDDAAABBBABABAB", compress=True)
+        pkg.add_entry(dbpf.TYPE_UI_DATA, 0x00, 0x00, b"AAABBBCCCAAAAAABBBCCCDDDAAABBBABABAB", compress=True)
         pkg.save_package(pkg_path)
 
         pkg2 = dbpf.DBPF(pkg_path)
@@ -217,7 +217,7 @@ class DBPFTest(unittest.TestCase):
         """Verify a package with no compressed files doesn't have a DIR entry"""
         pkg = dbpf.DBPF()
         pkg_path = self._mktemp()
-        pkg.add_entry(dbpf.Stream.TYPE_UI_DATA, 0x00, 0x00, b"AAABBBCCCAAAAAABBBCCCDDDAAABBBABABAB", compress=False)
+        pkg.add_entry(dbpf.TYPE_UI_DATA, 0x00, 0x00, b"AAABBBCCCAAAAAABBBCCCDDDAAABBBABABAB", compress=False)
         pkg.save_package(pkg_path)
 
         pkg2 = dbpf.DBPF(pkg_path)
@@ -244,7 +244,7 @@ class DBPFTest(unittest.TestCase):
         """Check incompressible file does not get compressed"""
         pkg_path = self._mktemp()
         pkg = dbpf.DBPF()
-        entry = pkg.add_entry(dbpf.Stream.TYPE_UI_DATA, 0x00, 0x00, b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()", compress=True)
+        entry = pkg.add_entry(dbpf.TYPE_UI_DATA, 0x00, 0x00, b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()", compress=True)
         pkg.save_package(pkg_path)
         self.assertFalse(entry.compress)
 

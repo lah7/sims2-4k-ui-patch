@@ -25,17 +25,17 @@ from typing import Optional
 
 import qfs
 
+# Known type IDs (represented as ints)
+TYPE_UI_DATA = 0
+TYPE_IMAGE = 2238569388
+TYPE_ACCEL_DEF = 2732840243
+TYPE_DIR = 3899334383
+
 
 class Stream():
     """
     Base class used for other classes to handle file stream operations.
     """
-    # Type IDs (as int)
-    TYPE_UI_DATA = 0
-    TYPE_IMAGE = 2238569388
-    TYPE_ACCEL_DEF = 2732840243
-    TYPE_DIR = 3899334383
-
     def __init__(self, stream: io.BytesIO):
         self.stream = stream
 
@@ -54,15 +54,15 @@ class Stream():
         """
         return int.from_bytes(self.stream.read(4), "little")
 
-    def get_type(self, type_id: int) -> str:
+    def get_type_as_string(self, type_id: int) -> str:
         """
         Return a string describing this Type ID.
         """
         types = {
-            self.TYPE_UI_DATA: "UI Data",
-            self.TYPE_IMAGE: "Image File",
-            self.TYPE_ACCEL_DEF: "Accelerator Key Definitions",
-            self.TYPE_DIR: "Directory of Compressed Files",
+            TYPE_UI_DATA: "UI Data",
+            TYPE_IMAGE: "Image File",
+            TYPE_ACCEL_DEF: "Accelerator Key Definitions",
+            TYPE_DIR: "Directory of Compressed Files",
         }
         try:
             return types[type_id]
@@ -121,7 +121,7 @@ class Index(Stream):
         # Find DIR file in index, indicating some files are compressed
         self.stream.seek(0)
         for entry in self.entries:
-            if entry.type_id == self.TYPE_DIR:
+            if entry.type_id == TYPE_DIR:
                 self.dir = DirectoryFile(self.stream, entry)
 
         # If DIR file exists, flag entries that were compressed
@@ -381,7 +381,7 @@ class DBPF(Stream):
             current_entry += 1
 
             # Destroy old DIR record, a new one is created later
-            if entry.type_id == self.TYPE_DIR:
+            if entry.type_id == TYPE_DIR:
                 self.index.entries.remove(entry)
                 continue
 
@@ -400,7 +400,7 @@ class DBPF(Stream):
         # Generate a new DIR record (if applicable)
         if needs_dir_record:
             dir_entry = self.index.Entry()
-            dir_entry.type_id = self.TYPE_DIR
+            dir_entry.type_id = TYPE_DIR
             dir_entry.group_id = self.index.dir.group_id
             dir_entry.instance_id = self.index.dir.instance_id
             dir_entry.raw = self.index.dir.get_bytes()

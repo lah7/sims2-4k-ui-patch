@@ -150,19 +150,19 @@ def upscale_package_contents(file: GameFile, package: dbpf.DBPF, ui_update_progr
     for entry in entries:
         ui_update_progress(f"{completed}/{total}: {file.relative_path}", completed)
 
-        if entry.type_id == dbpf.Stream.TYPE_UI_DATA:
+        if entry.type_id == dbpf.TYPE_UI_DATA:
             data = _upscale_uiscript(entry)
             new_package.add_entry(entry.type_id, entry.group_id, entry.instance_id, data, entry.compress and COMPRESS_PACKAGE)
 
-        elif entry.type_id == dbpf.Stream.TYPE_IMAGE:
+        elif entry.type_id == dbpf.TYPE_IMAGE:
             data = _upscale_graphic(entry)
             new_package.add_entry(entry.type_id, entry.group_id, entry.instance_id, data, entry.compress and COMPRESS_PACKAGE)
 
-        elif entry.type_id == dbpf.Stream.TYPE_ACCEL_DEF:
+        elif entry.type_id == dbpf.TYPE_ACCEL_DEF:
             # No modifications necessary
             new_package.add_entry(entry.type_id, entry.group_id, entry.instance_id, entry.data, entry.compress and COMPRESS_PACKAGE)
 
-        elif entry.type_id == dbpf.Stream.TYPE_DIR:
+        elif entry.type_id == dbpf.TYPE_DIR:
             # Discard compressed directory index. It'll be regenerated for the new package.
             continue
 
