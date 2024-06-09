@@ -112,7 +112,8 @@ class PatcherApplication(tk.Tk):
         self.groupbox3.pack(padx=8, pady=8, fill=tk.BOTH, expand=True)
         def _toggle_compress():
             patches.COMPRESS_PACKAGE = self.compress_option.instate(["selected"])
-        self.compress_option = ttk.Checkbutton(self.groupbox3, text="Compress package (takes significantly longer)", variable=tk.BooleanVar(value=False), command=_toggle_compress)
+        self.compress_state = tk.BooleanVar(value=False)
+        self.compress_option = ttk.Checkbutton(self.groupbox3, text="Compress package (takes significantly longer)", variable=self.compress_state, command=_toggle_compress)
         self.compress_option.pack(padx=8, pady=8, side=tk.LEFT)
 
         # Create bottom footer
