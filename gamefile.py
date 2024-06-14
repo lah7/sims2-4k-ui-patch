@@ -57,6 +57,7 @@ class GameFile():
         Identify the game name by going up a directory until we find "filelist.txt",
         the root of the game installation, and take the name from this directory.
         """
+        return "The Sims 2 Ultimate Collection"
         path = os.path.realpath(file_path)
         root_count = len(path.split(os.sep))
         while root_count > 2:

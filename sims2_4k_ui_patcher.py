@@ -231,8 +231,8 @@ class PatcherApplication(tk.Tk):
         """
         files = []
         for filename in ["ui.package", "FontStyle.ini", "CaSIEUI.data"]:
-            files += glob.glob(os.path.join(self.ea_games_dir, "*Sims 2*", "TSData") + f"/**/{filename}", recursive=True)
-        return sorted(files)
+            files += glob.glob(os.path.join(self.ea_games_dir, "*Sims 2*", f"**/**/TSData/**/{filename}"), recursive=True)
+        return sorted(list(set(files)))
 
     def refresh_game_status(self):
         """
