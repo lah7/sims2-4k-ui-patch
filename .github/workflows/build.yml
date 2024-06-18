@@ -32,7 +32,8 @@ jobs:
         run: |
           .\venv\Scripts\activate
           python setup.py build
-          copy version.txt dist\
+          git fetch --tags --unshallow
+          git describe --tags > dist\version.txt
           copy assets\github.url "dist\View on GitHub.url"
 
       - name: Upload
@@ -71,7 +72,8 @@ jobs:
         run: |
           source venv/bin/activate
           python setup.py build
-          cp version.txt dist/
+          git fetch --tags --unshallow
+          git describe --tags > dist/version.txt
           echo "https://github.com/lah7/sims2-4k-ui-patch" > "dist/View on GitHub.txt"
 
       - name: Upload
