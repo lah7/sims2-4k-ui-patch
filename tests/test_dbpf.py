@@ -25,19 +25,20 @@ class DBPFTest(unittest.TestCase):
         self.tmp_files.append(tmp.name)
         return tmp.name
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Set up a test against package: The Sims 2 University (TSData/Res/UI/ui.package)"""
-        self.package = dbpf.DBPF("tests/files/ui.package")
+        cls.package = dbpf.DBPF("tests/files/ui.package")
 
         # Known compressed file (TGA Image)
-        self.tga_index = 16
-        self.tga_md5 = "d3e3ea50829e8386736eb614df260020"
-        self.tga_group_id = 0x499db772
-        self.tga_instance_id = 0xccb00305
+        cls.tga_index = 16
+        cls.tga_md5 = "d3e3ea50829e8386736eb614df260020"
+        cls.tga_group_id = 0x499db772
+        cls.tga_instance_id = 0xccb00305
 
         # Known uncompressed and incompressible file (Bitmap)
-        self.bmp_index = 85
-        self.bmp_md5 = "4d450dd3b45e2cebae3ef949bde06292"
+        cls.bmp_index = 85
+        cls.bmp_md5 = "4d450dd3b45e2cebae3ef949bde06292"
 
     def tearDown(self) -> None:
         # Clean up temporary files
