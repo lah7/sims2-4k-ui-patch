@@ -256,8 +256,8 @@ class DBPFTest(unittest.TestCase):
 
         pkg_path = self._mktemp()
         pkg1 = dbpf.DBPF()
-        e1 = pkg1.add_entry(bmp_entry.type_id, bmp_entry.group_id, bmp_entry.instance_id, bmp_entry.data, compress=False)
-        e2 = pkg1.add_entry(tga_entry.type_id, tga_entry.group_id, tga_entry.instance_id, tga_entry.data, compress=True)
+        pkg1.add_entry(bmp_entry.type_id, bmp_entry.group_id, bmp_entry.instance_id, bmp_entry.data, compress=False)
+        pkg1.add_entry(tga_entry.type_id, tga_entry.group_id, tga_entry.instance_id, tga_entry.data, compress=True)
         pkg1.save_package(pkg_path)
 
         pkg2 = dbpf.DBPF(pkg_path)
