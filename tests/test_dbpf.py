@@ -73,7 +73,7 @@ class DBPFTest(unittest.TestCase):
             checksums.append(name)
 
         for entry in entries:
-            assert isinstance(entry, dbpf.Index.Entry)
+            assert isinstance(entry, dbpf.Entry)
             name = str(entry.type_id) + "_" + str(entry.group_id) + "_" + str(entry.instance_id)
             if name in checksums:
                 checksums.remove(name)

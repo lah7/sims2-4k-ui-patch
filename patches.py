@@ -67,7 +67,7 @@ def get_image_file_type(data: bytes) -> str:
         return IMAGE_UNKNOWN
 
 
-def _upscale_graphic(entry: dbpf.Index.Entry) -> bytes:
+def _upscale_graphic(entry: dbpf.Entry) -> bytes:
     """
     Return binary data for an upscaled (or intact) image.
 
@@ -92,7 +92,7 @@ def _upscale_graphic(entry: dbpf.Index.Entry) -> bytes:
     return output.getvalue()
 
 
-def _upscale_uiscript(entry: dbpf.Index.Entry):
+def _upscale_uiscript(entry: dbpf.Entry):
     """
     Return binary data for a modified .uiScript file.
 
