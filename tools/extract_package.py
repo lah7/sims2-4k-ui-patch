@@ -22,6 +22,8 @@ def extract(package_path: str, output_dir: str):
 
     for entry in entries:
         path = os.path.join(output_dir, f"{entry.type_id}-{entry.group_id}-{entry.instance_id}")
+        if package.header.index_version >= 7.2:
+            path += f"-{entry.resource_id}"
 
         # Append file extension (where known)
         if entry.type_id == dbpf.TYPE_IMAGE:

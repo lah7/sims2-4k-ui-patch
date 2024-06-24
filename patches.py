@@ -152,15 +152,15 @@ def upscale_package_contents(file: GameFile, package: dbpf.DBPF, ui_update_progr
 
         if entry.type_id == dbpf.TYPE_UI_DATA:
             data = _upscale_uiscript(entry)
-            new_package.add_entry(entry.type_id, entry.group_id, entry.instance_id, data, entry.compress and COMPRESS_PACKAGE)
+            new_package.add_entry(entry.type_id, entry.group_id, entry.instance_id, entry.resource_id, data, entry.compress and COMPRESS_PACKAGE)
 
         elif entry.type_id == dbpf.TYPE_IMAGE:
             data = _upscale_graphic(entry)
-            new_package.add_entry(entry.type_id, entry.group_id, entry.instance_id, data, entry.compress and COMPRESS_PACKAGE)
+            new_package.add_entry(entry.type_id, entry.group_id, entry.instance_id, entry.resource_id, data, entry.compress and COMPRESS_PACKAGE)
 
         elif entry.type_id == dbpf.TYPE_ACCEL_DEF:
             # No modifications necessary
-            new_package.add_entry(entry.type_id, entry.group_id, entry.instance_id, entry.data, entry.compress and COMPRESS_PACKAGE)
+            new_package.add_entry(entry.type_id, entry.group_id, entry.instance_id, entry.resource_id, entry.data, entry.compress and COMPRESS_PACKAGE)
 
         elif entry.type_id == dbpf.TYPE_DIR:
             # Discard compressed directory index. It'll be regenerated for the new package.
@@ -169,7 +169,7 @@ def upscale_package_contents(file: GameFile, package: dbpf.DBPF, ui_update_progr
         else:
             # "What's this?"
             print(f"Unknown file in package: Type ID {entry.type_id}, Group ID {entry.group_id}, Instance ID {entry.instance_id}")
-            new_package.add_entry(entry.type_id, entry.group_id, entry.instance_id, entry.data, entry.compress and COMPRESS_PACKAGE)
+            new_package.add_entry(entry.type_id, entry.group_id, entry.instance_id, entry.resource_id, entry.data, entry.compress and COMPRESS_PACKAGE)
 
         completed += 1
 

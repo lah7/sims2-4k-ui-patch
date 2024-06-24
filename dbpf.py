@@ -2,7 +2,7 @@
 Handles the reading of ui.package files for The Sims 2, utilising the
 DBPF format to create, extract and compress packages.
 
-Based on DBPF 1.1 / Index v7.1 format.
+Supports DBPF 1.1 and index versions 7.0, 7.1, 7.2.
 """
 #
 # This program is free software: you can redistribute it and/or modify
@@ -72,7 +72,7 @@ class Stream():
 
 class Header(Stream):
     """
-    Describe a header for DBPF version 1.1 and 7.1 index.
+    Describe a header for the DBPF and its index.
     """
     def __init__(self, stream: io.BytesIO):
         super().__init__(stream)
@@ -84,6 +84,23 @@ class Header(Stream):
         self.index_start_offset = self.read_at_position(40, 44)
         self.index_size = self.read_at_position(44, 48)
 
+        # For initialising new packages
+        if not self.major_version:
+            self.major_version = 1
+            self.minor_version = 1
+            self.index_version_major = 7
+            self.index_version_minor = 1
+
+    @property
+    def dbpf_version(self) -> float:
+        """Return DBPF version as a decimal number, e.g. 1.1"""
+        return float(f"{self.major_version}.{self.minor_version}")
+
+    @property
+    def index_version(self) -> float:
+        """Return index version as a decimal number, e.g. 7.1"""
+        return float(f"{self.index_version_major}.{self.index_version_minor}")
+
 
 class Entry(object):
     """
@@ -93,6 +110,7 @@ class Entry(object):
         self.type_id = 0
         self.group_id = 0
         self.instance_id = 0
+        self.resource_id = 0 # Index version >= 7.2 only
         self.file_location = 0
         self.file_size = 0
 
@@ -113,7 +131,7 @@ class Index(Stream):
         self.end = self.start + header.index_size
         self.count = header.index_entry_count
         self.entries: list[Entry] = []
-        self.dir = DirectoryFile(stream)
+        self.dir = DirectoryFile(stream, header)
 
         # Load entries from package
         self.stream.seek(0)
@@ -123,6 +141,8 @@ class Index(Stream):
             entry.type_id = self.read_next_dword()
             entry.group_id = self.read_next_dword()
             entry.instance_id = self.read_next_dword()
+            if header.index_version >= 7.2:
+                entry.resource_id = self.read_next_dword()
             entry.file_location = self.read_next_dword()
             entry.file_size = self.read_next_dword()
             self.entries.append(entry)
@@ -131,14 +151,14 @@ class Index(Stream):
         self.stream.seek(0)
         for entry in self.entries:
             if entry.type_id == TYPE_DIR:
-                self.dir = DirectoryFile(self.stream, entry)
+                self.dir = DirectoryFile(self.stream, header, entry)
 
         # If DIR file exists, flag entries that were compressed
         if self.dir:
             for entry in self.entries:
                 for c_entry in self.dir.files:
                     assert isinstance(c_entry, DirectoryFile.CompressedFile)
-                    if c_entry.type_id == entry.type_id and c_entry.group_id == entry.group_id and c_entry.instance_id == entry.instance_id:
+                    if c_entry.type_id == entry.type_id and c_entry.group_id == entry.group_id and c_entry.instance_id == entry.instance_id and c_entry.resource_id == entry.resource_id:
                         entry.compress = True
 
         # Load files into memory (decompressed)
@@ -165,11 +185,6 @@ class DirectoryFile(Stream):
     Directory file format:
     https://simswiki.info/index.php?title=E86B1EEF
 
-    The index version of the original game packages is 7.1, but for some reason
-    this doesn't match the documentation which says there should be a
-    resource ID field too. As a result, this class will read/write under
-    index version 7.0 so it is compatible with The Sims 2.
-
     Compressed files use this header:
     https://simswiki.info/index.php?title=DBPF_Compression
     """
@@ -178,20 +193,21 @@ class DirectoryFile(Stream):
         type_id = 0
         group_id = 0
         instance_id = 0
+        resource_id = 0 # Index version >= 7.2 only
         decompressed_size = 0
 
-        # Index version 7.1 supposedly has this, but The Sims 2 (also index ver. 7.1) doesn't.
-        resource_id = 0
-
-    def __init__(self, stream: io.BytesIO, dir_entry: Optional[Entry] = None):
+    def __init__(self, stream: io.BytesIO, header: Header, dir_entry: Optional[Entry] = None):
         super().__init__(stream)
+        self.header = header
         self.files = []
         self.group_id = 0
         self.instance_id = 0
+        self.resource_id = 0
 
         if dir_entry:
             self.group_id = dir_entry.group_id
             self.instance_id = dir_entry.instance_id
+            self.resource_id = dir_entry.resource_id
 
             # Found DIR file, read it
             self.stream.seek(dir_entry.file_location)
@@ -201,10 +217,9 @@ class DirectoryFile(Stream):
                 entry.type_id = self.read_next_dword()
                 entry.group_id = self.read_next_dword()
                 entry.instance_id = self.read_next_dword()
+                if self.header.index_version >= 7.2:
+                    entry.resource_id = self.read_next_dword()
                 entry.decompressed_size = self.read_next_dword()
-
-                # Index version 7.1 supposedly has this, but The Sims 2 (also index ver. 7.1) doesn't.
-                #entry.resource_id = self.read_next_dword()
 
                 self.files.append(entry)
 
@@ -219,7 +234,7 @@ class DirectoryFile(Stream):
                 return compress_entry
         return self.CompressedFile()
 
-    def add_entry(self, type_id: int, group_id: int, instance_id: int, decompressed_size: int):
+    def add_entry(self, type_id: int, group_id: int, instance_id: int, resource_id: int, decompressed_size: int):
         """
         Add to the record that a particular file is stored as compressed in the package.
         """
@@ -227,6 +242,7 @@ class DirectoryFile(Stream):
         entry.type_id = type_id
         entry.group_id = group_id
         entry.instance_id = instance_id
+        entry.resource_id = resource_id
         entry.decompressed_size = decompressed_size
         self.files.append(entry)
 
@@ -240,10 +256,10 @@ class DirectoryFile(Stream):
             blob += entry.type_id.to_bytes(4, "little")
             blob += entry.group_id.to_bytes(4, "little")
             blob += entry.instance_id.to_bytes(4, "little")
+            if self.header.index_version >= 7.2:
+                blob += entry.resource_id.to_bytes(4, "little")
             blob += entry.decompressed_size.to_bytes(4, "little")
 
-            # Index version 7.1 supposedly has this, but The Sims 2 (also index ver. 7.1) doesn't.
-            #blob += entry.resource_id.to_bytes(4, "little")
         return blob
 
 
@@ -322,16 +338,16 @@ class DBPF(Stream):
         """
         return self.index.entries
 
-    def get_entry(self, type_id: int, group_id: int, instance_id: int) -> Entry:
+    def get_entry(self, type_id: int, group_id: int, instance_id: int, resource_id = 0) -> Entry:
         """
         Return a single entry from the index.
         """
         for entry in self.index.entries:
-            if entry.type_id == type_id and entry.group_id == group_id and entry.instance_id == instance_id:
+            if entry.type_id == type_id and entry.group_id == group_id and entry.instance_id == instance_id and entry.resource_id == resource_id:
                 return entry
-        raise ValueError(f"Entry not found: Type ID {type_id}, Group ID {group_id}, Instance ID {instance_id}")
+        raise ValueError(f"Entry not found: Type ID {type_id}, Group ID {group_id}, Instance ID {instance_id}, Resource ID {resource_id}")
 
-    def add_entry(self, type_id=0, group_id=0, instance_id=0, data=bytes(), compress=False) -> Entry:
+    def add_entry(self, type_id: int, group_id: int, instance_id: int, resource_id: int, data: bytes, compress=False) -> Entry:
         """
         Add a new file to the index.
         """
@@ -339,18 +355,19 @@ class DBPF(Stream):
         entry.type_id = type_id
         entry.group_id = group_id
         entry.instance_id = instance_id
-        entry.compress = compress
+        entry.resource_id = resource_id
         entry.data = data
+        entry.compress = compress
         self.index.entries.append(entry)
         return entry
 
-    def add_entry_from_file(self, type_id: int, group_id: int, instance_id: int, path: str, compress=False) -> Entry:
+    def add_entry_from_file(self, type_id: int, group_id: int, instance_id: int, resource_id: int, path: str, compress=False) -> Entry:
         """
         Add a new file to the index, reading bytes from a file on disk.
         """
         with open(path, "rb") as f:
             data = f.read()
-        return self.add_entry(type_id, group_id, instance_id, data, compress)
+        return self.add_entry(type_id, group_id, instance_id, resource_id, data, compress)
 
     def save_package(self, path: str):
         """
@@ -378,7 +395,7 @@ class DBPF(Stream):
         except PermissionError as e:
             raise PermissionError("Permission denied. Check the permissions and try again.") from e
 
-        # Start with the header
+        # Allocate bytes for header
         f = open(path, "wb")
         f.write(bytes(96))
 
@@ -405,7 +422,7 @@ class DBPF(Stream):
                 if compressed_data:
                     # Compression succeeded, add to DIR record
                     needs_dir_record = True
-                    self.index.dir.add_entry(entry.type_id, entry.group_id, entry.instance_id, len(entry.data))
+                    self.index.dir.add_entry(entry.type_id, entry.group_id, entry.instance_id, entry.resource_id, len(entry.data))
                     f.write(compressed_data)
                 else:
                     # Compression failed, leave uncompressed
@@ -422,6 +439,7 @@ class DBPF(Stream):
             entry.type_id = TYPE_DIR
             entry.group_id = self.index.dir.group_id
             entry.instance_id = self.index.dir.instance_id
+            entry.resource_id = self.index.dir.resource_id
 
             entry.file_location = f.tell()
             f.write(self.index.dir.get_bytes())
@@ -438,6 +456,8 @@ class DBPF(Stream):
             _write_int_next_4_bytes(entry.type_id)
             _write_int_next_4_bytes(entry.group_id)
             _write_int_next_4_bytes(entry.instance_id)
+            if self.header.index_version >= 7.2:
+                _write_int_next_4_bytes(entry.resource_id)
             _write_int_next_4_bytes(entry.file_location)
             _write_int_next_4_bytes(entry.file_size)
 
@@ -448,13 +468,13 @@ class DBPF(Stream):
         f.write(b'\x44\x42\x50\x46')
 
         # Write header: Major version
-        _write_int_at_pos(4, 0x1)
+        _write_int_at_pos(4, self.header.major_version)
 
         # Write header: Minor version
-        _write_int_at_pos(8, 0x2)
+        _write_int_at_pos(8, self.header.minor_version)
 
         # Write header: Index version major
-        _write_int_at_pos(32, 0x7)
+        _write_int_at_pos(32, self.header.index_version_major)
 
         # Write header: Index entry count
         _write_int_at_pos(36, self.header.index_entry_count)
@@ -466,6 +486,6 @@ class DBPF(Stream):
         _write_int_at_pos(44, self.header.index_size)
 
         # Write header: Index version minor
-        _write_int_at_pos(60, 0x1)
+        _write_int_at_pos(60, self.header.index_version_minor)
 
         f.close()
