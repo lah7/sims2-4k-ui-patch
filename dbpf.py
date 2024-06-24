@@ -154,12 +154,15 @@ class Index(Stream):
                 self.dir = DirectoryFile(self.stream, header, entry)
 
         # If DIR file exists, flag entries that were compressed
+        compressed_index_lookup = {}
         if self.dir:
+            for dir_entry in self.dir.files:
+                assert isinstance(dir_entry, DirectoryFile.CompressedFile)
+                compressed_index_lookup[(dir_entry.type_id, dir_entry.group_id, dir_entry.instance_id, dir_entry.resource_id)] = dir_entry
+
             for entry in self.entries:
-                for c_entry in self.dir.files:
-                    assert isinstance(c_entry, DirectoryFile.CompressedFile)
-                    if c_entry.type_id == entry.type_id and c_entry.group_id == entry.group_id and c_entry.instance_id == entry.instance_id and c_entry.resource_id == entry.resource_id:
-                        entry.compress = True
+                if (entry.type_id, entry.group_id, entry.instance_id, entry.resource_id) in compressed_index_lookup:
+                    entry.compress = True
 
         # Load files into memory (decompressed)
         for entry in self.entries:
