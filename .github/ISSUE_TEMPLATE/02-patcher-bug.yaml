@@ -24,12 +24,16 @@ body:
     validations:
       required: true
 
-  - type: input
-    id: python_version
+  - type: dropdown
+    id: install_type
     attributes:
-      label: Python Version
-      description: If installed on your computer.
-      placeholder: '3.12'
+      label: Installation Type
+      options:
+        - "Retail (installed separately from CD/DVDs)"
+        - "Origin/EA App (Ultimate Collection)"
+        - "Repack or other automated installation"
+    validations:
+      required: true
 
   - type: textarea
     id: description
