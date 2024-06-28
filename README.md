@@ -1,4 +1,7 @@
-# 4K UI Patch for The Sims 2
+<img src="assets/icon.svg" alt="Project Logo" height="96"/>
+
+
+# 4K UI Patcher for The Sims 2
 
 A patch utility to upscale The Sims 2's user interface for 4K (HiDPI) displays.
 
