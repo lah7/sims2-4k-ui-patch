@@ -11,29 +11,33 @@ body:
     validations:
       required: true
 
-  - type: dropdown
-    id: executable
+  - type: input
+    id: program_version
     attributes:
-      label: Executable
-      description: Which executable did you use to start the game?
+      label: Patch Version
+      description: Can be found in the bottom-left corner of the application.
+      placeholder: 'v0.1.0'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ui_density
+    attributes:
+      label: UI Density
       options:
-        - "Sims2.exe (Base game)"
-        - "Sims2EP1.exe (University)"
-        - "Sims2EP2.exe (Nightlife)"
-        - "Sims2EP3.exe (Open For Business)"
-        - "Sims2EP4.exe (Pets)"
-        - "Sims2EP5.exe (Seasons)"
-        - "Sims2EP6.exe (Bon Voyage)"
-        - "Sims2EP7.exe (FreeTime)"
-        - "Sims2EP8.exe (Apartment Life)"
-        - "Sims2EP9.exe (Mansion and Garden Stuff)"
-        - "Sims2EP9.exe (Ultimate Collection / Fun With Pets)"
-        - "Sims2SP1.exe (Family Fun Stuff)"
-        - "Sims2SP2.exe (Glamour Life Stuff)"
-        - "Sims2SP4.exe (Celebration Stuff)"
-        - "Sims2SP5.exe (H&M® Fashion Stuff)"
-        - "Sims2SP6.exe (Teen Style Stuff)"
-        - "Sims2SP7.exe (Kitchen & Bath Interior Design Stuff)"
-        - "Sims2SP8.exe (IKEA® Home Stuff)"
+        - "200% / 4K / 2160p"
+        - "150% / 2K / 1440p"
+        - "Other"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install_type
+    attributes:
+      label: Installation Type
+      options:
+        - "Retail (installed separately from CD/DVDs)"
+        - "Origin/EA App (Ultimate Collection)"
+        - "Repack or other automated installation"
     validations:
       required: true
