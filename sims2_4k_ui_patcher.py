@@ -62,6 +62,12 @@ DEFAULT_PATHS = [
 
 PROJECT_URL = "https://github.com/lah7/sims2-4k-ui-patch"
 
+# Options
+LABELS_UI_SCALE = {
+    "200% (4K / 2160p)": 2.0,
+    "150% (2K / 1440p)": 1.5,
+}
+
 
 @staticmethod
 def get_resource(relative_path):
@@ -242,6 +248,8 @@ class PatcherApplication(tk.Tk):
         self.controls = [
             self.input_dir,
             self.btn_browse,
+            self.scale_label,
+            self.scale_option,
             self.compress_option,
             self.btn_patch,
         ]
@@ -282,6 +290,11 @@ class PatcherApplication(tk.Tk):
         self.options_label = self.widgets.make_label(self.frame_options, "Options", colour=self.widgets.colour_fg_alt)
         self.options_label.grid(row=0, column=0, padx=8, pady=2, columnspan=2, sticky=tk.W)
         self.options = []
+
+        self.scale_label = self.widgets.make_label(self.frame_options, "Scale:")
+        self.scale_option = self.widgets.make_combo(self.frame_options, list(LABELS_UI_SCALE.keys()))
+        self.scale_label.grid(row=1, column=0, padx=8, pady=4, sticky=tk.W)
+        self.scale_option.grid(row=1, column=1, padx=16, pady=4, sticky=tk.W)
 
         self.compress_option = self.widgets.make_checkbox(self.frame_options, "Compress packages", True)
         self.compress_option.grid(row=4, column=0, padx=8, pady=4, columnspan=2, sticky=tk.W)
@@ -515,6 +528,7 @@ class PatcherApplication(tk.Tk):
         Perform the patching process!
         """
         patches.COMPRESS_PACKAGE = self.widgets.is_checked(self.compress_option)
+        patches.UI_MULTIPLIER = LABELS_UI_SCALE[self.widgets.get_combo_value(self.scale_option)]
 
         self.set_status_primary("Checking permissions...", 3)
         self.set_status_secondary("")

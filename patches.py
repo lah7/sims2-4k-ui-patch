@@ -31,7 +31,7 @@ import dbpf
 from gamefile import GameFile
 
 # Density to multiply the UI dialog geometry and graphics
-UI_MULTIPLIER: int = 2
+UI_MULTIPLIER: float = 2.0
 
 # Compression keeps the package files small, but takes longer to process
 COMPRESS_PACKAGE: bool = False
@@ -85,7 +85,7 @@ def _upscale_graphic(entry: dbpf.Entry) -> bytes:
         return entry.data
 
     original = Image.open(io.BytesIO(entry.data), formats=[file_type])
-    resized = original.resize((original.width * UI_MULTIPLIER, original.height * UI_MULTIPLIER), resample=UPSCALE_FILTER)
+    resized = original.resize((int(original.width * UI_MULTIPLIER), int(original.height * UI_MULTIPLIER)), resample=UPSCALE_FILTER)
 
     output = io.BytesIO()
     resized.save(output, format=file_type)

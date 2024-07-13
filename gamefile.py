@@ -45,7 +45,9 @@ class GameFile():
         self.patched = False
         self.patch_outdated = False
         self.patched_version = 0.0
-        self.compressed = True
+
+        self.compressed: bool = True
+        self.scale: float = 2.0
 
         self.read_meta_file()
 
@@ -74,7 +76,9 @@ class GameFile():
             self.patched = True
             self.patched_version = float(config.get("patch", "version"))
             self.patch_outdated = self.patched_version < FILE_PATCH_VERSION
+
             self.compressed = config.getboolean("patch", "compressed")
+            self.scale = config.getfloat("patch", "scale")
 
     def write_meta_file(self):
         """
@@ -86,9 +90,11 @@ class GameFile():
         config = configparser.ConfigParser()
         config["patch"] = {
             "version": str(FILE_PATCH_VERSION),
-            "compressed": str(self.compressed).lower(),
+            "compressed": str(self.compressed),
+            "scale": str(self.scale),
         }
-        config.write(open(self.meta_path, "w", encoding="utf-8"))
+        with open(self.meta_path, "w", encoding="utf-8") as f:
+            config.write(f)
 
         # Prepend comment at the start of file
         with open(self.meta_path, "r+", encoding="utf-8") as f:
