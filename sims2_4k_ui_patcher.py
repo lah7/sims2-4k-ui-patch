@@ -178,6 +178,10 @@ class Widgets():
         """Return the state of a checkbox"""
         return self.refs[checkbox].get()
 
+    def set_checked(self, checkbox: tk.Checkbutton, state: bool):
+        """Set the state of a checkbox"""
+        self.refs[checkbox].set(state)
+
     def make_combo(self, parent, options: list[str]) -> tk.OptionMenu:
         """Create a combo box (drop down). Otherwise known as TK's option menu"""
         var = tk.StringVar()
@@ -437,6 +441,7 @@ class PatcherApplication(tk.Tk):
 
         self.set_status_primary("Checking for patches...", 3)
 
+        initial_options = False
         for path in patch_list:
             file = GameFile(path)
             self.game_files.append(file)
@@ -447,7 +452,13 @@ class PatcherApplication(tk.Tk):
             if file.backed_up:
                 self.widgets.set_enabled(self.btn_revert, True)
 
+            # Set initial options based on first patched file
+            if file.patched and not initial_options:
+                initial_options = True
+                self.widgets.set_checked(self.compress_option, file.compressed)
+
         count_patched = len([file for file in self.game_files if file.patched])
+        count_outdated = len([file for file in self.game_files if file.patch_outdated])
         count_total = len(self.game_files)
 
         all_patched = count_patched == count_total
@@ -465,8 +476,8 @@ class PatcherApplication(tk.Tk):
             self.set_status_secondary("Missing backup files!")
 
         if all_patched and any_outdated:
-            self.set_status_primary("Update Required", 4)
-            self.set_status_secondary(f"{count_patched} files patched, some outdated")
+            self.set_status_primary("Ready to patch", 4)
+            self.set_status_secondary(f"{count_outdated} files need updating")
 
         if partially_patched:
             self.set_status_primary("Incomplete", 1)
