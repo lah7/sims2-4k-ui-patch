@@ -49,6 +49,10 @@ gamefile.FILE_PATCH_VERSION = float(f"{MAJOR}.{MINOR}") # Stored in file describ
 DEFAULT_PATHS = [
     "C:\\Program Files\\EA GAMES",
     "C:\\Program Files (x86)\\EA GAMES",
+    "C:\\Program Files\\The Sims 2 Ultimate Collection",
+    "C:\\Program Files (x86)\\The Sims 2 Ultimate Collection",
+    "C:\\Program Files\\Origin Games\\The Sims 2 Ultimate Collection",
+    "C:\\Program Files (x86)\\Origin Games\\The Sims 2 Ultimate Collection",
     "C:\\Program Files\\Origin Games",
     "C:\\Program Files (x86)\\Origin Games",
     "EA GAMES",
