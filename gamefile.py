@@ -48,6 +48,7 @@ class GameFile():
 
         self.compressed: bool = True
         self.scale: float = 2.0
+        self.upscale_filter: int = 0 # Image.Resampling.NEAREST
 
         self.read_meta_file()
 
@@ -79,6 +80,7 @@ class GameFile():
 
             self.compressed = config.getboolean("patch", "compressed")
             self.scale = config.getfloat("patch", "scale")
+            self.upscale_filter = config.getint("patch", "upscale_filter")
 
     def write_meta_file(self):
         """
@@ -92,6 +94,7 @@ class GameFile():
             "version": str(FILE_PATCH_VERSION),
             "compressed": str(self.compressed),
             "scale": str(self.scale),
+            "upscale_filter": str(self.upscale_filter),
         }
         with open(self.meta_path, "w", encoding="utf-8") as f:
             config.write(f)

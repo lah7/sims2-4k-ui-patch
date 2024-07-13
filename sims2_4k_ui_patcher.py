@@ -33,6 +33,7 @@ from tkinter import filedialog, font, messagebox, ttk
 from typing import Callable, List, Optional
 
 import requests
+from PIL import Image
 
 import dbpf
 import gamefile
@@ -66,6 +67,14 @@ PROJECT_URL = "https://github.com/lah7/sims2-4k-ui-patch"
 LABELS_UI_SCALE = {
     "200% (4K / 2160p)": 2.0,
     "150% (2K / 1440p)": 1.5,
+}
+
+LABELS_UI_FILTER = {
+    "Nearest Neighbour (Default)": Image.Resampling.NEAREST,
+    "Hamming": Image.Resampling.HAMMING,
+    "Linear": Image.Resampling.BILINEAR,
+    "Cubic": Image.Resampling.BICUBIC,
+    "Lanczos": Image.Resampling.LANCZOS,
 }
 
 
@@ -250,6 +259,8 @@ class PatcherApplication(tk.Tk):
             self.btn_browse,
             self.scale_label,
             self.scale_option,
+            self.filter_label,
+            self.filter_option,
             self.compress_option,
             self.btn_patch,
         ]
@@ -295,6 +306,11 @@ class PatcherApplication(tk.Tk):
         self.scale_option = self.widgets.make_combo(self.frame_options, list(LABELS_UI_SCALE.keys()))
         self.scale_label.grid(row=1, column=0, padx=8, pady=4, sticky=tk.W)
         self.scale_option.grid(row=1, column=1, padx=16, pady=4, sticky=tk.W)
+
+        self.filter_label = self.widgets.make_label(self.frame_options, "Upscale filter:")
+        self.filter_option = self.widgets.make_combo(self.frame_options, list(LABELS_UI_FILTER.keys()))
+        self.filter_label.grid(row=2, column=0, padx=8, pady=4, sticky=tk.W)
+        self.filter_option.grid(row=2, column=1, padx=16, pady=4, sticky=tk.W)
 
         self.compress_option = self.widgets.make_checkbox(self.frame_options, "Compress packages", True)
         self.compress_option.grid(row=4, column=0, padx=8, pady=4, columnspan=2, sticky=tk.W)
@@ -529,6 +545,7 @@ class PatcherApplication(tk.Tk):
         """
         patches.COMPRESS_PACKAGE = self.widgets.is_checked(self.compress_option)
         patches.UI_MULTIPLIER = LABELS_UI_SCALE[self.widgets.get_combo_value(self.scale_option)]
+        patches.UPSCALE_FILTER = LABELS_UI_FILTER[self.widgets.get_combo_value(self.filter_option)]
 
         self.set_status_primary("Checking permissions...", 3)
         self.set_status_secondary("")

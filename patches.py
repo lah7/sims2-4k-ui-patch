@@ -37,7 +37,7 @@ UI_MULTIPLIER: float = 2.0
 COMPRESS_PACKAGE: bool = False
 
 # Image upscaling filter
-UPSCALE_FILTER: Image.Resampling = Image.Resampling.NEAREST # NEAREST, BOX, BILINEAR, HAMMING, BICUBIC, LANCZOS
+UPSCALE_FILTER: Image.Resampling = Image.Resampling.NEAREST
 
 # Image file types
 IMAGE_FORMAT_BMP = "BMP"
