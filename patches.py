@@ -148,7 +148,7 @@ def upscale_package_contents(file: GameFile, package: dbpf.DBPF, ui_update_progr
     completed = 0
     total = len(entries)
     for entry in entries:
-        ui_update_progress(f"{completed}/{total}: {file.relative_path}", completed)
+        ui_update_progress(f"Upscaling: {completed}/{total}", completed)
 
         if entry.type_id == dbpf.TYPE_UI_DATA:
             data = _upscale_uiscript(entry)
@@ -174,7 +174,7 @@ def upscale_package_contents(file: GameFile, package: dbpf.DBPF, ui_update_progr
         completed += 1
 
     def _cb_save_progress_updated(text: str, value: int, total: int):
-        ui_update_progress(f"{text} {file.relative_path}: {value / total*100:.2f}%", value, total)
+        ui_update_progress(f"{text}: {value / total*100:.2f}%", value, total)
 
     new_package.cb_save_progress_updated = _cb_save_progress_updated
     new_package.save_package(file.file_path)

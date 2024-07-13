@@ -6,6 +6,11 @@ build_exe_options = {
     "include_files": [
         ("assets/banner.png", "assets/banner.png"),
         ("assets/icon.ico", "assets/icon.ico"),
+        ("assets/status_outdated.png", "assets/status_outdated.png"),
+        ("assets/status_partial.png", "assets/status_partial.png"),
+        ("assets/status_patched.png", "assets/status_patched.png"),
+        ("assets/status_patching.png", "assets/status_patching.png"),
+        ("assets/status_unpatched.png", "assets/status_unpatched.png"),
     ],
     "optimize": "2",
 }

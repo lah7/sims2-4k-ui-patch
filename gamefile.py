@@ -38,9 +38,7 @@ class GameFile():
         self.file_path = path
         self.backup_path = path + ".bak"
         self.meta_path = path + ".patched"
-        self.game_name = self.get_game_name(path)
-        self.name = os.path.basename(path)
-        self.relative_path = self.file_path.split(self.game_name)[1][1:]
+        self.filename = os.path.basename(path)
 
         self.backed_up = os.path.exists(self.backup_path)
         self.patched = False
@@ -50,21 +48,7 @@ class GameFile():
         self.read_meta_file()
 
     def __str__(self):
-        return f"{os.path.basename(self.file_path)} [{self.game_name}]"
-
-    def get_game_name(self, file_path) -> str:
-        """
-        Identify the game name by going up a directory until we find "filelist.txt",
-        the root of the game installation, and take the name from this directory.
-        """
-        path = os.path.realpath(file_path)
-        root_count = len(path.split(os.sep))
-        while root_count > 2:
-            if os.path.exists(os.path.join(path, "filelist.txt")):
-                return path.split(os.sep)[-1]
-            path = os.path.realpath(os.path.join(path, ".."))
-            root_count = len(path.split(os.sep))
-        return file_path
+        return os.path.basename(self.file_path)
 
     def read_meta_file(self):
         """
