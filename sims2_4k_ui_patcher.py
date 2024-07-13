@@ -53,6 +53,8 @@ DEFAULT_PATHS = [
     "C:\\Program Files (x86)\\The Sims 2 Ultimate Collection",
     "C:\\Program Files\\Origin Games\\The Sims 2 Ultimate Collection",
     "C:\\Program Files (x86)\\Origin Games\\The Sims 2 Ultimate Collection",
+    "C:\\Program Files\\The Sims 2 Starter Pack",
+    "C:\\Program Files (x86)\\The Sims 2 Starter Pack",
     "C:\\Program Files\\Origin Games",
     "C:\\Program Files (x86)\\Origin Games",
     "EA GAMES",
