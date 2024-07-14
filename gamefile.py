@@ -73,6 +73,8 @@ class GameFile():
                         self.patched_version = 0.1
                         self.patch_outdated = True
                         return
+            except configparser.ParsingError:
+                return
 
             self.patched = True
             self.patched_version = float(config.get("patch", "version"))
