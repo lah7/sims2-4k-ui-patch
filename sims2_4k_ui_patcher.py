@@ -250,7 +250,23 @@ class PatcherApplication(tk.Tk):
         if self.tk.call("tk", "windowingsystem") == 'win32':
             self.iconbitmap(get_resource("assets/icon.ico"))
 
-        # Try the default paths
+        # A list of controls for selecting options
+        self.options = [
+            self.scale_label,
+            self.scale_option,
+            self.filter_label,
+            self.filter_option,
+            self.compress_option,
+        ]
+
+        # A list of controls that should be disabled when in progress
+        self.controls = [
+            self.input_dir,
+            self.btn_browse,
+            self.btn_patch,
+        ] + self.options
+
+        # Show time!
         for path in DEFAULT_PATHS:
             if os.path.exists(path):
                 self.input_dir.insert(0, path)
@@ -258,19 +274,6 @@ class PatcherApplication(tk.Tk):
                 self.refresh_patch_state()
                 break
 
-        # A list of controls that should be disabled when in progress
-        self.controls = [
-            self.input_dir,
-            self.btn_browse,
-            self.scale_label,
-            self.scale_option,
-            self.filter_label,
-            self.filter_option,
-            self.compress_option,
-            self.btn_patch,
-        ]
-
-        # Show time!
         self.update()
         self._check_for_updates()
 
@@ -305,7 +308,6 @@ class PatcherApplication(tk.Tk):
 
         self.options_label = self.widgets.make_label(self.frame_options, "Options", colour=self.widgets.colour_fg_alt)
         self.options_label.grid(row=0, column=0, padx=8, pady=2, columnspan=2, sticky=tk.W)
-        self.options = []
 
         self.scale_label = self.widgets.make_label(self.frame_options, "Scale:")
         self.scale_option = self.widgets.make_combo(self.frame_options, list(LABELS_UI_SCALE.keys()))
@@ -510,6 +512,10 @@ class PatcherApplication(tk.Tk):
         any_backups = any(file.backed_up for file in self.game_files)
         any_outdated = any(file.patch_outdated for file in self.game_files)
         partially_patched = not all_patched and any(file.patched for file in self.game_files)
+
+        for widget in self.options:
+            # Disable options when files are patched, to avoid inconsistencies
+            self.widgets.set_enabled(widget, count_patched == 0)
 
         if all_patched and all_backed_up:
             self.set_status_primary("Patched", 2)
