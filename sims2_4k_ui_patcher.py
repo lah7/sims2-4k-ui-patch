@@ -210,6 +210,10 @@ class Widgets():
         """Get the current value of a combo box"""
         return self.refs[combo].get()
 
+    def set_combo_value(self, combo: tk.OptionMenu, value: str):
+        """Set the current value of a combo box"""
+        self.refs[combo].set(value)
+
 
 class PatcherApplication(tk.Tk):
     """
@@ -226,6 +230,7 @@ class PatcherApplication(tk.Tk):
 
         # Initialise UI & fonts
         self.widgets = Widgets()
+        self.initial_options_set = False
         font.nametofont("TkDefaultFont").configure(family=self.widgets.font_name, size=10)
 
         # Create controls
@@ -453,8 +458,6 @@ class PatcherApplication(tk.Tk):
         Check the game files and update the status.
         """
         self.game_files: List[GameFile] = []
-        self.tree_view_items = []
-
         self.widgets.set_enabled(self.btn_patch, False)
         self.widgets.set_enabled(self.btn_revert, False)
 
@@ -470,7 +473,6 @@ class PatcherApplication(tk.Tk):
 
         self.set_status_primary("Checking for patches...", 3)
 
-        initial_options = False
         for path in patch_list:
             file = GameFile(path)
             self.game_files.append(file)
@@ -481,10 +483,23 @@ class PatcherApplication(tk.Tk):
             if file.backed_up:
                 self.widgets.set_enabled(self.btn_revert, True)
 
-            # Set initial options based on first patched file
-            if file.patched and not initial_options:
-                initial_options = True
+            # Restore selected options by looking at first patched file
+            if file.patched and not self.initial_options_set:
+                self.initial_options_set = True
+
                 self.widgets.set_checked(self.compress_option, file.compressed)
+
+                try:
+                    value = next(key for key, value in LABELS_UI_SCALE.items() if value == file.scale)
+                    self.widgets.set_combo_value(self.scale_option, value)
+                except StopIteration:
+                    pass
+
+                try:
+                    value = next(key for key, value in LABELS_UI_FILTER.items() if value == file.upscale_filter)
+                    self.widgets.set_combo_value(self.filter_option, value)
+                except StopIteration:
+                    pass
 
         count_patched = len([file for file in self.game_files if file.patched])
         count_outdated = len([file for file in self.game_files if file.patch_outdated])
