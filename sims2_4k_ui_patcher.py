@@ -128,6 +128,15 @@ class Widgets():
             else:
                 widget.configure(background=self.button_disabled_bg, foreground=self.button_disabled_fg)
 
+    def on_change(self, widget: tk.Entry|tk.Checkbutton|tk.OptionMenu, callback: Callable):
+        """Bind a callback to a widget's change event."""
+        if isinstance(widget, tk.Entry):
+            widget.bind("<FocusOut>", lambda e: callback())
+        elif isinstance(widget, tk.Checkbutton):
+            widget.bind("<ButtonRelease>", lambda e: callback())
+        elif isinstance(widget, tk.OptionMenu):
+            widget.bind("<Configure>", lambda e: callback())
+
     def make_frame(self, parent, row_no: int) -> tk.Frame:
         """Create a frame for separating controls"""
         frame = tk.Frame(parent, border=8, background=self.colour_bg_frame)
@@ -301,6 +310,8 @@ class PatcherApplication(tk.Tk):
         self.btn_browse = self.widgets.make_button(self.frame_dir, "Browse", self._browse)
         self.btn_browse.grid(column=1, row=1, padx=0, pady=8)
 
+        self.widgets.on_change(self.input_dir, self._game_folder_changed)
+
     def create_options(self):
         """Create an expandable area to show options"""
         self.frame_options = self.widgets.make_frame(self, 2)
@@ -397,15 +408,20 @@ class PatcherApplication(tk.Tk):
                 break
 
         dirname = filedialog.askdirectory(initialdir=initial_dir, title="Select The Sims 2 installation folder", mustexist=True)
-
         if not dirname:
             return
 
-        self.widgets.set_enabled(self.btn_patch, False)
-        self.widgets.set_enabled(self.btn_revert, False)
         self.input_dir.delete(0, tk.END)
         dirname = dirname.replace("/", os.sep)
         self.input_dir.insert(0, dirname)
+
+        self._game_folder_changed()
+
+    def _game_folder_changed(self):
+        """
+        Callback when either "Browse" or input field changes.
+        """
+        dirname = self.input_dir.get()
         self.game_install_dir = dirname
         self.refresh_patch_state()
 
