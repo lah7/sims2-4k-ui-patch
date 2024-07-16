@@ -40,7 +40,7 @@ class GameFile():
         self.meta_path = path + ".patched"
         self.game_name = self.get_game_name(path)
         self.name = os.path.basename(path)
-        self.relative_path = self.file_path.split(self.game_name)[1][1:]
+        self.relative_path = self.file_path.split(self.game_name)[0][1:]
 
         self.backed_up = os.path.exists(self.backup_path)
         self.patched = False
