@@ -55,13 +55,13 @@ def get_image_file_type(data: bytes) -> str:
     # Check the first 4 bytes
     start = data[:4]
 
-    if start[:3] in [b'\x00\x00\x02', b'\x00\x00\n']:
+    if start[:3] in [b"\x00\x00\x02", b"\x00\x00\n"]:
         return IMAGE_FORMAT_TGA
-    elif start[:2] == b'BM':
+    elif start[:2] == b"BM":
         return IMAGE_FORMAT_BMP
-    elif start[:3] == b'\xff\xd8\xff':
+    elif start[:3] == b"\xff\xd8\xff":
         return IMAGE_FORMAT_JPG
-    elif start[:4] == b'\x89PNG':
+    elif start[:4] == b"\x89PNG":
         return IMAGE_FORMAT_PNG
     else:
         return IMAGE_UNKNOWN
@@ -129,7 +129,7 @@ def _upscale_uiscript(entry: dbpf.Entry):
             values = part.split("(")[1].split(")")[0]
             for number in values.split(","):
                 new_values.append(str(int(int(number) * UI_MULTIPLIER)))
-            part = f"{name}={part.replace(values, ','.join(new_values))}"
+            part = f"{name}={part.replace(values, ",".join(new_values))}"
             output.append(part)
         return "".join(output)
 

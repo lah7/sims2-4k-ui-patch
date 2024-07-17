@@ -1,3 +1,9 @@
+"""
+For creating an application build using cx_Freeze.
+For maintainer use only.
+
+It is not needed to run the patcher from the repository.
+"""
 from cx_Freeze import Executable, setup
 
 build_exe_options = {

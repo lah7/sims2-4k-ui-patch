@@ -254,9 +254,9 @@ class PatcherApplication(tk.Tk):
 
         # Set window properties
         self.title("UI Patcher for The Sims 2")
-        self.eval('tk::PlaceWindow . center')
+        self.eval("tk::PlaceWindow . center")
 
-        if self.tk.call("tk", "windowingsystem") == 'win32':
+        if self.tk.call("tk", "windowingsystem") == "win32":
             self.iconbitmap(get_resource("assets/icon.ico"))
 
         # A list of controls for selecting options

@@ -468,7 +468,7 @@ class DBPF(Stream):
 
         # Write header: DBPF
         f.seek(0)
-        f.write(b'\x44\x42\x50\x46')
+        f.write(b"\x44\x42\x50\x46")
 
         # Write header: Major version
         _write_int_at_pos(4, self.header.major_version)
