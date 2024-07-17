@@ -1,0 +1,5 @@
+[MESSAGES CONTROL]
+disable=line-too-long,too-many-instance-attributes,too-many-arguments
+
+[STRING]
+check-quote-consistency=yes

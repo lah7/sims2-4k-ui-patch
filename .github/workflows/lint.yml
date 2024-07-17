@@ -1,0 +1,37 @@
+name: Lint
+
+on: [push, pull_request]
+
+jobs:
+  pylint:
+    name: Python
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+            python-version: '3.12'
+            architecture: 'x64'
+
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        with:
+          path: venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements.txt') }}
+
+      - name: Install Dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Check Python code for errors
+        run: |
+          source venv/bin/activate
+          pylint --errors-only --rcfile=.pylintrc \
+            --check-quote-consistency=y \
+            --disable=R \
+            *.py

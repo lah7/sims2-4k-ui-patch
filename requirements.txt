@@ -3,3 +3,4 @@ requests
 
 # Build only
 cx_Freeze
+pylint

@@ -7,10 +7,17 @@
         "-p",
         "test_*.py"
     ],
+    "pylint.args": [
+        "--rcfile=.pylintrc",
+    ],
+    // "pylint.severity": {
+    //     "convention": "Information",
+    //     "refactor": "Information",
+    //     "warning": "Warning",
+    //     "error": "Error",
+    //     "fatal": "Error",
+    // },
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true,
-    "pylint.args": [
-        "--disable=line-too-long",
-    ],
-    "python.analysis.autoImportCompletions": true
+    "python.analysis.autoImportCompletions": true,
 }
