@@ -117,7 +117,7 @@ For Linux, your distribution likely already has Python 3 installed:
     source venv/bin/activate
     pip install --upgrade pip
     pip install -r requirements.txt
-    python3 sims2-4k-ui-patcher.py
+    python3 sims2_4k_ui_patcher.py
 
 For macOS, [install Python 3](https://www.python.org/downloads/macos/), and run:
 
@@ -125,7 +125,7 @@ For macOS, [install Python 3](https://www.python.org/downloads/macos/), and run:
     source venv/bin/activate
     pip install --upgrade pip
     pip install -r requirements.txt
-    python3 sims2-4k-ui-patcher.py
+    python3 sims2_4k_ui_patcher.py
 
 
 ### Tests
