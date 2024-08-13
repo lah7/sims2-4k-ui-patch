@@ -129,7 +129,7 @@ def _upscale_uiscript(entry: dbpf.Entry):
             values = part.split("(")[1].split(")")[0]
             for number in values.split(","):
                 new_values.append(str(int(int(number) * UI_MULTIPLIER)))
-            part = f"{name}={part.replace(values, ",".join(new_values))}"
+            part = f"{name}={part.replace(values, ','.join(new_values))}"
             output.append(part)
         return "".join(output)
 
