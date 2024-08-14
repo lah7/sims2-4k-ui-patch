@@ -89,12 +89,12 @@ we don't know whether files are exposed in a way that is compatible with this pr
 This program is compatible with all copies of The Sims 2, expansions and stuff
 packs for PC.
 
-Any downloads or custom content that creates custom user interfaces or modifies
+Any downloads or custom content that alters the user interface or modifies
 graphical interface elements via your The Sims 2 save folder are not patched by
 this program. Using such mods may result in mixed UI scaling.
 
-However, any existing UI modifications that were made in the game's installation
-folder (like `TSData/Res/UI/ui.package`) are compatible with this program.
+However, any existing UI modifications that are directly made to the game's
+original files (like `TSData/Res/UI/ui.package`) will be transparently patched with this program.
 
 
 ## Development
