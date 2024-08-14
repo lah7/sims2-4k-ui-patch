@@ -479,12 +479,17 @@ class PatcherApplication(tk.Tk):
         self.widgets.set_enabled(self.btn_patch, False)
         self.widgets.set_enabled(self.btn_revert, False)
 
+        if not self.game_install_dir:
+            self.set_status_primary("Missing details", 0)
+            self.set_status_secondary("Select game installation folder")
+            return
+
         self.set_status_primary("Checking files...", 3)
         self.set_status_secondary("")
         patch_list = self._get_file_list()
 
         if not patch_list:
-            self.set_status_primary("Not Selected", 0)
+            self.set_status_primary("Missing details", 0)
             self.set_status_secondary("Select game installation folder")
             messagebox.showerror("Wrong game installation folder", "Game files for The Sims 2 (or its expansion packs) was not found in this folder.")
             return
