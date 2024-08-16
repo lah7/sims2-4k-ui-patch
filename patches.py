@@ -139,7 +139,7 @@ def _upscale_uiscript(entry: dbpf.Entry):
     return data.encode("utf-8")
 
 
-def upscale_package_contents(file: GameFile, package: dbpf.DBPF, ui_update_progress: Callable):
+def process_package(file: GameFile, package: dbpf.DBPF, ui_update_progress: Callable):
     """
     Processes a DBPF package and upscales the user interface resources.
     """
@@ -182,7 +182,7 @@ def upscale_package_contents(file: GameFile, package: dbpf.DBPF, ui_update_progr
     file.write_meta_file()
 
 
-def upscale_fontstyle_ini(file: GameFile, write_meta_file=True):
+def process_fontstyle_ini(file: GameFile, write_meta_file=True):
     """
     Parses FontStyle.ini (from the Fonts folder) and writes a new one with
     new font sizes.

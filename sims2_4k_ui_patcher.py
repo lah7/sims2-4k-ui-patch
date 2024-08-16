@@ -632,12 +632,12 @@ class PatcherApplication(tk.Tk):
 
                 if file.filename == "FontStyle.ini":
                     window.set_current_progress("Upscaling FontStyle.ini...", 0)
-                    patches.upscale_fontstyle_ini(file)
+                    patches.process_fontstyle_ini(file)
 
                 elif file.filename in ["ui.package", "CaSIEUI.data"]:
                     package = dbpf.DBPF(file.backup_path)
                     window.set_current_progress_max(len(package.get_entries()))
-                    patches.upscale_package_contents(file, package, window.set_current_progress)
+                    patches.process_package(file, package, window.set_current_progress)
 
             window.in_progress = False
             window.destroy()
