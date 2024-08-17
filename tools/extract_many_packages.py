@@ -7,11 +7,9 @@ import argparse
 import glob
 import os
 import sys
-from multiprocessing import Value
 
 # Our modules are in the parent directory
-# pylint: disable=wrong-import-position
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) # pylint: disable=wrong-import-position
 
 from extract_package import extract
 

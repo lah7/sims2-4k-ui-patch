@@ -6,12 +6,15 @@ and output works as expected.
 import hashlib
 import os
 import shutil
+import sys
 import tempfile
 import unittest
 
-import dbpf
-import patches
-from gamefile import GameFile
+# Our modules are in the parent directory
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) # pylint: disable=wrong-import-position
+
+from sims2patcher import dbpf, patches
+from sims2patcher.gamefile import GameFile
 
 
 class PatchesTest(unittest.TestCase):

@@ -2,9 +2,14 @@
 Perform tests on the QFS module to ensure that the compression
 algorithm works as expected.
 """
+import os
+import sys
 import unittest
 
-import qfs
+# Our modules are in the parent directory
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) # pylint: disable=wrong-import-position
+
+from sims2patcher import qfs
 
 
 class QFSTest(unittest.TestCase):

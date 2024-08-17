@@ -14,11 +14,9 @@ import time
 from multiprocessing import Manager
 
 # Our modules are in the parent directory
-# pylint: disable=wrong-import-position
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) # pylint: disable=wrong-import-position
 
-import dbpf
-import qfs
+from sims2patcher import dbpf, qfs
 
 # Parse parameters
 DEFAULT_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tests", "files", "ui.package"))

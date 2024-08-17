@@ -7,11 +7,9 @@ import os
 import sys
 
 # Our modules are in the parent directory
-# pylint: disable=wrong-import-position
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) # pylint: disable=wrong-import-position
 
-import dbpf
-import patches
+from sims2patcher import dbpf, patches
 
 
 def extract(package_path: str, output_dir: str):

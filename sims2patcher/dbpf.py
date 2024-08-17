@@ -23,7 +23,7 @@ Supports DBPF 1.1 and index versions 7.0, 7.1, 7.2.
 import io
 from typing import Optional
 
-import qfs
+from sims2patcher import qfs
 
 # Known type IDs (represented as ints)
 TYPE_UI_DATA = 0

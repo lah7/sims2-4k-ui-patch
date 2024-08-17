@@ -4,10 +4,14 @@ works as expected to read and write valid ui.package files.
 """
 import hashlib
 import os
+import sys
 import tempfile
 import unittest
 
-import dbpf
+# Our modules are in the parent directory
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) # pylint: disable=wrong-import-position
+
+from sims2patcher import dbpf
 
 
 class DBPFTest(unittest.TestCase):

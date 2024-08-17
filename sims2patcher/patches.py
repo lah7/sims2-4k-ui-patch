@@ -27,8 +27,8 @@ from typing import Callable
 
 from PIL import Image
 
-import dbpf
-from gamefile import GameFile
+from sims2patcher import dbpf
+from sims2patcher.gamefile import GameFile
 
 # Density to multiply the UI dialog geometry and graphics
 UI_MULTIPLIER: float = 2.0
