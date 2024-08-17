@@ -25,7 +25,7 @@ class QFSTest(unittest.TestCase):
     def test_decompress(self):
         """Test data can be decompressed to its original binary"""
         expected = b"AAABBBCCCAAAAAABBBCCCDDDAAABBBABABAB"
-        original = b' \x00\x00\x00\x00\x00\x00\x00\x00\xe1AAABBBCC\x01\x08C\x18\x0b\x0f\x0bDDD\t\x01A\xfc'
+        original = b" \x00\x00\x00\x00\x00\x00\x00\x00\xe1AAABBBCC\x01\x08C\x18\x0b\x0f\x0bDDD\t\x01A\xfc"
         output = qfs.decompress(bytearray(original), len(expected))
         self.assertTrue(expected == output)
 
