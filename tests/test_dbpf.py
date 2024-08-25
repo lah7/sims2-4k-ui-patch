@@ -107,7 +107,7 @@ class DBPFTest(unittest.TestCase):
         md5 = hashlib.md5(entry.data).hexdigest()
         self.assertTrue(md5 == self.bmp_md5)
 
-    def test_new_package_71(self):
+    def test_new_package_index_7_1(self):
         """Verify the integrity of a new package based on index version 7.1"""
         pkg = dbpf.DBPF()
         pkg_path = self._mktemp()
@@ -137,7 +137,7 @@ class DBPFTest(unittest.TestCase):
 
         self.assertTrue(all(results))
 
-    def test_new_package_72(self):
+    def test_new_package_index_7_2(self):
         """Verify the integrity of a new package based on index version 7.2"""
         pkg = dbpf.DBPF()
         pkg.header.index_version_minor = 2
