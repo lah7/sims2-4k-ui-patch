@@ -191,7 +191,7 @@ class PatcherApplication(tk.Tk):
         self.patch_status_icon = self.widgets.make_image(self.frame_status, "assets/status_unpatched.png")
         self.patch_status_icon.grid(row=0, column=0, rowspan=2, padx=16, pady=0)
 
-        self.patch_status_primary = self.widgets.make_label(self.frame_status, "Loading...", font_size=12, font_weight="bold")
+        self.patch_status_primary = self.widgets.make_label(self.frame_status, "Select a folder", font_size=12, font_weight="bold")
         self.patch_status_primary.grid(row=0, column=1, padx=0, pady=0, sticky=tk.SW)
 
         self.patch_status_secondary = self.widgets.make_label(self.frame_status, "", colour=self.widgets.colour_fg_alt)
