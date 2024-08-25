@@ -37,11 +37,11 @@ from sims2patcher import dbpf, gamefile, patches
 from sims2patcher.gamefile import GameFile
 from sims2patcher.widgets import Widgets, get_resource
 
-MAJOR = 0 # For new patches
-MINOR = 1 # For fixed patches
-PATCH = 0 # For trivial or UI fixes
+VERSION = "v0.2.0"
+MAJOR = 0
+MINOR = 2
+PATCH = 0
 
-VERSION = f"v{MAJOR}.{MINOR}.{PATCH}" # User-facing text
 gamefile.FILE_PATCH_VERSION = float(f"{MAJOR}.{MINOR}") # Stored in file describing patch status
 
 DEFAULT_PATHS = [
