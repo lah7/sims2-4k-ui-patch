@@ -3,7 +3,7 @@
 
 # 4K UI Patcher for The Sims 2
 
-A patch utility to upscale The Sims 2's user interface for 4K (HiDPI) displays.
+A patch utility to upscale The Sims 2's user interface for HiDPI (2K/4K) displays.
 
 
 ## About
@@ -76,8 +76,7 @@ Ironically, the patcher interface (built with TK) may not scale well on a 4K dis
 We don't have a pre-built binary for macOS, but you can run the Python script directly. See [Development](#development) for instructions.
 
 This patch program will work fine if you play the game under a Wine compatibility layer.
-
-If you purchased the [The Sims™ 2: Super Collection](https://apps.apple.com/us/app/the-sims-2-super-collection/id883782620?mt=12),
+However, if you purchased the [The Sims™ 2: Super Collection](https://apps.apple.com/us/app/the-sims-2-super-collection/id883782620?mt=12),
 we don't know whether files are exposed in a way that is compatible with this program. Please let us know!
 
 
@@ -91,10 +90,7 @@ packs for PC.
 
 Any downloads or custom content that alters the user interface or modifies
 graphical interface elements via your The Sims 2 save folder are not patched by
-this program. Using such mods may result in mixed UI scaling.
-
-However, any existing UI modifications that are directly made to the game's
-original files (like `TSData/Res/UI/ui.package`) will be transparently patched with this program.
+this program. Using such mods may result in mixed UI scaling. It is possible to hack the patcher to patch other files [<sup>[1]</sup>](https://github.com/lah7/sims2-4k-ui-patch/issues/46#issuecomment-2289635309) although your mileage may vary.
 
 
 ## Development
@@ -103,7 +99,7 @@ This project is written in Python. To start hacking, clone this repository
 and set up a [virtual environment](https://docs.python.org/3/library/venv.html#creating-virtual-environments)
 to install [requirements.txt](requirements.txt).
 
-For Windows, [install Python 3](https://www.python.org/downloads/windows/), and run:
+For Windows, [install Python 3.12](https://www.python.org/downloads/windows/), and run:
 
     python -m venv venv
     venv\Scripts\activate
@@ -119,7 +115,7 @@ For Linux, your distribution likely already has Python 3 installed:
     pip install -r requirements.txt
     python3 sims2_4k_ui_patcher.py
 
-For macOS, [install Python 3](https://www.python.org/downloads/macos/), and run:
+For macOS, [install Python 3.12](https://www.python.org/downloads/macos/), and run:
 
     python3 -m venv venv
     source venv/bin/activate
@@ -136,11 +132,11 @@ You'll need to copy a file from The Sims 2 University into the `tests/files` fol
 
     724723ddc5b020a55bdefc60a7cf1304    The Sims 2 University/TSData/Res/UI/ui.package
 
-**File not included.** With this file present, run:
+**File not included.** With this file present, you can locally run the tests:
 
     python -m unittest discover ./tests/
 
-This tests the package read, write and compression procedures are working correctly.
+This checks the package read, write and compression procedures are working correctly.
 
 
 ## License
