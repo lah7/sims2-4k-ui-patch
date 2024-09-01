@@ -43,8 +43,8 @@ class GameFile():
 
         self.backed_up = os.path.exists(self.backup_path)
         self.patched = False
-        self.patch_outdated = False
-        self.patched_version = 0.0
+        self.outdated = False
+        self.patch_version = 0.0
 
         self.compressed: bool = True
         self.scale: float = 2.0
@@ -70,19 +70,19 @@ class GameFile():
                     lines = f.readlines()
                     if lines[4] == "0.1\n":
                         self.patched = True
-                        self.patched_version = 0.1
-                        self.patch_outdated = True
+                        self.patch_version = 0.1
+                        self.outdated = True
                         return
             except configparser.ParsingError:
                 return
 
             self.patched = True
             self.patched_version = float(config.get("patch", "version"))
-            self.patch_outdated = self.patched_version < FILE_PATCH_VERSION
 
             self.compressed = config.getboolean("patch", "compressed")
             self.scale = config.getfloat("patch", "scale")
             self.upscale_filter = config.getint("patch", "upscale_filter")
+            self.outdated = self.patch_version < FILE_PATCH_VERSION
 
     def write_meta_file(self):
         """

@@ -1,4 +1,5 @@
 Pillow
+PyQt6
 requests
 
 # Build only

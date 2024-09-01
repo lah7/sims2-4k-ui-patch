@@ -68,8 +68,6 @@ For users who play The Sims 2 under the Wine/Proton compatibility layer. [It wor
 3. Find your "EA GAMES" directory, e.g. a wine prefix at `~/.wine/drive_c/Program Files (x86)/EA GAMES`.
 4. Click "Patch"!
 
-Ironically, the patcher interface (built with TK) may not scale well on a 4K display.
-
 
 ### macOS
 

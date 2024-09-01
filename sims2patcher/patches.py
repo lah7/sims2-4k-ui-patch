@@ -142,13 +142,19 @@ def _upscale_uiscript(entry: dbpf.Entry):
 def process_package(file: GameFile, package: dbpf.DBPF, ui_update_progress: Callable):
     """
     Processes a DBPF package and upscales the user interface resources.
+
+    ui_update_progress is a callback function that prints the status and/or
+    updates a progress bar. It's parameters are:
+    - text: str
+    - value: int
+    - total: int
     """
     new_package = dbpf.DBPF()
     entries = package.get_entries()
     completed = 0
     total = len(entries)
     for entry in entries:
-        ui_update_progress(f"Upscaling: {completed}/{total}", completed)
+        ui_update_progress(f"Upscaling: {completed}/{total}", completed, total)
 
         if entry.type_id == dbpf.TYPE_UI_DATA:
             data = _upscale_uiscript(entry)
