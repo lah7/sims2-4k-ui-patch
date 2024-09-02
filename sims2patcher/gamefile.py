@@ -77,11 +77,14 @@ class GameFile():
                 return
 
             self.patched = True
-            self.patched_version = float(config.get("patch", "version"))
+            try:
+                self.patch_version = float(config.get("patch", "version"))
+                self.compressed = config.getboolean("patch", "compressed")
+                self.scale = config.getfloat("patch", "scale")
+                self.upscale_filter = config.getint("patch", "upscale_filter")
+            except (configparser.NoOptionError, configparser.NoSectionError):
+                self.patch_version = 0.0
 
-            self.compressed = config.getboolean("patch", "compressed")
-            self.scale = config.getfloat("patch", "scale")
-            self.upscale_filter = config.getint("patch", "upscale_filter")
             self.outdated = self.patch_version < FILE_PATCH_VERSION
 
     def write_meta_file(self):
