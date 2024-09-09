@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   tests:
-    name: Test
+    name: Linux
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,7 +31,6 @@ jobs:
       - name: Download Test File
         run: |
           wget https://github.com/lah7/sims2-4k-ui-patch/files/10831338/ui.package.zip
-          mkdir -p tests/files/
           mv ui.package.zip tests/files/ui.package.xz
           xz -d tests/files/ui.package.xz
 
@@ -39,3 +38,40 @@ jobs:
         run: |
           source venv/bin/activate
           python3 -m unittest discover tests/ -v
+
+  tests_win:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+            python-version: '3.12'
+            architecture: 'x64'
+
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        with:
+          path: venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements.txt') }}
+
+      - name: Install Dependencies
+        run: |
+          python -m venv venv
+          venv\Scripts\activate.bat
+          pip install -r requirements.txt
+
+      - name: Download Test File
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/lah7/sims2-4k-ui-patch/files/10831338/ui.package.zip" -OutFile "ui.package.zip"
+          Move-Item -Path "ui.package.zip" -Destination "tests/files/ui.package.xz"
+          cd tests/files
+          7z x ui.package.xz
+
+      - name: Run Unit Tests
+        run: |
+          venv\Scripts\activate.bat
+          python -m unittest discover tests/ -v
