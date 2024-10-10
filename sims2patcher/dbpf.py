@@ -451,7 +451,7 @@ class DBPF(Stream):
             self.index.entries.append(entry)
 
         # Write index after the file data
-        self.cb_save_progress_updated("Saving", 9999, 10000)
+        self.cb_save_progress_updated("Saving", 0, 0)
         self.header.index_start_offset = f.tell()
         self.header.index_entry_count = len(self.index.entries)
 

@@ -23,22 +23,28 @@ The patcher keeps a backup of the original file to allow patches to
 be reverted, to "uninstall" the modifcations, or for future patcher updates.
 """
 import glob
+import multiprocessing
 import os
 import signal
 import sys
+import time
 import webbrowser
+from concurrent.futures import Future, ProcessPoolExecutor
 from enum import Enum
-from typing import List
+from multiprocessing.managers import DictProxy, SyncManager
+from typing import Callable, List
 
 import requests
 from PIL import Image
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QIcon, QMouseEvent, QPixmap
-from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
-                             QFormLayout, QGroupBox, QHBoxLayout, QLabel,
-                             QLineEdit, QMainWindow, QMessageBox, QProgressBar,
-                             QPushButton, QSizePolicy, QStatusBar, QStyle,
-                             QToolButton, QVBoxLayout, QWidget)
+from PyQt6.QtCore import Qt, QThread, QTimer
+from PyQt6.QtGui import QCloseEvent, QIcon, QMouseEvent, QPixmap
+from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
+                             QFileDialog, QFormLayout, QGroupBox, QHBoxLayout,
+                             QHeaderView, QLabel, QLineEdit, QMainWindow,
+                             QMessageBox, QProgressBar, QPushButton,
+                             QSizePolicy, QStatusBar, QStyle, QToolButton,
+                             QTreeWidget, QTreeWidgetItem, QVBoxLayout,
+                             QWidget)
 
 from sims2patcher import dbpf, gamefile, patches
 from sims2patcher.gamefile import GameFile
@@ -117,6 +123,9 @@ class State:
         # This patcher program has a new update
         self.update_available = False
 
+        # Session
+        self.threads = os.cpu_count() or 1
+
         # Options
         self.scale: float = 2.0
         self.filter: int = Image.Resampling.NEAREST
@@ -151,6 +160,65 @@ class State:
                 return
 
 
+class PatchThread(QThread):
+    """
+    A thread responsible for managing the subprocesses that perform the patching on a single file.
+    """
+    def __init__(self, state: State, worker_function: Callable, process_manager: SyncManager, progress_dict: DictProxy):
+        super().__init__()
+        self.state = state
+        self.worker_function = worker_function
+        self.process_manager = process_manager
+        self.progress_dict = progress_dict
+
+        self.futures: List[Future] = []
+        self.terminate_event = multiprocessing.Event()
+
+    def count_total_processes(self):
+        """Return the number of running processes"""
+        return len(self.futures)
+
+    def count_running_processes(self):
+        """Return the number of running processes"""
+        return sum(not f.done() for f in self.futures)
+
+    def count_done_processes(self):
+        """Return the number of completed processes"""
+        return sum(f.done() for f in self.futures)
+
+    def count_pending_processes(self):
+        """Return the number of remaining processes"""
+        return max((sum(not f.done() for f in self.futures) - self.state.threads), 0)
+
+    def run(self):
+        """Start the thread responsible for patching each file in its own process without blocking the UI"""
+        self.reset()
+        with ProcessPoolExecutor(max_workers=self.state.threads) as executor:
+            for file in self.state.game_files:
+                self.futures.append(executor.submit(self.worker_function, file.file_path, self.progress_dict))
+
+            while not all(f.done() for f in self.futures):
+                if self.terminate_event.is_set():
+                    for f in self.futures:
+                        f.cancel()
+                    break
+                time.sleep(0.5)
+
+    def reset(self):
+        """Clear the thread, ready for new work"""
+        self.futures = []
+        self.progress_dict.clear()
+        self.terminate_event.clear()
+
+    def quit(self):
+        """
+        Gracefully stop by finishing current operations and cancel everything else.
+        This sets an event to tell the loop to stop processing any more.
+        """
+        self.terminate_event.set()
+        super().quit()
+
+
 class PatcherApplication(QMainWindow):
     """
     A GUI application for patching The Sims 2 game files. Powered by PyQt6.
@@ -161,6 +229,16 @@ class PatcherApplication(QMainWindow):
 
         self.state = State()
 
+        # Parallel processing for later
+        self.patch_ui_timer = QTimer()
+        self.patch_ui_timer.timeout.connect(self._update_patch_progress)
+        self.process_manager = multiprocessing.Manager()
+        self.progress_dict = self.process_manager.dict()
+        self.patch_thread = PatchThread(self.state, self._patch_file, self.process_manager, self.progress_dict)
+        self.queue_window = QueueWindow()
+        self.stop_requested = False
+
+        # Base Layout
         self.base_layout = QVBoxLayout()
         self.base_widget = QWidget()
         self.base_widget.setLayout(self.base_layout)
@@ -193,6 +271,19 @@ class PatcherApplication(QMainWindow):
             self.game_files_input.setText(self.state.game_install_dir)
             QApplication.processEvents()
             QTimer.singleShot(250, self.refresh_patch_state)
+
+    def closeEvent(self, event: QCloseEvent): # pylint: disable=invalid-name
+        """
+        Handle the window close event.
+        """
+        if not self.patch_thread.isRunning():
+            event.accept()
+            return
+
+        if self.abort_patching():
+            event.accept()
+
+        event.ignore()
 
     def _create_top_banner(self):
         """Create a banner displaying the project logo"""
@@ -352,6 +443,14 @@ class PatcherApplication(QMainWindow):
         """Create the primary action buttons"""
         self.layout_buttons = QHBoxLayout()
 
+        self.btn_details = QPushButton()
+        self.btn_details.setText("Details")
+        self.btn_details.setToolTip("Show current progress and file queue")
+        self.btn_details.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogDetailedView)) # type: ignore
+        self.btn_details.clicked.connect(self.queue_window.show)
+        self.btn_details.clicked.connect(self.queue_window.raise_)
+        self.layout_buttons.addWidget(self.btn_details)
+
         self.layout_buttons.addStretch()
 
         self.btn_revert = QPushButton()
@@ -369,6 +468,17 @@ class PatcherApplication(QMainWindow):
         self.btn_patch.setEnabled(False)
         self.btn_patch.clicked.connect(self.start_patching)
         self.layout_buttons.addWidget(self.btn_patch)
+
+        self.btn_cancel = QPushButton()
+        self.btn_cancel.setText("Cancel")
+        self.btn_cancel.setToolTip("Abort the patching progress")
+        self.btn_cancel.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCancelButton)) # type: ignore
+        self.btn_cancel.clicked.connect(self.abort_patching)
+        self.layout_buttons.addWidget(self.btn_cancel)
+
+        # Initial
+        self.btn_details.setHidden(True)
+        self.btn_cancel.setHidden(True)
 
         self.base_layout.addLayout(self.layout_buttons)
 
@@ -518,15 +628,16 @@ class PatcherApplication(QMainWindow):
         if patch_count == 0:
             self.group_options.setEnabled(True)
             self.update_status_icon(StatusIcon.GREY)
-            self.status_text.setText(f"{total_count} file{"s" if patch_count > 0 else ""} ready to patch")
+            self.status_text.setText(f"{total_count} file{"s" if patch_count > 1 else ""} ready to patch")
 
-    def start_patching(self):
+    def _check_file_permissions(self):
         """
-        Perform the patching process!
+        Check the files and folders are writable.
+        Return a boolean to indicate overall status.
         """
-        def has_permission(file: GameFile):
-            """Return a boolean to indicate we have permission to modify the files."""
-            # For existing files, are they read only?
+        def _has_permission(file: GameFile) -> bool:
+            """Return a boolean to indicate whether a file can be modified"""
+            # For existing files, make sure they're not read-only.
             for path in [file.file_path, file.backup_path, file.meta_path]:
                 if os.path.exists(path):
                     if not os.access(path, os.W_OK):
@@ -543,92 +654,188 @@ class PatcherApplication(QMainWindow):
 
             return True
 
-        self.btn_patch.setEnabled(False)
-        self.btn_revert.setEnabled(False)
-        self.group_options.setEnabled(False)
-        self.group_folders.setEnabled(False)
-
         self.status_text.setText("Checking permissions...")
         self.update_status_icon(StatusIcon.GREEN)
         self.status_progress.setValue(0)
 
+        success = []
+        for file in self.state.game_files:
+            success.append(_has_permission(file))
+
+        if not all(success):
+            self.status_text.setText("Insufficient file permissions")
+            self.update_status_icon(StatusIcon.RED)
+            QMessageBox.critical(self, "Insufficient File Permissions", "In order to modify the game files, please run this program as an administrator, or change the folder permissions for the game directories.")
+
+        return all(success)
+
+    @staticmethod
+    def _patch_file(file_path: str, progress_dict: DictProxy):
+        """
+        A separate process responsible for patching an individual file.
+        UI update are saved in the dictionary which a timer on the main thread will read.
+        """
+        def _update_progress(text: str, value: int = 0, total: int = 0):
+            """Update the progress (and optional %) for this file"""
+            if value and total:
+                percent = round((value / total) * 100)
+                progress_dict[file_path] = f"{text} ({percent}%)"
+            else:
+                progress_dict[file_path] = text
+
+        def _clear_progress():
+            """Remove the file from the progress dictionary"""
+            progress_dict.pop(file_path)
+
+        def _fail(reason: str):
+            """Use the progress dictionary to pass an error message"""
+            progress_dict[file_path] = f"Error: {reason}"
+
+        _update_progress("Reading")
+        file = GameFile(file_path)
+
         try:
-            # 1. Check files/folders are writable
-            for file in self.state.game_files:
-                if not has_permission(file):
-                    self.status_text.setText("Insufficient file permissions")
-                    self.update_status_icon(StatusIcon.RED)
-                    QMessageBox.critical(self, "Insufficient File Permissions", "In order to modify the game files, please run this program as an administrator, or change the folder permissions for the game directories.")
+            # Skip file if already up-to-date
+            if file.patched and not file.outdated:
+                _clear_progress()
+                return
 
-                    self.state.refresh_file_list()
-                    self.refresh_patch_state()
-                    return
+            # Always assume the original file is stored as the backup
+            if file.backed_up:
+                file.restore()
 
-                self.status_progress.setValue(self.status_progress.value() + 1)
+            elif file.patched and not file.backed_up:
+                # Can't do anything with this file!
+                _fail(f"Missing backup file:\n{file.file_path}.\n\nThis file cannot be patched or restored. You may need to reinstall the game.")
+                return
 
-            # 2. Patch the files
-            total = len(self.state.game_files)
-            self.update_status_icon(StatusIcon.YELLOW)
-            self.status_progress.setValue(0)
+            # Always create a copy of the original before processing
+            file.backup()
 
-            for index, file in enumerate(self.state.game_files):
-                assert isinstance(file, GameFile)
-                assert isinstance(index, int)
+            # Perform appropriate patch
+            if file.filename == "FontStyle.ini":
+                patches.process_fontstyle_ini(file)
 
-                self.status_text.setText(f"Patching... {total - index} file{"s" if total - index > 1 else ""} remaining")
-                self.status_progress.setValue(index)
-                QApplication.processEvents()
-
-                # Skip files that are already up-to-date
-                if file.patched and not file.outdated:
-                    continue
-
-                if file.backed_up:
-                    # Always assume the original file is stored as the backup
-                    file.restore()
-
-                elif file.patched and not file.backed_up:
-                    # Can't do anything with this file!
-                    msgbox = QMessageBox()
-                    msgbox.setIcon(QMessageBox.Icon.Warning)
-                    msgbox.setWindowTitle("Missing backup file")
-                    msgbox.setText(f"The following file is missing the backup file. It cannot be patched or restored. If you have issues with the game, you may need to reinstall the game.\n\n{file.file_path}")
-                    msgbox.setInformativeText("Patching cannot proceed without all the files.")
-                    msgbox.setStandardButtons(QMessageBox.StandardButton.Abort)
-                    msgbox.exec()
-
-                    self.state.refresh_file_list()
-                    self.refresh_patch_state()
-                    return
-
-                # TODO: Check for abort, i.e. window close or button press
-
-                # Always create a copy of the original before processing
-                file.backup()
-
-                # TODO: Callback for queue window
-                @staticmethod
-                def _progress(text: str, value: int, total: int):
-                    """Update the progress window"""
-                    print("fixme: _progress", text, value, total)
-
-                if file.filename == "FontStyle.ini":
-                    patches.process_fontstyle_ini(file)
-
-                elif file.filename in ["ui.package", "CaSIEUI.data"]:
-                    package = dbpf.DBPF(file.backup_path)
-                    patches.process_package(file, package, _progress)
-
-            self.update_status_icon(StatusIcon.GREEN)
-            self.status_text.setText("Patch complete!")
-            self.status_progress.setValue(total)
-            QMessageBox.information(self, "Game Patched", "Patching completed successfully!")
+            elif file.filename in ["ui.package", "CaSIEUI.data"]:
+                package = dbpf.DBPF(file.backup_path)
+                patches.process_package(file, package, _update_progress)
 
         except PermissionError:
-            QMessageBox.critical(self, "Permission Error", "The file might be in use by another program. Please close any processes using the file and try patching again.")
+            _fail(f"Insufficient file permissions:\n{file.file_path}\n\nThe file might be in use by another program. Please close any processes using the file and try again.")
+            return
 
         except Exception as e: # pylint: disable=broad-except
-            QMessageBox.critical(self, "Patching Failed", "An exception occurred. Please report this to the project's issue tracker.\n\n" + str(e))
+            _fail(f"An exception occurred while processing file:\n{file.file_path}\n\n{str(e)}\n\nPlease report this to the project's issue tracker.")
+            return
+
+        # File done!
+        _clear_progress()
+
+    def _update_patch_progress(self):
+        """
+        Update the progress of the patching process.
+        Periodically ran to update the queue window and UI.
+        """
+        self.queue_window.table.clear()
+
+        for file_path, value in self.patch_thread.progress_dict.items():
+            item = QTreeWidgetItem([file_path, value])
+            self.queue_window.table.addTopLevelItem(item)
+
+            # Show an errors
+            assert isinstance(value, str)
+            if value.startswith("Error:"):
+                QMessageBox(QMessageBox.Icon.Critical, "Error Patching File", value.replace("Error:", "").strip(), QMessageBox.StandardButton.Ok, self).exec()
+                self.patch_thread.progress_dict.pop(file_path)
+
+        pending = self.patch_thread.count_pending_processes()
+        self.queue_window.remaining.setText(f"{pending} file{"s" if pending != 1 else ""} queued")
+
+        if not self.stop_requested:
+            self.status_progress.setValue(self.patch_thread.count_done_processes())
+            self.status_text.setText(f"{self.patch_thread.count_done_processes()} of {self.patch_thread.count_total_processes()} files patched")
+
+        if self.patch_thread.count_done_processes() == self.patch_thread.count_total_processes():
+            self.finished_patching()
+
+    def start_patching(self):
+        """
+        Perform the patching process!
+        """
+        if not self._check_file_permissions():
+            return
+
+        # Swap buttons
+        self.btn_patch.setHidden(True)
+        self.btn_revert.setHidden(True)
+        self.btn_details.setHidden(False)
+        self.btn_cancel.setHidden(False)
+
+        self.btn_patch.setEnabled(False)
+        self.btn_revert.setEnabled(False)
+        self.btn_cancel.setEnabled(True)
+        self.group_options.setEnabled(False)
+        self.group_folders.setEnabled(False)
+
+        total = len(self.state.game_files)
+        self.update_status_icon(StatusIcon.YELLOW)
+        self.status_text.setText(f"Preparing to patch {total} files...")
+        self.status_progress.setValue(0)
+        self.status_progress.setMaximum(total)
+
+        patches.UI_MULTIPLIER = self.state.scale
+        patches.COMPRESS_PACKAGE = self.state.compress
+        patches.UPSCALE_FILTER = self.state.filter
+
+        self.patch_thread.start()
+        self.patch_ui_timer.start(100)
+
+    def abort_patching(self) -> bool:
+        """
+        Stop the patching process. This will gracefully stop via the main thread.
+        Return a boolean to confirm it has been aborted.
+        """
+        # Already stopped?
+        if not self.patch_thread.isRunning():
+            return True
+
+        # Only show prompt when user uses Cancel button or window close
+        if not self.stop_requested and not QMessageBox.question(self, "Cancel Patching?", "Your game may be left partially patched and unplayable. You can resume patching later, or revert the patches to undo all changes. Cancel patching?", defaultButton=QMessageBox.StandardButton.Yes) == QMessageBox.StandardButton.Yes:
+            return False
+
+        self.stop_requested = True
+        self.patch_thread.quit()
+
+        self.update_status_icon(StatusIcon.RED)
+        self.btn_cancel.setEnabled(False)
+        self.status_text.setText("Waiting for current tasks to stop...")
+        self.status_progress.setMaximum(self.patch_thread.count_total_processes())
+
+        while self.patch_thread.isRunning():
+            self.status_progress.setValue(self.patch_thread.count_done_processes())
+            QApplication.processEvents()
+            time.sleep(0.1)
+
+        self.finished_patching()
+        return True
+
+    def finished_patching(self):
+        """
+        The patching process has completed or was cancelled.
+        """
+        self.stop_requested = False
+        self.queue_window.hide()
+        self.patch_ui_timer.stop()
+
+        # Main window was closed?
+        if not self.isVisible():
+            return
+
+        # Swap buttons
+        self.btn_patch.setHidden(False)
+        self.btn_revert.setHidden(False)
+        self.btn_details.setHidden(True)
+        self.btn_cancel.setHidden(True)
 
         self.state.refresh_file_list()
         self.refresh_patch_state()
@@ -667,10 +874,69 @@ class PatcherApplication(QMainWindow):
         self.refresh_patch_state()
 
 
-if __name__ == "__main__":
-    # Enable CTRL+C to quit application
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
+class QueueWindow(QDialog):
+    """
+    Shows the current progress and queue of files to patch.
+    """
+    def __init__(self):
+        super().__init__()
 
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        self.table = QTreeWidget()
+        self.table.setHeaderLabels(["File", "Status"])
+        self.table.setColumnWidth(0, 650)
+        self.table.setColumnWidth(1, 100)
+
+        header: QHeaderView = self.table.header() # type: ignore
+        header.setSectionsClickable(False)
+        header.setSectionsMovable(False)
+        layout.addWidget(self.table)
+
+        self.bottom = QWidget()
+        self.bottom_layout = QHBoxLayout()
+        self.bottom_layout.setContentsMargins(0, 0, 0, 0)
+        self.bottom.setLayout(self.bottom_layout)
+        layout.addWidget(self.bottom)
+
+        self.remaining = QLabel()
+        self.remaining.setText("0 files queued")
+        self.bottom_layout.addWidget(self.remaining)
+
+        self.bottom_layout.addStretch()
+
+        self.close_button = QPushButton()
+        self.close_button.setText("Close")
+        self.close_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCloseButton)) # type: ignore
+        self.close_button.clicked.connect(self.close)
+        self.bottom_layout.addWidget(self.close_button)
+
+        self.setWindowTitle("Patching in Progress")
+        self.setWindowIcon(QIcon(get_resource("assets/icon.ico")))
+        self.resize(900, 500)
+
+
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = PatcherApplication()
+
+    # While the Qt event loop runs, periodically check for SIGINT (CTRL+C)
+    signal_timer = QTimer()
+    signal_timer.timeout.connect(lambda: None)
+    signal_timer.start(250)
+
+    def _handle_sigint(*args): # pylint: disable=unused-argument
+        """
+        Handle the SIGINT signal (CTRL+C).
+        When there's no subprocesses running, quitting is easy.
+        However, when the patching thread is running, it's more difficult.
+        The best solution is to ask the user to close using the GUI so Qt and event loops are handled correctly.
+        """
+        if not window.patch_thread.isRunning():
+            return QApplication.quit()
+        print(" SIGINT received. but not supported. Close application using the GUI instead.")
+
+    signal.signal(signal.SIGINT, _handle_sigint)
+
     app.exec()
