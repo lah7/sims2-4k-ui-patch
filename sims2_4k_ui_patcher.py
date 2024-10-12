@@ -42,9 +42,9 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
                              QFileDialog, QFormLayout, QGroupBox, QHBoxLayout,
                              QHeaderView, QLabel, QLineEdit, QMainWindow,
                              QMessageBox, QProgressBar, QPushButton,
-                             QSizePolicy, QStatusBar, QStyle, QToolButton,
-                             QTreeWidget, QTreeWidgetItem, QVBoxLayout,
-                             QWidget)
+                             QSizePolicy, QSlider, QStatusBar, QStyle,
+                             QToolButton, QTreeWidget, QTreeWidgetItem,
+                             QVBoxLayout, QWidget)
 
 from sims2patcher import dbpf, gamefile, patches
 from sims2patcher.gamefile import GameFile
@@ -387,6 +387,10 @@ class PatcherApplication(QMainWindow):
             self.state.compress = self.compress_option.isChecked()
             self.refresh_patch_state()
 
+        def _threads_changed():
+            """Callback when the user adjusts the threads slider."""
+            self.state.threads = self.threads_slider.value()
+
         self.layout_options = QFormLayout()
 
         self.group_options = QGroupBox("Options")
@@ -407,6 +411,16 @@ class PatcherApplication(QMainWindow):
         self.compress_option.setChecked(True)
         self.layout_options.addRow("Save disk space:", self.compress_option)
         self.compress_option.stateChanged.connect(_compress_changed)
+
+        self.threads_slider = QSlider(Qt.Orientation.Horizontal)
+        self.threads_slider.setMinimum(1)
+        self.threads_slider.setMaximum(os.cpu_count() or 8)
+        self.threads_slider.setValue(self.state.threads)
+        self.threads_slider.setTickInterval(1)
+        self.threads_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.threads_slider.setToolTip("How many CPU cores/threads to use while patching.\nHigher values may require more memory and I/O throughput.")
+        self.threads_slider.valueChanged.connect(_threads_changed)
+        self.layout_options.addRow("Patch Threads:", self.threads_slider)
 
         self.base_layout.addWidget(self.group_options)
 
