@@ -399,17 +399,20 @@ class PatcherApplication(QMainWindow):
 
         self.scale_option = QComboBox()
         self.scale_option.addItems(list(LABELS_UI_SCALE.keys()))
+        self.scale_option.setToolTip("The desired game UI scaling")
         self.layout_options.addRow("Scale:", self.scale_option)
         self.scale_option.currentIndexChanged.connect(_scale_changed)
 
         self.filter_option = QComboBox()
         self.filter_option.addItems(list(LABELS_UI_FILTER.keys()))
+        self.filter_option.setToolTip("Recommended to leave as default.\nFor experimenting with image resampling filters")
         self.layout_options.addRow("Upscale Filter:", self.filter_option)
         self.filter_option.currentIndexChanged.connect(_filter_changed)
 
         self.compress_option = QCheckBox("Compress packages")
         self.compress_option.setChecked(True)
-        self.layout_options.addRow("Save disk space:", self.compress_option)
+        self.compress_option.setToolTip("Compression takes longer to patch, but saves disk space.")
+        self.layout_options.addRow("Optimisation:", self.compress_option)
         self.compress_option.stateChanged.connect(_compress_changed)
 
         self.threads_slider = QSlider(Qt.Orientation.Horizontal)
@@ -418,7 +421,7 @@ class PatcherApplication(QMainWindow):
         self.threads_slider.setValue(self.state.threads)
         self.threads_slider.setTickInterval(1)
         self.threads_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.threads_slider.setToolTip("How many CPU cores/threads to use while patching.\nHigher values may require more memory and I/O throughput.")
+        self.threads_slider.setToolTip("How many CPU cores/threads to use for parallel processing.\nHigher values require more memory and I/O throughput!")
         self.threads_slider.valueChanged.connect(_threads_changed)
         self.layout_options.addRow("Patch Threads:", self.threads_slider)
 
