@@ -935,6 +935,8 @@ class QueueWindow(QDialog):
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()  # Required for Windows
+
     app = QApplication(sys.argv)
     window = PatcherApplication()
 
