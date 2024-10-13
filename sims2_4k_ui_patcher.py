@@ -195,7 +195,7 @@ class PatchThread(QThread):
         self.reset()
         with ProcessPoolExecutor(max_workers=self.state.threads) as executor:
             for file in self.state.game_files:
-                self.futures.append(executor.submit(self.worker_function, file.file_path, self.progress_dict))
+                self.futures.append(executor.submit(self.worker_function, file.file_path, self.state, self.progress_dict))
 
             while not all(f.done() for f in self.futures):
                 if self.terminate_event.is_set():
@@ -687,7 +687,7 @@ class PatcherApplication(QMainWindow):
         return all(success)
 
     @staticmethod
-    def _patch_file(file_path: str, progress_dict: DictProxy):
+    def _patch_file(file_path: str, state: State, progress_dict: DictProxy):
         """
         A separate process responsible for patching an individual file.
         UI update are saved in the dictionary which a timer on the main thread will read.
@@ -708,6 +708,12 @@ class PatcherApplication(QMainWindow):
             """Use the progress dictionary to pass an error message"""
             progress_dict[file_path] = f"Error: {reason}"
 
+        # Sync state
+        patches.UI_MULTIPLIER = state.scale
+        patches.COMPRESS_PACKAGE = state.compress
+        patches.UPSCALE_FILTER = state.filter
+
+        # Begin!
         _update_progress("Reading")
         file = GameFile(file_path)
 
@@ -799,10 +805,6 @@ class PatcherApplication(QMainWindow):
         self.status_text.setText(f"Preparing to patch {total} files...")
         self.status_progress.setValue(0)
         self.status_progress.setMaximum(total)
-
-        patches.UI_MULTIPLIER = self.state.scale
-        patches.COMPRESS_PACKAGE = self.state.compress
-        patches.UPSCALE_FILTER = self.state.filter
 
         self.patch_thread.start()
         self.patch_ui_timer.start(100)
