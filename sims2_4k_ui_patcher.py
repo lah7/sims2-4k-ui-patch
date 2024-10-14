@@ -772,13 +772,16 @@ class PatcherApplication(QMainWindow):
                 self.patch_thread.progress_dict.pop(file_path)
 
         pending = self.patch_thread.count_pending_processes()
+        done = self.patch_thread.count_done_processes()
+        total = self.patch_thread.count_total_processes()
+
         self.queue_window.remaining.setText(f"{pending} file{"s" if pending != 1 else ""} queued")
 
         if not self.stop_requested:
-            self.status_progress.setValue(self.patch_thread.count_done_processes())
-            self.status_text.setText(f"{self.patch_thread.count_done_processes()} of {self.patch_thread.count_total_processes()} files patched")
+            self.status_progress.setValue(done)
+            self.status_text.setText(f"{done} of {total} files patched")
 
-        if self.patch_thread.count_done_processes() == self.patch_thread.count_total_processes():
+        if done == total:
             self.finished_patching()
 
     def start_patching(self):
