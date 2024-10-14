@@ -776,6 +776,7 @@ class PatcherApplication(QMainWindow):
         total = self.patch_thread.count_total_processes()
 
         self.queue_window.remaining.setText(f"{pending} file{"s" if pending != 1 else ""} queued")
+        self.queue_window.update_window_title(done, total)
 
         if not self.stop_requested:
             self.status_progress.setValue(done)
@@ -934,9 +935,13 @@ class QueueWindow(QDialog):
         self.close_button.clicked.connect(self.close)
         self.bottom_layout.addWidget(self.close_button)
 
-        self.setWindowTitle("Patching in Progress")
+        self.update_window_title(0, 1)
         self.setWindowIcon(QIcon(get_resource("assets/icon.ico")))
         self.resize(900, 500)
+
+    def update_window_title(self, completed: int, total: int):
+        """Update the window title to show the current progress"""
+        self.setWindowTitle(f"Patching in Progress ({int((completed/total) * 100)}%)")
 
 
 if __name__ == "__main__":
