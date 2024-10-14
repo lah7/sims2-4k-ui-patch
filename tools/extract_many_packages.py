@@ -37,11 +37,6 @@ for package in PACKAGES:
     output_path = os.path.join(args.output_dir, os.path.relpath(package, os.path.commonpath([package, args.input[0]])))
     print(f"\nExtract to: '{output_path}'")
 
-    # FIXME: Don't attempt! Our library will cause system to run out of memory!
-    if package.find("Sims3D") >= 0:
-        print("Skipping Sims3D package, system will run out of memory!")
-        continue
-
     os.makedirs(output_path, exist_ok=True)
     try:
         extract(package, output_path)
