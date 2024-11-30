@@ -27,9 +27,16 @@ from sims2patcher import qfs
 
 # Known type IDs (represented as ints)
 TYPE_UI_DATA = 0
-TYPE_IMAGE = 2238569388
-TYPE_ACCEL_DEF = 2732840243
-TYPE_DIR = 3899334383
+TYPE_IMAGE = 2238569388 # 0x856ddbac
+TYPE_ACCEL_DEF = 2732840243 # 0xa2e3d533
+TYPE_DIR = 3899334383 # 0xe86b1eef
+
+FILE_TYPES = {
+    TYPE_UI_DATA: "UI Data",
+    TYPE_IMAGE: "Image File",
+    TYPE_ACCEL_DEF: "Accelerator Key Definitions",
+    TYPE_DIR: "Directory of Compressed Files",
+}
 
 
 class Stream():
@@ -58,14 +65,8 @@ class Stream():
         """
         Return a string describing this Type ID.
         """
-        types = {
-            TYPE_UI_DATA: "UI Data",
-            TYPE_IMAGE: "Image File",
-            TYPE_ACCEL_DEF: "Accelerator Key Definitions",
-            TYPE_DIR: "Directory of Compressed Files",
-        }
         try:
-            return types[type_id]
+            return FILE_TYPES[type_id]
         except KeyError:
             return f"Unknown ({hex(type_id)})"
 

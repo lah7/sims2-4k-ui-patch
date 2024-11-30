@@ -66,31 +66,24 @@ def inspect(package_path: str):
 
     print("")
     print("Type ID".ljust(10),
-          "File Type".ljust(18),
+          "File Type".ljust(30),
           "File Count".ljust(16),
           "Average File Size"
     )
     print("-" * 10,
-          "-" * 18,
+          "-" * 30,
           "-" * 16,
           "-" * 18
     )
     for type_id, count in data_types.items():
-        match type_id:
-            case dbpf.TYPE_DIR:
-                type_name = "DIR Index"
-            case dbpf.TYPE_ACCEL_DEF:
-                type_name = "Accel. Key Def."
-            case dbpf.TYPE_IMAGE:
-                type_name = "Image File"
-            case dbpf.TYPE_UI_DATA:
-                type_name = "UI Data"
-            case _:
-                type_name = ""
+        try:
+            type_name = dbpf.FILE_TYPES[type_id]
+        except KeyError:
+            type_name = ""
 
         avg_file_size = sum(avg_size[type_id]) / len(avg_size[type_id])
         print(str(hex(type_id)).ljust(10),
-              type_name.ljust(18),
+              type_name.ljust(30),
               f"{count} file{'s' if count != 1 else ''}".ljust(16),
               f"{round(avg_file_size)} bytes",
         )
