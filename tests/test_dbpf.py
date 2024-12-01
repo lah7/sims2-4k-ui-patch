@@ -6,6 +6,7 @@ import hashlib
 import os
 import sys
 import tempfile
+import time
 import unittest
 
 # Our modules are in the parent directory
@@ -190,7 +191,7 @@ class DBPFTest(unittest.TestCase):
         self.assertTrue(md5 == self.tga_md5)
 
     def test_new_package_with_compression(self):
-        """Verify the integrity of a file added to a new package with compression"""
+        """Verify the integrity of a compressed file added to a new package"""
         # Extract a file from original package
         entry = self.package.get_entries()[self.tga_index]
 
@@ -208,7 +209,7 @@ class DBPFTest(unittest.TestCase):
         self.assertTrue(md5 == self.tga_md5)
 
     def test_repack_package(self, test_compression=False):
-        """Create a new package by taking all data from the original"""
+        """Create a new package by extracting all data from the original"""
         pkg1 = dbpf.DBPF()
         checksums = []
         for entry in self.package.get_entries():
@@ -239,9 +240,43 @@ class DBPFTest(unittest.TestCase):
         # Should be left with no more checksums
         self.assertEqual(len(checksums), 0, "Checksums mismatch")
 
-    def test_repack_package_compressed(self):
-        """Verify the integrity of a new package by reading files from the original, including compression"""
+        # Index size should be the same
+        self.assertEqual(pkg1.header.index_size, pkg2.header.index_size)
+
+    def test_repack_compressed_package(self):
+        """Verify the integrity of a new package when compression is used"""
         self.test_repack_package(test_compression=True)
+
+    def test_repack_unmodified_package(self):
+        """Create a new package by saving original package without any changes"""
+        pkg1 = self.package
+        checksums = []
+        for entry in pkg1.get_entries():
+            # Exclude compressed directory index
+            if entry.type_id == dbpf.TYPE_DIR:
+                continue
+
+            checksums.append(hashlib.md5(entry.data).hexdigest())
+
+        pkg_path = self._mktemp()
+        pkg1.save_package(pkg_path)
+
+        # Re-open new package and verify checksums
+        pkg2 = dbpf.DBPF(pkg_path)
+        for index, entry in enumerate(pkg2.get_entries()):
+            # Exclude compressed directory index
+            if entry.type_id == dbpf.TYPE_DIR:
+                continue
+
+            md5 = hashlib.md5(entry.data).hexdigest()
+
+            try:
+                checksums.remove(md5)
+            except ValueError as e:
+                raise ValueError(f"Integrity mismatch: {md5} for entry {index} with type ID {entry.type_id}, group ID {entry.group_id}, instance ID {entry.instance_id}") from e
+
+        # Should be left with no more checksums
+        self.assertEqual(len(checksums), 0, "Checksums mismatch")
 
     def test_new_package_directory_index_exists(self):
         """Verify a package with compressed files contains a DIR entry"""
@@ -281,12 +316,10 @@ class DBPFTest(unittest.TestCase):
 
         self.assertLess(os.path.getsize(pkg2_path), os.path.getsize(pkg1_path))
 
-    def test_incompressible_package(self):
+    def test_incompressible_file(self):
         """Check incompressible file does not get compressed"""
-        pkg_path = self._mktemp()
         pkg = dbpf.DBPF()
         entry = pkg.add_entry(dbpf.TYPE_UI_DATA, 0x00, 0x00, 0x00, b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()", compress=True)
-        pkg.save_package(pkg_path)
         self.assertFalse(entry.compress)
 
     def test_mixed_compressed_package(self):
@@ -331,3 +364,28 @@ class DBPFTest(unittest.TestCase):
             pkg.get_entry(0, 0x10, 0x30, 0x40).data == b"ThreeThreeThreeThree",
         ]
         self.assertTrue(all(results))
+
+    def test_uncompressed_cache(self):
+        """Check that uncompressed files are cached"""
+        package = dbpf.DBPF("tests/files/ui.package")
+        tga_entry = package.get_entries()[self.tga_index]
+        if not tga_entry.compress:
+            raise RuntimeError("Expected a compressed entry")
+
+        # Sample the time taken to read
+        times = []
+        for _ in range(0, 100):
+            start = time.time()
+            tga_entry.data # pylint: disable=pointless-statement
+            end = time.time()
+            times.append(end - start)
+
+        self.assertLess(max(times[1:]), times[0])
+
+    def test_decompressed_size(self):
+        """Check that an entry is corerctly reporting its compressed/decompressed size"""
+        entry = self.package.get_entries()[self.tga_index]
+        if not entry.compress:
+            raise RuntimeError("Expected a compressed entry")
+
+        self.assertGreater(entry.decompressed_size, entry.file_size)

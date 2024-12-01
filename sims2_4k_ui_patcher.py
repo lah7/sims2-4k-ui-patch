@@ -714,7 +714,7 @@ class PatcherApplication(QMainWindow):
         patches.UPSCALE_FILTER = state.filter
 
         # Begin!
-        _update_progress("Reading")
+        _update_progress("Opening")
         file = GameFile(file_path)
 
         try:

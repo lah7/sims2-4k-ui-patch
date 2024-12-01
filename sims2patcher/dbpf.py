@@ -107,19 +107,131 @@ class Entry(object):
     """
     Metadata and data about an individual file in the index
     """
-    def __init__(self):
+    def __init__(self, stream: io.BytesIO):
+        self._stream: io.BytesIO = stream
+
         self.type_id = 0
         self.group_id = 0
         self.instance_id = 0
         self.resource_id = 0 # Index version >= 7.2 only
         self.file_location = 0
         self.file_size = 0
+        self.decompressed_size = 0
 
-        # Whether this file should be compressed in the package
+        # Data as stored in the original source package, or new data for the package
+        # This could be storing compressed or uncompressed data.
+        self._bytes = bytes()
+        self._bytes_compressed = False
+
+        # Cached uncompressed data for this session (for compressed files only)
+        self._cache_uncompressed_data = bytes()
+
+        # Mark this file as compressed in the output package
         self.compress = False
 
-        # Uncompressed bytes for file content
-        self.data = bytes()
+    def populate_bytes(self):
+        """
+        Read the data as-is from the original package, if it hasn't already.
+        The bytes could be compressed or uncompressed.
+        """
+        if self._bytes:
+            return
+
+        if not self.file_location or not self.file_size:
+            raise ValueError(f"Missing file location or size, or empty file: Type ID {self.type_id}, Group ID {self.group_id}, Instance ID {self.instance_id}")
+
+        self._stream.seek(0)
+        self._stream.seek(self.file_location)
+        self._bytes = self._stream.read(self.file_size)
+
+    @property
+    def data(self) -> bytes:
+        """
+        Return the bytes for a file's contents, uncompressed if necessary.
+        This is suitable for reading a file for processing.
+
+        An error is raised if the data is compressed but cannot be decompressed.
+        Make sure the `_bytes_compressed` variable is set correctly.
+        """
+        if not self._bytes and self.file_location and self.file_size:
+            self.populate_bytes()
+
+        if self._bytes_compressed:
+            if self._cache_uncompressed_data:
+                return self._cache_uncompressed_data
+
+            try:
+                self._cache_uncompressed_data = qfs.decompress(bytearray(self._bytes), self.decompressed_size)
+            except IndexError as e:
+                raise ValueError(f"Decompression failed: Type ID {self.type_id}, Group ID {self.group_id}, Instance ID {self.instance_id}") from e
+
+            return self._cache_uncompressed_data
+
+        return self._bytes
+
+    def _compress_data(self, data: bytes) -> bytes:
+        """
+        Return the bytes for how it will be stored in the resulting package.
+        If the data cannot be compressed, it will be left uncompressed.
+        """
+        decompressed_size = len(data)
+        compressed_data = bytes()
+
+        try:
+            compressed_data = qfs.compress(bytearray(data))
+
+            # Did the compression actually make the file larger instead?
+            if len(compressed_data) > self.decompressed_size:
+                return bytes()
+
+        except (IndexError, OverflowError):
+            # Compression not possible
+            return bytes()
+
+        # Verify compression was successful
+        try:
+            expected_data = qfs.decompress(bytearray(compressed_data), decompressed_size)
+            if expected_data != data:
+                return bytes()
+        except IndexError:
+            return bytes()
+
+        return compressed_data
+
+    @data.setter
+    def data(self, data: bytes):
+        """
+        Store the data for this file, and compress if necessary.
+        This is suitable for storing the result of a processed file.
+
+        If the data cannot be compressed, it will be left uncompressed.
+        """
+        self.decompressed_size = len(data)
+        self._cache_uncompressed_data = bytes()
+
+        if self.compress:
+            compressed_data = self._compress_data(data)
+
+            if compressed_data:
+                self._bytes = compressed_data
+                self._bytes_compressed = True
+                self._cache_uncompressed_data = data
+            else:
+                self._bytes = data
+                self._bytes_compressed = False
+                self.compress = False
+        else:
+            self._bytes = data
+            self._bytes_compressed = False
+
+    @property
+    def raw(self) -> bytes:
+        """
+        Return the bytes for how the file will be stored in the package.
+        """
+        if not self._bytes:
+            self.populate_bytes()
+        return self._bytes
 
 
 class Index(Stream):
@@ -138,7 +250,7 @@ class Index(Stream):
         self.stream.seek(0)
         self.stream.seek(self.start)
         for _ in range(0, self.count):
-            entry = Entry()
+            entry = Entry(self.stream)
             entry.type_id = self.read_next_dword()
             entry.group_id = self.read_next_dword()
             entry.instance_id = self.read_next_dword()
@@ -163,22 +275,10 @@ class Index(Stream):
 
             for entry in self.entries:
                 if (entry.type_id, entry.group_id, entry.instance_id, entry.resource_id) in compressed_index_lookup:
+                    dir_entry: DirectoryFile.CompressedFile = compressed_index_lookup[(entry.type_id, entry.group_id, entry.instance_id, entry.resource_id)]
+                    entry._bytes_compressed = True
                     entry.compress = True
-
-        # Load files into memory (decompressed)
-        for entry in self.entries:
-            self.stream.seek(0)
-            self.stream.seek(entry.file_location)
-            raw_data = self.stream.read(entry.file_size)
-
-            if entry.compress:
-                compressed_entry = self.dir.lookup_entry(entry)
-                try:
-                    entry.data = qfs.decompress(bytearray(raw_data), compressed_entry.decompressed_size)
-                except IndexError as e:
-                    raise ValueError(f"Decompression failed. File corrupt: Type ID {entry.type_id}, Group ID {entry.group_id}, Instance ID {entry.instance_id}") from e
-            else:
-                entry.data = raw_data
+                    entry.decompressed_size = dir_entry.decompressed_size
 
 
 class DirectoryFile(Stream):
@@ -227,17 +327,6 @@ class DirectoryFile(Stream):
 
                 self.files.append(entry)
 
-    def lookup_entry(self, entry: Entry) -> CompressedFile:
-        """
-        Read the DIR records and return the record for this index entry.
-        If not, return an empty record.
-        """
-        for compress_entry in self.files:
-            assert isinstance(compress_entry, DirectoryFile.CompressedFile)
-            if entry.type_id == compress_entry.type_id and entry.group_id == compress_entry.group_id and entry.instance_id == compress_entry.instance_id:
-                return compress_entry
-        return self.CompressedFile()
-
     def add_entry(self, type_id: int, group_id: int, instance_id: int, resource_id: int, decompressed_size: int):
         """
         Add to the record that a particular file is stored as compressed in the package.
@@ -252,7 +341,7 @@ class DirectoryFile(Stream):
 
     def get_bytes(self) -> bytes:
         """
-        Return the raw bytes for the DIR file as it is stored in the package.
+        Return the raw bytes for the DIR file as it will be stored in the package.
         """
         blob = bytearray()
         for entry in self.files:
@@ -288,40 +377,6 @@ class DBPF(Stream):
         self.header = Header(self.stream)
         self.index = Index(self.stream, self.header)
 
-    def _compress_data(self, data: bytes, _count: int, _total_entries: int) -> bytes:
-        """
-        Compress file data using QFS compression when saving the package.
-        To prevent corruption, the data will be decompressed in memory
-        to verify the compression works.
-
-        Returns the compressed data, or empty bytes on failure.
-        The callback allows to inform the user of progress.
-        """
-        self.cb_save_progress_updated("Compressing", _count, _total_entries)
-        output = bytearray()
-        decompressed_size = len(data)
-
-        try:
-            output = qfs.compress(bytearray(data))
-        except IndexError:
-            return bytes()
-
-        # Did the compression actually make the file larger instead?
-        if len(output) > decompressed_size:
-            return bytes()
-
-        # Verify decompression
-        # (For example, certain bitmaps might compress, but fail to decompress)
-        self.cb_save_progress_updated("Verifying", _count, _total_entries)
-        try:
-            expected_data = qfs.decompress(bytearray(output), decompressed_size)
-            if expected_data != data:
-                return bytes()
-        except IndexError:
-            return bytes()
-
-        return output
-
     @staticmethod
     def cb_save_progress_updated(text: str, value: int, total: int):
         """
@@ -355,13 +410,13 @@ class DBPF(Stream):
         """
         Add a new file to the index.
         """
-        entry = Entry()
+        entry = Entry(self.stream)
         entry.type_id = type_id
         entry.group_id = group_id
         entry.instance_id = instance_id
         entry.resource_id = resource_id
-        entry.data = data
         entry.compress = compress
+        entry.data = data
         self.index.entries.append(entry)
         return entry
 
@@ -393,6 +448,10 @@ class DBPF(Stream):
             f.write(integer.to_bytes(integer.bit_length(), "little"))
             f.seek(end)
 
+        # Before writing, read anything from the original package that hasn't been read yet
+        for entry in self.get_entries():
+            entry.populate_bytes()
+
         # Check the file is writable, and create if doesn't exist
         try:
             open(path, "wb").close()
@@ -403,43 +462,32 @@ class DBPF(Stream):
         f = open(path, "wb")
         f.write(bytes(96))
 
-        # Prepare a fresh DIR index, if there's any compressed files.
-        needs_dir_record = False
-        self.index.dir.files = []
-
         # Write file data after the header
         f.seek(96)
+
+        # Discard any old DIR record from the index. A new one will be created later if we have compressed files.
+        self.index.entries = [entry for entry in self.index.entries if entry.type_id != TYPE_DIR]
+        self.index.dir.files = []
+        needs_dir_record = False
+
         entries = self.get_entries()
         total_entries = len(entries)
 
         for count, entry in enumerate(entries):
-            self.cb_save_progress_updated("Writing", count, total_entries)
-
-            # Discard DIR record from original package. We'll create a new one later.
-            if entry.type_id == TYPE_DIR:
-                continue
+            self.cb_save_progress_updated("Saving", count, total_entries)
 
             entry.file_location = f.tell()
+            f.write(entry.raw)
 
-            if entry.data and entry.compress:
-                compressed_data = self._compress_data(entry.data, count, total_entries)
-                if compressed_data:
-                    # Compression succeeded, add to DIR record
-                    needs_dir_record = True
-                    self.index.dir.add_entry(entry.type_id, entry.group_id, entry.instance_id, entry.resource_id, len(entry.data))
-                    f.write(compressed_data)
-                else:
-                    # Compression failed, leave uncompressed
-                    entry.compress = False
-                    f.write(entry.data)
-            else:
-                f.write(entry.data)
+            if entry.compress:
+                needs_dir_record = True
+                self.index.dir.add_entry(entry.type_id, entry.group_id, entry.instance_id, entry.resource_id, entry.decompressed_size)
 
             entry.file_size = f.tell() - entry.file_location
 
         # Generate a new DIR record (for any compressed files)
         if needs_dir_record:
-            entry = Entry()
+            entry = Entry(self.stream)
             entry.type_id = TYPE_DIR
             entry.group_id = self.index.dir.group_id
             entry.instance_id = self.index.dir.instance_id
@@ -452,7 +500,7 @@ class DBPF(Stream):
             self.index.entries.append(entry)
 
         # Write index after the file data
-        self.cb_save_progress_updated("Saving", 0, 0)
+        self.cb_save_progress_updated("Finalizing", 0, 0)
         self.header.index_start_offset = f.tell()
         self.header.index_entry_count = len(self.index.entries)
 

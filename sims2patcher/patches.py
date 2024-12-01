@@ -47,6 +47,13 @@ IMAGE_FORMAT_TGA = "TGA"
 IMAGE_UNKNOWN = "Unknown"
 
 
+class UnknownImageFormatError(ValueError):
+    """
+    A file describing itself as an image has an unknown image header.
+    Raise this exception to skip the file.
+    """
+
+
 def get_image_file_type(data: bytes) -> str:
     """
     The file in the DBPF package is simply "Image File".
@@ -81,8 +88,7 @@ def _upscale_graphic(entry: dbpf.Entry) -> bytes:
     file_type = get_image_file_type(entry.data)
 
     if file_type == IMAGE_UNKNOWN:
-        print(f"Unknown image format: Type ID {entry.type_id}, Group ID {entry.group_id}, Instance ID {entry.instance_id}")
-        return entry.data
+        raise UnknownImageFormatError()
 
     original = Image.open(io.BytesIO(entry.data), formats=[file_type])
     resized = original.resize((int(original.width * UI_MULTIPLIER), int(original.height * UI_MULTIPLIER)), resample=UPSCALE_FILTER)
@@ -149,41 +155,32 @@ def process_package(file: GameFile, package: dbpf.DBPF, ui_update_progress: Call
     - value: int
     - total: int
     """
-    new_package = dbpf.DBPF()
+    def _cb_save_progress_updated(text: str, value: int, total: int):
+        ui_update_progress(text, value, total)
+
+    package.cb_save_progress_updated = _cb_save_progress_updated
+
     entries = package.get_entries()
     completed = 0
     total = len(entries)
     for entry in entries:
-        ui_update_progress("Upscaling", completed, total)
+        ui_update_progress("Processing", completed, total)
+
+        if not COMPRESS_PACKAGE:
+            entry.compress = False
 
         if entry.type_id == dbpf.TYPE_UI_DATA:
-            data = _upscale_uiscript(entry)
-            new_package.add_entry(entry.type_id, entry.group_id, entry.instance_id, entry.resource_id, data, entry.compress and COMPRESS_PACKAGE)
+            entry.data = _upscale_uiscript(entry)
 
         elif entry.type_id == dbpf.TYPE_IMAGE:
-            data = _upscale_graphic(entry)
-            new_package.add_entry(entry.type_id, entry.group_id, entry.instance_id, entry.resource_id, data, entry.compress and COMPRESS_PACKAGE)
-
-        elif entry.type_id == dbpf.TYPE_ACCEL_DEF:
-            # No modifications necessary
-            new_package.add_entry(entry.type_id, entry.group_id, entry.instance_id, entry.resource_id, entry.data, entry.compress and COMPRESS_PACKAGE)
-
-        elif entry.type_id == dbpf.TYPE_DIR:
-            # Discard compressed directory index. It'll be regenerated for the new package.
-            continue
-
-        else:
-            # "What's this?"
-            print(f"Unknown file in package: Type ID {entry.type_id}, Group ID {entry.group_id}, Instance ID {entry.instance_id}")
-            new_package.add_entry(entry.type_id, entry.group_id, entry.instance_id, entry.resource_id, entry.data, entry.compress and COMPRESS_PACKAGE)
+            try:
+                entry.data = _upscale_graphic(entry)
+            except UnknownImageFormatError:
+                print(f"Skipping file: Unknown image header. Type ID {entry.type_id}, Group ID {entry.group_id}, Instance ID {entry.instance_id}")
 
         completed += 1
 
-    def _cb_save_progress_updated(text: str, value: int, total: int):
-        ui_update_progress(text, value, total)
-
-    new_package.cb_save_progress_updated = _cb_save_progress_updated
-    new_package.save_package(file.file_path)
+    package.save_package(file.file_path)
     file.patched = True
     file.write_meta_file()
 

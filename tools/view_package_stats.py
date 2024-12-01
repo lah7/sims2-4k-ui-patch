@@ -60,9 +60,9 @@ def inspect(package_path: str):
             data_types[entry.type_id] = 1
 
         try:
-            avg_size[entry.type_id].append(entry.file_size)
+            avg_size[entry.type_id].append(entry.decompressed_size or entry.file_size)
         except KeyError:
-            avg_size[entry.type_id] = [entry.file_size]
+            avg_size[entry.type_id] = [entry.decompressed_size or entry.file_size]
 
     print("")
     print("Type ID".ljust(10),
