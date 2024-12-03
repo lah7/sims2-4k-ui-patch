@@ -5,6 +5,7 @@ print a summary to console.
 """
 # pylint: disable=inconsistent-quotes
 import datetime
+import hashlib
 import os
 import sys
 
@@ -12,6 +13,8 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) # pylint: disable=wrong-import-position
 
 from sims2patcher import dbpf
+
+WRITE_CSV = False
 
 
 def inspect(package_path: str):
@@ -89,20 +92,39 @@ def inspect(package_path: str):
         print(str(hex(type_id)).ljust(10),
               type_name.ljust(18),
               f"{count} file{'s' if count != 1 else ''}".ljust(16),
-              f"{round(avg_file_size)} bytes"
+              f"{round(avg_file_size)} bytes",
         )
     print("")
+
+    if WRITE_CSV:
+        print(f"Exporting {os.path.basename(package_path)}.csv", end="")
+        with open(f"{package_path}.csv", "w", encoding="utf-8") as f:
+            f.write("File Type,Type ID,Group ID,Instance ID,Compressed,Size in index (bytes),Uncompressed (bytes),Index MD5,Data MD5\n")
+            for entry in package.get_entries():
+                print(".", end="", flush=True)
+                md5_raw = hashlib.md5(entry.raw).hexdigest()
+                md5_data = hashlib.md5(entry.data).hexdigest()
+                f.write(f"{dbpf.FILE_TYPES.get(entry.type_id, "")},{entry.type_id},{entry.group_id},{entry.instance_id},"
+                        f"{'Yes' if entry.compress else 'No'},{entry.file_size},{entry.decompressed_size or ''},{md5_raw},{md5_data}\n")
+            print(" done!")
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: view_package_stats.py <package> [package2] ...")
+        print("Usage: view_package_stats.py [--csv] <package> [package2] ...")
         sys.exit(1)
 
     paths = sys.argv[1:]
+
     while paths:
         path = paths.pop(0)
+
+        if path == "--csv":
+            WRITE_CSV = True
+            continue
+
         if not os.path.exists(path):
             print("File not found:", path)
             sys.exit(1)
+
         inspect(path)
