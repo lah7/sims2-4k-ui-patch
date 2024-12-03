@@ -47,7 +47,7 @@ class GameFile():
         self.outdated = False
         self.patch_version = 0.0
 
-        self.compressed: bool = True
+        self.uncompressed: bool = False
         self.scale: float = 2.0
         self.upscale_filter: int = 0 # Image.Resampling.NEAREST
 
@@ -83,7 +83,7 @@ class GameFile():
             self.patched = True
             try:
                 self.patch_version = float(config.get("patch", "version"))
-                self.compressed = config.getboolean("patch", "compressed")
+                self.uncompressed = config.getboolean("patch", "uncompressed")
                 self.scale = config.getfloat("patch", "scale")
                 self.upscale_filter = config.getint("patch", "upscale_filter")
                 self.md5_checksum_backup = config.get("patch", "md5_checksum_backup")
@@ -109,7 +109,7 @@ class GameFile():
         config = configparser.ConfigParser()
         config["patch"] = {
             "version": str(FILE_PATCH_VERSION),
-            "compressed": str(self.compressed),
+            "uncompressed": str(self.uncompressed),
             "scale": str(self.scale),
             "upscale_filter": str(self.upscale_filter),
             "md5_checksum_backup": self.md5_checksum_backup,

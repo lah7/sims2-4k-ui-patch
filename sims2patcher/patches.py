@@ -34,7 +34,7 @@ from sims2patcher.gamefile import GameFile
 UI_MULTIPLIER: float = 2.0
 
 # Compression keeps the package files small, but takes longer to process
-COMPRESS_PACKAGE: bool = False
+LEAVE_UNCOMPRESSED: bool = False
 
 # Image upscaling filter
 UPSCALE_FILTER: Image.Resampling = Image.Resampling.NEAREST
@@ -157,7 +157,7 @@ def process_package(file: GameFile, package: dbpf.DBPF, ui_update_progress: Call
     for entry in entries:
         ui_update_progress(completed, total)
 
-        if not COMPRESS_PACKAGE:
+        if LEAVE_UNCOMPRESSED:
             entry.compress = False
 
         if entry.type_id == dbpf.TYPE_UI_DATA:

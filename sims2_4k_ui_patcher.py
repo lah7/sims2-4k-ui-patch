@@ -129,7 +129,7 @@ class State:
         # Options
         self.scale: float = 2.0
         self.filter: int = Image.Resampling.NEAREST
-        self.compress: bool = True
+        self.leave_uncompressed: bool = False
 
     def refresh_file_list(self):
         """
@@ -384,7 +384,7 @@ class PatcherApplication(QMainWindow):
 
         def _compress_changed():
             """Callback when the user changes the compress option."""
-            self.state.compress = self.compress_option.isChecked()
+            self.state.leave_uncompressed = self.compress_option.isChecked()
             self.refresh_patch_state()
 
         def _threads_changed():
@@ -409,10 +409,10 @@ class PatcherApplication(QMainWindow):
         self.layout_options.addRow("Upscale Filter:", self.filter_option)
         self.filter_option.currentIndexChanged.connect(_filter_changed)
 
-        self.compress_option = QCheckBox("Compress packages")
-        self.compress_option.setChecked(True)
-        self.compress_option.setToolTip("Compression takes longer to patch, but saves disk space.")
-        self.layout_options.addRow("Optimisation:", self.compress_option)
+        self.compress_option = QCheckBox("Uncompressed files")
+        self.compress_option.setChecked(False)
+        self.compress_option.setToolTip("Don't compress modified files. Faster, but significantly uses more disk space.")
+        self.layout_options.addRow("Testing:", self.compress_option)
         self.compress_option.stateChanged.connect(_compress_changed)
 
         self.threads_slider = QSlider(Qt.Orientation.Horizontal)
@@ -580,9 +580,6 @@ class PatcherApplication(QMainWindow):
         # Use the first patched file as the baseline for options
         for file in self.state.game_files:
             if file.patched and not file.outdated:
-                self.state.compress = file.compressed
-                self.compress_option.setChecked(file.compressed)
-
                 self.state.scale = file.scale
                 try:
                     self.scale_option.setCurrentIndex(self.scale_option.findText(next(key for key, value in LABELS_UI_SCALE.items() if value == file.scale)))
@@ -603,7 +600,7 @@ class PatcherApplication(QMainWindow):
             if not file.patched:
                 continue
 
-            if file.compressed != self.state.compress or file.scale != self.state.scale or file.upscale_filter != self.state.filter:
+            if file.scale != self.state.scale or file.upscale_filter != self.state.filter:
                 file.outdated = True
 
         # Counts
@@ -707,7 +704,7 @@ class PatcherApplication(QMainWindow):
 
         # Sync state
         patches.UI_MULTIPLIER = state.scale
-        patches.COMPRESS_PACKAGE = state.compress
+        patches.LEAVE_UNCOMPRESSED = state.leave_uncompressed
         patches.UPSCALE_FILTER = state.filter
 
         # Begin!
