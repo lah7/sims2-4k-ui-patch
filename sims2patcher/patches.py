@@ -169,6 +169,7 @@ def process_package(file: GameFile, package: dbpf.DBPF, ui_update_progress: Call
             except UnknownImageFormatError:
                 print(f"Skipping file: Unknown image header. Type ID {entry.type_id}, Group ID {entry.group_id}, Instance ID {entry.instance_id}")
 
+        entry.clear_cache()
         completed += 1
 
     package.save_package(file.file_path)

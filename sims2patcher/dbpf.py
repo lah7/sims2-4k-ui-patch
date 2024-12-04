@@ -198,6 +198,10 @@ class Entry(object):
 
         return compressed_data
 
+    def clear_cache(self):
+        """Clear cache to save memory"""
+        self._cache_uncompressed_data = bytes()
+
     @data.setter
     def data(self, data: bytes):
         """

@@ -99,6 +99,7 @@ def inspect(package_path: str):
                 md5_data = hashlib.md5(entry.data).hexdigest()
                 f.write(f"{dbpf.FILE_TYPES.get(entry.type_id, "")},{entry.type_id},{entry.group_id},{entry.instance_id},"
                         f"{'Yes' if entry.compress else 'No'},{entry.file_size},{entry.decompressed_size or ''},{md5_raw},{md5_data}\n")
+                entry.clear_cache()
             print(" done!")
 
 
