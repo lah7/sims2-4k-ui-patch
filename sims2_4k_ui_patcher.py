@@ -692,13 +692,10 @@ class PatcherApplication(QMainWindow):
         A separate process responsible for patching an individual file.
         UI update are saved in the dictionary which a timer on the main thread will read.
         """
-        def _update_progress(text: str, value: int = 0, total: int = 0):
+        def _update_progress(value: int = 0, total: int = 0):
             """Update the progress (and optional %) for this file"""
-            if value and total:
-                percent = round((value / total) * 100)
-                progress_dict[file_path] = f"{text} ({percent}%)"
-            else:
-                progress_dict[file_path] = text
+            percent = round((value / total) * 100)
+            progress_dict[file_path] = f"{percent}% (File {value} of {total})"
 
         def _clear_progress():
             """Remove the file from the progress dictionary"""
@@ -714,7 +711,7 @@ class PatcherApplication(QMainWindow):
         patches.UPSCALE_FILTER = state.filter
 
         # Begin!
-        _update_progress("Opening")
+        _update_progress(0, 1)
         file = GameFile(file_path)
 
         try:

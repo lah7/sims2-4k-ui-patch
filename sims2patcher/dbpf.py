@@ -377,20 +377,6 @@ class DBPF(Stream):
         self.header = Header(self.stream)
         self.index = Index(self.stream, self.header)
 
-    @staticmethod
-    def cb_save_progress_updated(text: str, value: int, total: int):
-        """
-        Callback function to update the user-facing view of progress, like a GUI or stdout.
-        This can be optionally be overridden by the caller using the same parameters.
-
-        Parameters required:
-            text    (str)   An action word describing the current operation, e.g. "Writing" or "Compressing"
-            value   (int)   Current entry number being processed
-            total   (int)   Total entries in the package
-        """
-        # Example:
-        # print(f"\r{text}: {value / total*100:.2f}%", end="")
-
     def get_entries(self) -> list[Entry]:
         """
         Return all the entries from the index.
@@ -470,12 +456,7 @@ class DBPF(Stream):
         self.index.dir.files = []
         needs_dir_record = False
 
-        entries = self.get_entries()
-        total_entries = len(entries)
-
-        for count, entry in enumerate(entries):
-            self.cb_save_progress_updated("Saving", count, total_entries)
-
+        for entry in self.get_entries():
             entry.file_location = f.tell()
             f.write(entry.raw)
 
@@ -500,7 +481,6 @@ class DBPF(Stream):
             self.index.entries.append(entry)
 
         # Write index after the file data
-        self.cb_save_progress_updated("Finalizing", 0, 0)
         self.header.index_start_offset = f.tell()
         self.header.index_entry_count = len(self.index.entries)
 

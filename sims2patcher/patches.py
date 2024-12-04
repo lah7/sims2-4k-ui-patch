@@ -149,22 +149,13 @@ def process_package(file: GameFile, package: dbpf.DBPF, ui_update_progress: Call
     """
     Processes a DBPF package and upscales the user interface resources.
 
-    ui_update_progress is a callback function that prints the status and/or
-    updates a progress bar. It's parameters are:
-    - text: str
-    - value: int
-    - total: int
+    ui_update_progress() is a callback function that updates the UI details window.
     """
-    def _cb_save_progress_updated(text: str, value: int, total: int):
-        ui_update_progress(text, value, total)
-
-    package.cb_save_progress_updated = _cb_save_progress_updated
-
     entries = package.get_entries()
     completed = 0
     total = len(entries)
     for entry in entries:
-        ui_update_progress("Processing", completed, total)
+        ui_update_progress(completed, total)
 
         if not COMPRESS_PACKAGE:
             entry.compress = False
