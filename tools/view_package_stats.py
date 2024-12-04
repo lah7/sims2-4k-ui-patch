@@ -92,12 +92,14 @@ def inspect(package_path: str):
     if WRITE_CSV:
         print(f"Exporting {os.path.basename(package_path)}.csv", end="")
         with open(f"{package_path}.csv", "w", encoding="utf-8") as f:
-            f.write("File Type,Type ID,Group ID,Instance ID,Compressed,Size in index (bytes),Uncompressed (bytes),Index MD5,Data MD5\n")
+            f.write("File Type,Type ID,Group ID,Instance ID,Resource ID,Compressed,Size in index (bytes),Uncompressed (bytes),Index MD5,Data MD5\n")
             for entry in package.get_entries():
                 print(".", end="", flush=True)
                 md5_raw = hashlib.md5(entry.raw).hexdigest()
                 md5_data = hashlib.md5(entry.data).hexdigest()
                 f.write(f"{dbpf.FILE_TYPES.get(entry.type_id, "")},{entry.type_id},{entry.group_id},{entry.instance_id},"
+
+                f.write(f"{dbpf.FILE_TYPES.get(entry.type_id, "")},{entry.type_id},{entry.group_id},{entry.instance_id},{entry.resource_id}," +
                         f"{'Yes' if entry.compress else 'No'},{entry.file_size},{entry.decompressed_size or ''},{md5_raw},{md5_data}\n")
                 entry.clear_cache()
             print(" done!")
