@@ -156,6 +156,8 @@ These wiki pages for documenting the UI, DBPF and compression format:
 * <https://simswiki.info/wiki.php?title=DBPF>
 * <https://simswiki.info/index.php?title=DBPF_Compression>
 * <https://simswiki.info/index.php?title=E86B1EEF>
+* <https://modthesims.info/wiki.php?title=List_of_Sims_2_Formats_by_Name>
+* <https://simswiki.info/wiki.php?title=List_of_Sims_2_Formats_by_Name>
 
 This implementation of the QFS compression algorithm, which we ported to Python:
 
