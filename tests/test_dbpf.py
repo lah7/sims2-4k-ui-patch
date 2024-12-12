@@ -124,19 +124,15 @@ class DBPFTest(unittest.TestCase):
         pkg = dbpf.DBPF(pkg_path)
         entry = pkg.get_entries()[0]
 
-        results = [
-            # Header data
-            pkg.header.dbpf_version == 1.1,
-            pkg.header.index_version == 7.1,
+        # Header data
+        self.assertTrue(pkg.header.dbpf_version == 1.1)
+        self.assertTrue(pkg.header.index_version == 7.1)
 
-            # Entry data
-            entry.group_id == group_id,
-            entry.instance_id == instance_id,
-            pkg.get_type_as_string(entry.type_id) == "Image File",
-            entry.data == data,
-        ]
-
-        self.assertTrue(all(results))
+        # Entry data
+        self.assertTrue(entry.group_id == group_id)
+        self.assertTrue(entry.instance_id == instance_id)
+        self.assertTrue(pkg.get_type_as_string(entry.type_id) == "Image File")
+        self.assertTrue(entry.data == data)
 
     def test_new_package_index_7_2(self):
         """Verify the integrity of a new package based on index version 7.2"""
@@ -155,20 +151,16 @@ class DBPFTest(unittest.TestCase):
         pkg = dbpf.DBPF(pkg_path)
         entry = pkg.get_entries()[0]
 
-        results = [
-            # Header data
-            pkg.header.dbpf_version == 1.1,
-            pkg.header.index_version == 7.2,
+        # Header data
+        self.assertTrue(pkg.header.dbpf_version == 1.1)
+        self.assertTrue(pkg.header.index_version == 7.2)
 
-            # Entry data
-            entry.type_id == type_id,
-            entry.group_id == group_id,
-            entry.instance_id == instance_id,
-            entry.resource_id == resource_id,
-            entry.data == data,
-        ]
-
-        self.assertTrue(all(results))
+        # Entry data
+        self.assertTrue(entry.type_id == type_id)
+        self.assertTrue(entry.group_id == group_id)
+        self.assertTrue(entry.instance_id == instance_id)
+        self.assertTrue(entry.resource_id == resource_id)
+        self.assertTrue(entry.data == data)
 
     def test_new_package_from_file(self):
         """Verify the integrity of a file added to a new package"""
@@ -208,7 +200,7 @@ class DBPFTest(unittest.TestCase):
 
         self.assertTrue(md5 == self.tga_md5)
 
-    def test_repack_package(self, test_compression=False):
+    def test_repack_new_package(self, test_compression=False):
         """Create a new package by extracting all data from the original"""
         pkg1 = dbpf.DBPF()
         checksums = []
@@ -225,7 +217,7 @@ class DBPFTest(unittest.TestCase):
 
         # Re-open new package and verify checksums
         pkg2 = dbpf.DBPF(pkg_path)
-        for index, entry in enumerate(pkg2.get_entries()):
+        for entry in pkg2.get_entries():
             # Exclude compressed directory index
             if entry.type_id == dbpf.TYPE_DIR:
                 continue
@@ -235,7 +227,7 @@ class DBPFTest(unittest.TestCase):
             try:
                 checksums.remove(md5)
             except ValueError as e:
-                raise ValueError(f"Checksum mismatch: {md5} for entry {index} with type ID {entry.type_id}, group ID {entry.group_id}, instance ID {entry.instance_id}") from e
+                raise ValueError(f"Checksum mismatch: {md5}. Type ID {entry.type_id}, group ID {entry.group_id}, instance ID {entry.instance_id}") from e
 
         # Should be left with no more checksums
         self.assertEqual(len(checksums), 0, "Checksums mismatch")
@@ -245,12 +237,52 @@ class DBPFTest(unittest.TestCase):
 
     def test_repack_compressed_package(self):
         """Verify the integrity of a new package when compression is used"""
-        self.test_repack_package(test_compression=True)
+        self.test_repack_new_package(test_compression=True)
 
     def test_repack_unmodified_package(self):
         """Create a new package by saving original package without any changes"""
         pkg1 = self.package
         checksums = []
+        entry_integrity = []
+
+        for entry in pkg1.get_entries():
+            # Exclude compressed directory index
+            if entry.type_id == dbpf.TYPE_DIR:
+                continue
+
+            checksums.append(hashlib.md5(entry.data).hexdigest())
+            entry_integrity.append((entry.type_id, entry.group_id, entry.instance_id, entry.resource_id, entry.decompressed_size, entry.file_size))
+
+        pkg_path = self._mktemp()
+        pkg1.save_package(pkg_path)
+
+        # Re-open new package and verify checksums
+        pkg2 = dbpf.DBPF(pkg_path)
+        entry_integrity_2 = []
+        for index, entry in enumerate(pkg2.get_entries()):
+            # Exclude compressed directory index
+            if entry.type_id == dbpf.TYPE_DIR:
+                continue
+
+            md5 = hashlib.md5(entry.data).hexdigest()
+            entry_integrity_2.append((entry.type_id, entry.group_id, entry.instance_id, entry.resource_id, entry.decompressed_size, entry.file_size))
+
+            try:
+                checksums.remove(md5)
+            except ValueError as e:
+                raise ValueError(f"Integrity mismatch: {md5} for entry {index} with type ID {entry.type_id}, group ID {entry.group_id}, instance ID {entry.instance_id}") from e
+
+        # Should be left with no more checksums
+        self.assertEqual(len(checksums), 0, "Checksums mismatch")
+        self.assertEqual(entry_integrity, entry_integrity_2)
+
+    def test_repack_modified_package(self):
+        """Make a change in the original package but leave other files intact"""
+        pkg1 = self.package
+        checksums = []
+
+        pkg1.get_entries()[self.tga_index].data = b"AAAAAAAAAAABBBCCAAAAAAA"
+
         for entry in pkg1.get_entries():
             # Exclude compressed directory index
             if entry.type_id == dbpf.TYPE_DIR:
@@ -288,6 +320,7 @@ class DBPFTest(unittest.TestCase):
         pkg2 = dbpf.DBPF(pkg_path)
         entries = pkg2.get_entries()
         self.assertTrue(len(entries) == 2)
+        self.assertTrue(dbpf.TYPE_DIR in [entry.type_id for entry in entries])
 
     def test_new_package_directory_index_no_exists(self):
         """Verify a package with no compressed files doesn't have a DIR entry"""
@@ -299,6 +332,7 @@ class DBPFTest(unittest.TestCase):
         pkg2 = dbpf.DBPF(pkg_path)
         entries = pkg2.get_entries()
         self.assertTrue(len(entries) == 1)
+        self.assertTrue(entries[0].type_id == dbpf.TYPE_UI_DATA)
 
     def test_compressed_package_size(self):
         """Check the resulting package size is different when compression is used"""
@@ -336,37 +370,34 @@ class DBPFTest(unittest.TestCase):
         pkg2 = dbpf.DBPF(pkg_path)
         new_bmp_entry = pkg2.get_entries()[0]
         new_tga_entry = pkg2.get_entries()[1]
-        md5 = hashlib.md5(new_bmp_entry.data).hexdigest()
-        md5 += hashlib.md5(new_tga_entry.data).hexdigest()
 
-        self.assertEqual(md5, self.bmp_md5 + self.tga_md5)
+        self.assertTrue(self.bmp_md5, hashlib.md5(new_bmp_entry.data).hexdigest())
+        self.assertTrue(self.tga_md5, hashlib.md5(new_tga_entry.data).hexdigest())
 
     def test_resource_ids(self):
         """Check that resource IDs are correctly handled"""
         pkg = dbpf.DBPF("tests/files/index_7.2.package")
         entries = pkg.get_entries()
-        results = [
-            len(entries) == 3,
-            pkg.get_entry(0, 0x10, 0x20, 0x30).data == b"One",
-            pkg.get_entry(0, 0x10, 0x20, 0x40).data == b"Two",
-            pkg.get_entry(0, 0x10, 0x30, 0x40).data == b"Three",
-        ]
-        self.assertTrue(all(results))
+
+        self.assertTrue(len(entries) == 3)
+        self.assertTrue(pkg.get_entry(0, 0x10, 0x20, 0x30).data == b"One")
+        self.assertTrue(pkg.get_entry(0, 0x10, 0x20, 0x40).data == b"Two")
+        self.assertTrue(pkg.get_entry(0, 0x10, 0x30, 0x40).data == b"Three")
 
     def test_resource_ids_compressed(self):
         """Check that resource IDs are correctly handled including compression"""
         pkg = dbpf.DBPF("tests/files/index_7.2_compressed.package")
         entries = pkg.get_entries()
-        results = [
-            len(entries) == 4,
-            pkg.get_entry(0, 0x10, 0x20, 0x30).data == b"OneOneOneOne",
-            pkg.get_entry(0, 0x10, 0x20, 0x40).data == b"TwoTwoTwoTwo",
-            pkg.get_entry(0, 0x10, 0x30, 0x40).data == b"ThreeThreeThreeThree",
-        ]
-        self.assertTrue(all(results))
 
-    def test_uncompressed_cache(self):
-        """Check that uncompressed files are cached"""
+        self.assertTrue(len(entries) == 4)
+        self.assertTrue(dbpf.TYPE_DIR in [entry.type_id for entry in entries])
+        self.assertTrue(pkg.get_entry(0, 0x10, 0x20, 0x30).data == b"OneOneOneOne")
+        self.assertTrue(pkg.get_entry(0, 0x10, 0x20, 0x40).data == b"TwoTwoTwoTwo")
+        self.assertTrue(pkg.get_entry(0, 0x10, 0x30, 0x40).data == b"ThreeThreeThreeThree")
+        self.assertTrue(pkg.get_entry(0, 0x10, 0x30, 0x40).compress)
+
+    def test_decompressed_cache(self):
+        """Check that decompressed files are cached"""
         package = dbpf.DBPF("tests/files/ui.package")
         tga_entry = package.get_entries()[self.tga_index]
         if not tga_entry.compress:
@@ -383,7 +414,7 @@ class DBPFTest(unittest.TestCase):
         self.assertLess(max(times[1:]), times[0])
 
     def test_decompressed_size(self):
-        """Check that an entry is corerctly reporting its compressed/decompressed size"""
+        """Check that an entry is correctly reporting its compressed/decompressed size"""
         entry = self.package.get_entries()[self.tga_index]
         if not entry.compress:
             raise RuntimeError("Expected a compressed entry")
