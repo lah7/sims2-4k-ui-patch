@@ -168,6 +168,8 @@ def process_package(file: GameFile, package: dbpf.DBPF, ui_update_progress: Call
                 entry.data = _upscale_graphic(entry)
             except UnknownImageFormatError:
                 print(f"Skipping file: Unknown image header. Type ID {entry.type_id}, Group ID {entry.group_id}, Instance ID {entry.instance_id}")
+            except ValueError:
+                print(f"Skipping file: Invalid image data. Type ID {entry.type_id}, Group ID {entry.group_id}, Instance ID {entry.instance_id}")
 
         entry.clear_cache()
         completed += 1
