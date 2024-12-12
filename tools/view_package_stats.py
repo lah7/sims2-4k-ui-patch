@@ -105,7 +105,7 @@ def inspect(package_path: str):
                     md5_data = "-"
                     print("\bE", end="", flush=True)
 
-                f.write(f"{dbpf.FILE_TYPES.get(entry.type_id, "")},{entry.type_id},{entry.group_id},{entry.instance_id},{entry.resource_id}," +
+                f.write(f"{dbpf.FILE_TYPES.get(entry.type_id, "")},{hex(entry.type_id)},{hex(entry.group_id)},{hex(entry.instance_id)},{hex(entry.resource_id)}," +
                         f"{'Yes' if entry.compress else 'No'},{entry.file_size},{entry.decompressed_size or ''},{md5_raw},{md5_data}\n")
                 entry.clear_cache()
             print(" done!")

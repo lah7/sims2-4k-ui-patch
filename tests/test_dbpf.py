@@ -227,7 +227,7 @@ class DBPFTest(unittest.TestCase):
             try:
                 checksums.remove(md5)
             except ValueError as e:
-                raise ValueError(f"Checksum mismatch: {md5}. Type ID {entry.type_id}, group ID {entry.group_id}, instance ID {entry.instance_id}") from e
+                raise ValueError(f"Checksum mismatch: {md5}. Type ID {hex(entry.type_id)}, Group ID {hex(entry.group_id)}, Instance ID {hex(entry.instance_id)}") from e
 
         # Should be left with no more checksums
         self.assertEqual(len(checksums), 0, "Checksums mismatch")
@@ -270,7 +270,7 @@ class DBPFTest(unittest.TestCase):
             try:
                 checksums.remove(md5)
             except ValueError as e:
-                raise ValueError(f"Integrity mismatch: {md5} for entry {index} with type ID {entry.type_id}, group ID {entry.group_id}, instance ID {entry.instance_id}") from e
+                raise ValueError(f"Integrity mismatch: {md5} for entry {index} with Type ID {hex(entry.type_id)}, Group ID {hex(entry.group_id)}, Instance ID {hex(entry.instance_id)}") from e
 
         # Should be left with no more checksums
         self.assertEqual(len(checksums), 0, "Checksums mismatch")
@@ -305,7 +305,7 @@ class DBPFTest(unittest.TestCase):
             try:
                 checksums.remove(md5)
             except ValueError as e:
-                raise ValueError(f"Integrity mismatch: {md5} for entry {index} with type ID {entry.type_id}, group ID {entry.group_id}, instance ID {entry.instance_id}") from e
+                raise ValueError(f"Integrity mismatch: {md5} for entry {index} with Type ID {hex(entry.type_id)}, Group ID {hex(entry.group_id)}, Instance ID {hex(entry.instance_id)}") from e
 
         # Should be left with no more checksums
         self.assertEqual(len(checksums), 0, "Checksums mismatch")

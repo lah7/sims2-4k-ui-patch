@@ -19,9 +19,9 @@ def extract(package_path: str, output_dir: str):
     entries = package.get_entries()
 
     for entry in entries:
-        path = os.path.join(output_dir, f"{entry.type_id}-{entry.group_id}-{entry.instance_id}")
+        path = os.path.join(output_dir, f"{hex(entry.type_id)}_{hex(entry.group_id)}_{hex(entry.instance_id)}")
         if package.header.index_version >= 7.2:
-            path += f"-{entry.resource_id}"
+            path += f"_{hex(entry.resource_id)}"
 
         if entry.type_id == dbpf.TYPE_DIR:
             continue
@@ -30,7 +30,7 @@ def extract(package_path: str, output_dir: str):
             # Try reading the data, decompress if necessary
             entry.data
         except ValueError:
-            print(f"Couldn't extract, dumping raw bytes: Type ID {entry.type_id}, Group ID {entry.group_id}, Instance ID {entry.instance_id}")
+            print(f"Couldn't extract, dumping raw bytes: Type ID {hex(entry.type_id)}, Group ID {hex(entry.group_id)}, Instance ID {hex(entry.instance_id)}")
             if entry.decompressed_size:
                 print(f"... should decompress to {entry.decompressed_size} bytes. Stored as {entry.file_size} bytes in index.")
             with open(os.path.join(path), "wb") as f:

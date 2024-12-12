@@ -25,11 +25,10 @@ from typing import Optional
 
 from sims2patcher import qfs
 
-# Known type IDs (represented as ints)
 TYPE_UI_DATA = 0
-TYPE_IMAGE = 2238569388 # 0x856ddbac
-TYPE_ACCEL_DEF = 2732840243 # 0xa2e3d533
-TYPE_DIR = 3899334383 # 0xe86b1eef
+TYPE_IMAGE = 0x856ddbac
+TYPE_ACCEL_DEF = 0xa2e3d533
+TYPE_DIR = 0xe86b1eef
 
 FILE_TYPES = {
     # Data types we're working with
@@ -236,7 +235,7 @@ class Entry(object):
             return
 
         if not self.file_location or not self.file_size:
-            raise ValueError(f"Missing file location or size, or empty file: Type ID {self.type_id}, Group ID {self.group_id}, Instance ID {self.instance_id}")
+            raise ValueError(f"Missing file location or size, or empty file: Type ID {hex(self.type_id)}, Group ID {hex(self.group_id)}, Instance ID {hex(self.instance_id)}")
 
         self._stream.seek(0)
         self._stream.seek(self.file_location)
@@ -261,7 +260,7 @@ class Entry(object):
             try:
                 self._cache_uncompressed_data = qfs.decompress(bytearray(self._bytes), self.decompressed_size)
             except IndexError as e:
-                raise ValueError(f"Decompression failed: Type ID {self.type_id}, Group ID {self.group_id}, Instance ID {self.instance_id}") from e
+                raise ValueError(f"Decompression failed: Type ID {hex(self.type_id)}, Group ID {hex(self.group_id)}, Instance ID {hex(self.instance_id)}") from e
 
             return self._cache_uncompressed_data
 
@@ -492,7 +491,7 @@ class DBPF(Stream):
         for entry in self.index.entries:
             if entry.type_id == type_id and entry.group_id == group_id and entry.instance_id == instance_id and entry.resource_id == resource_id:
                 return entry
-        raise ValueError(f"Entry not found: Type ID {type_id}, Group ID {group_id}, Instance ID {instance_id}, Resource ID {resource_id}")
+        raise ValueError(f"Entry not found: Type ID {hex(type_id)}, Group ID {hex(group_id)}, Instance ID {hex(instance_id)}, Resource ID {hex(resource_id)}")
 
     def add_entry(self, type_id: int, group_id: int, instance_id: int, resource_id: int, data: bytes, compress=False) -> Entry:
         """
