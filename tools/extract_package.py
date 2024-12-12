@@ -23,6 +23,21 @@ def extract(package_path: str, output_dir: str):
         if package.header.index_version >= 7.2:
             path += f"-{entry.resource_id}"
 
+        if entry.type_id == dbpf.TYPE_DIR:
+            continue
+
+        try:
+            # Try reading the data, decompress if necessary
+            entry.data
+        except ValueError:
+            print(f"Couldn't extract, dumping raw bytes: Type ID {entry.type_id}, Group ID {entry.group_id}, Instance ID {entry.instance_id}")
+            if entry.decompressed_size:
+                print(f"... should decompress to {entry.decompressed_size} bytes. Stored as {entry.file_size} bytes in index.")
+            with open(os.path.join(path), "wb") as f:
+                f.write(entry.raw)
+                entry.clear_cache()
+                continue
+
         # Append file extension (where known)
         if entry.type_id == dbpf.TYPE_IMAGE:
             image_ext = patches.get_image_file_type(entry.data)
@@ -34,9 +49,6 @@ def extract(package_path: str, output_dir: str):
 
         elif entry.type_id == dbpf.TYPE_ACCEL_DEF:
             path += ".acceldef"
-
-        elif entry.type_id == dbpf.TYPE_DIR:
-            continue
 
         with open(os.path.join(path), "wb") as f:
             f.write(entry.data)

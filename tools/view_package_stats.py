@@ -95,9 +95,15 @@ def inspect(package_path: str):
             f.write("File Type,Type ID,Group ID,Instance ID,Resource ID,Compressed,Size in index (bytes),Uncompressed (bytes),Index MD5,Data MD5\n")
             for entry in package.get_entries():
                 print(".", end="", flush=True)
+
                 md5_raw = hashlib.md5(entry.raw).hexdigest()
-                md5_data = hashlib.md5(entry.data).hexdigest()
-                f.write(f"{dbpf.FILE_TYPES.get(entry.type_id, "")},{entry.type_id},{entry.group_id},{entry.instance_id},"
+
+                try:
+                    md5_data = hashlib.md5(entry.data).hexdigest()
+                except (IndexError, ValueError):
+                    # Decompression failed, likely unsupported format
+                    md5_data = "-"
+                    print("\bE", end="", flush=True)
 
                 f.write(f"{dbpf.FILE_TYPES.get(entry.type_id, "")},{entry.type_id},{entry.group_id},{entry.instance_id},{entry.resource_id}," +
                         f"{'Yes' if entry.compress else 'No'},{entry.file_size},{entry.decompressed_size or ''},{md5_raw},{md5_data}\n")
