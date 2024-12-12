@@ -406,9 +406,9 @@ class DBPFTest(unittest.TestCase):
         # Sample the time taken to read
         times = []
         for _ in range(0, 100):
-            start = time.time()
+            start = time.perf_counter_ns()
             tga_entry.data # pylint: disable=pointless-statement
-            end = time.time()
+            end = time.perf_counter_ns()
             times.append(end - start)
 
         self.assertLess(max(times[1:]), times[0])
