@@ -52,6 +52,7 @@ def extract(package_path: str, output_dir: str):
 
         with open(os.path.join(path), "wb") as f:
             f.write(entry.data)
+            entry.clear_cache()
 
     print("Extracted", len(entries), "files.")
 
