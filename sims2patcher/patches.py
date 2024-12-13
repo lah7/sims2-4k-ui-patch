@@ -157,6 +157,10 @@ def process_package(file: GameFile, package: dbpf.DBPF, ui_update_progress: Call
     for entry in entries:
         ui_update_progress(completed, total)
 
+        # Skip files we don't need to modify
+        if entry.type_id not in [dbpf.TYPE_UI_DATA, dbpf.TYPE_IMAGE]:
+            continue
+
         if LEAVE_UNCOMPRESSED:
             entry.compress = False
 
