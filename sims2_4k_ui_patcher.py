@@ -99,7 +99,7 @@ class StatusIcon(Enum):
 
 
 @staticmethod
-def get_resource(relative_path):
+def get_resource(relative_path: str) -> str:
     """
     Get a resource bundled with the application. When run as a Python script, use the current directory.
     """
@@ -135,7 +135,7 @@ class State:
         """
         Return a list of files that will be patched by this program.
         """
-        files = []
+        files: List[str] = []
         for filename in ["ui.package", "FontStyle.ini", "CaSIEUI.data"]:
             files += glob.glob(self.game_install_dir + f"/**/{filename}", recursive=True)
 
@@ -272,7 +272,7 @@ class PatcherApplication(QMainWindow):
             QApplication.processEvents()
             QTimer.singleShot(250, self.refresh_patch_state)
 
-    def closeEvent(self, event: QCloseEvent): # pylint: disable=invalid-name
+    def closeEvent(self, event: QCloseEvent): # type: ignore # pylint: disable=invalid-name
         """
         Handle the window close event.
         """

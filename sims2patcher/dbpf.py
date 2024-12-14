@@ -339,7 +339,7 @@ class Index(Stream):
     """
     Represents the DBPF file index
     """
-    def __init__(self, stream, header: Header):
+    def __init__(self, stream: io.BytesIO, header: Header):
         super().__init__(stream)
         self.start = header.index_start_offset
         self.end = self.start + header.index_size
