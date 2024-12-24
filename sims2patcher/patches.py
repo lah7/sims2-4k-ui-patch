@@ -28,7 +28,7 @@ from typing import Callable
 
 from PIL import Image
 
-from sims2patcher import dbpf
+from sims2patcher import dbpf, errors
 from sims2patcher.gamefile import GameFile
 
 # Density to multiply the UI dialog geometry and graphics
@@ -49,12 +49,6 @@ class ImageFormat(enum.Enum):
     TGA = "TGA"
     UNKNOWN = "Unknown"
 
-
-class UnknownImageFormatError(ValueError):
-    """
-    A file describing itself as an image has an unknown image header.
-    Raise this exception to skip the file.
-    """
 
 
 def get_image_file_type(data: bytes) -> ImageFormat:
@@ -91,7 +85,7 @@ def _upscale_graphic(entry: dbpf.Entry) -> bytes:
     file_type = get_image_file_type(entry.data)
 
     if file_type == ImageFormat.UNKNOWN:
-        raise UnknownImageFormatError()
+        raise errors.UnknownImageFormatError()
 
     original = Image.open(io.BytesIO(entry.data), formats=[file_type.value])
     resized = original.resize((int(original.width * UI_MULTIPLIER), int(original.height * UI_MULTIPLIER)), resample=UPSCALE_FILTER)
@@ -173,10 +167,8 @@ def process_package(file: GameFile, package: dbpf.DBPF, ui_update_progress: Call
         elif entry.type_id == dbpf.TYPE_IMAGE:
             try:
                 entry.data = _upscale_graphic(entry)
-            except UnknownImageFormatError:
+            except errors.UnknownImageFormatError:
                 print(f"Skipping file: Unknown image header. Type ID {hex(entry.type_id)}, Group ID {hex(entry.group_id)}, Instance ID {hex(entry.instance_id)}")
-            except ValueError:
-                print(f"Skipping file: Invalid image data. Type ID {hex(entry.type_id)}, Group ID {hex(entry.group_id)}, Instance ID {hex(entry.instance_id)}")
 
         entry.clear_cache()
         completed += 1

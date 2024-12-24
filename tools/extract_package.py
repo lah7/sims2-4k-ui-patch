@@ -9,7 +9,7 @@ import sys
 # Our modules are in the parent directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) # pylint: disable=wrong-import-position
 
-from sims2patcher import dbpf, patches
+from sims2patcher import dbpf, errors, patches
 
 
 def extract(package_path: str, output_dir: str):
@@ -29,10 +29,11 @@ def extract(package_path: str, output_dir: str):
         try:
             # Try reading the data, decompress if necessary
             entry.data
-        except ValueError:
-            print(f"Couldn't extract, dumping raw bytes: Type ID {hex(entry.type_id)}, Group ID {hex(entry.group_id)}, Instance ID {hex(entry.instance_id)}")
+        except errors.QFSError as e:
+            print(f"Couldn't extract: Type ID {hex(entry.type_id)}, Group ID {hex(entry.group_id)}, Instance ID {hex(entry.instance_id)}")
+            print("  ->", e)
             if entry.decompressed_size:
-                print(f"... should decompress to {entry.decompressed_size} bytes. Stored as {entry.file_size} bytes in index.")
+                print(f"  -> Should decompress to {entry.decompressed_size} bytes. Stored as {entry.file_size} bytes in index.")
             with open(os.path.join(path), "wb") as f:
                 f.write(entry.raw)
                 entry.clear_cache()

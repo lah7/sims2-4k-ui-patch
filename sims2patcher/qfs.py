@@ -14,6 +14,8 @@ Handles QFS compressed data in DBPF files as used by The Sims 2.
 #
 
 # Compression constants
+from sims2patcher import errors
+
 MAX_OFFSET = 0x20000
 MAX_COPY_COUNT = 0x404
 
@@ -22,6 +24,9 @@ QFS_MAXITER = 20
 
 
 def _copy_array(src: bytearray, src_pos: int, dest: bytearray, dest_pos: int, length: int) -> bytearray:
+    if src_pos + length > len(src) or dest_pos + length > len(dest):
+        raise errors.ArrayTooSmall()
+
     for i in range(length):
         dest[dest_pos + i] = src[src_pos + i]
     return dest
@@ -30,7 +35,7 @@ def _copy_array(src: bytearray, src_pos: int, dest: bytearray, dest_pos: int, le
 def _offset_copy(array: bytearray, offset: int, dest_pos: int, length: int) -> bytearray:
     src_pos = dest_pos - offset
     if len(array) < dest_pos + length:
-        raise ValueError("Error: array too small")
+        raise errors.ArrayTooSmall()
 
     for i in range(length):
         array[dest_pos + i] = array[src_pos + i]
@@ -48,7 +53,7 @@ def decompress(compressed_data: bytearray, decompressed_size: int) -> bytes:
 
     # Check header for QFS magic number
     if int.from_bytes(compressed_data[4:6], byteorder="little") != 0xFB10:
-        raise ValueError("Unexpected QFS header")
+        raise errors.InvalidMagicHeader(compressed_data)
 
     while control1 < 0xFC and pos < len(compressed_data):
         control1 = compressed_data[pos]
@@ -245,7 +250,10 @@ def compress(data: bytearray) -> bytes:
 
     # Write the header for the compressed data
     def _write_bytes(data, offset, value, count, endian):
-        b = bytearray(value.to_bytes(count, byteorder=endian))
+        try:
+            b = bytearray(value.to_bytes(count, byteorder=endian))
+        except OverflowError as e:
+            raise errors.BytesOverflow(value, count, endian) from e
         for index, pos in enumerate(range(offset, offset + count)):
             data[pos] = b[index]
         return data

@@ -38,7 +38,4 @@ for package in PACKAGES:
     print(f"\nExtract to: '{output_path}'")
 
     os.makedirs(output_path, exist_ok=True)
-    try:
-        extract(package, output_path)
-    except (IndexError, ValueError) as e:
-        print(f"Extraction failed '{package}': {e}")
+    extract(package, output_path)

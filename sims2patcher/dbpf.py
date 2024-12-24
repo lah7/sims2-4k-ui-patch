@@ -23,7 +23,7 @@ Supports DBPF 1.1 and index versions 7.0, 7.1, 7.2.
 import io
 from typing import Optional
 
-from sims2patcher import qfs
+from sims2patcher import errors, qfs
 
 TYPE_UI_DATA = 0
 TYPE_IMAGE = 0x856ddbac
@@ -235,7 +235,7 @@ class Entry(object):
             return
 
         if not self.file_location or not self.file_size:
-            raise ValueError(f"Missing file location or size, or empty file: Type ID {hex(self.type_id)}, Group ID {hex(self.group_id)}, Instance ID {hex(self.instance_id)}")
+            raise errors.InvalidRequest(self)
 
         self._stream.seek(0)
         self._stream.seek(self.file_location)
@@ -257,11 +257,7 @@ class Entry(object):
             if self._cache_uncompressed_data:
                 return self._cache_uncompressed_data
 
-            try:
-                self._cache_uncompressed_data = qfs.decompress(bytearray(self._bytes), self.decompressed_size)
-            except IndexError as e:
-                raise ValueError(f"Decompression failed: Type ID {hex(self.type_id)}, Group ID {hex(self.group_id)}, Instance ID {hex(self.instance_id)}") from e
-
+            self._cache_uncompressed_data = qfs.decompress(bytearray(self._bytes), self.decompressed_size)
             return self._cache_uncompressed_data
 
         return self._bytes
@@ -281,7 +277,7 @@ class Entry(object):
             if len(compressed_data) > self.decompressed_size:
                 return bytes()
 
-        except (ValueError, IndexError, OverflowError):
+        except errors.QFSError:
             # Compression not possible
             return bytes()
 
@@ -290,7 +286,8 @@ class Entry(object):
             expected_data = qfs.decompress(bytearray(compressed_data), decompressed_size)
             if expected_data != data:
                 return bytes()
-        except (ValueError, IndexError):
+        except errors.QFSError:
+            # Compression not suitable
             return bytes()
 
         return compressed_data
