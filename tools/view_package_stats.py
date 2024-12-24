@@ -12,7 +12,7 @@ import sys
 # Our modules are in the parent directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) # pylint: disable=wrong-import-position
 
-from sims2patcher import dbpf
+from sims2patcher import dbpf, errors
 
 WRITE_CSV = False
 
@@ -97,16 +97,21 @@ def inspect(package_path: str):
                 print(".", end="", flush=True)
 
                 md5_raw = hashlib.md5(entry.raw).hexdigest()
+                compressed = "Yes" if entry.compress else "No"
 
                 try:
                     md5_data = hashlib.md5(entry.data).hexdigest()
-                except (IndexError, ValueError):
-                    # Decompression failed, likely unsupported format
+                except errors.ArrayTooSmall:
+                    compressed = "Yes - invalid compression"
+                    md5_data = "-"
+                    print("\bE", end="", flush=True)
+                except errors.InvalidMagicHeader:
+                    compressed = "Yes - invalid QFS header"
                     md5_data = "-"
                     print("\bE", end="", flush=True)
 
                 f.write(f"{dbpf.FILE_TYPES.get(entry.type_id, "")},{hex(entry.type_id)},{hex(entry.group_id)},{hex(entry.instance_id)},{hex(entry.resource_id)}," +
-                        f"{'Yes' if entry.compress else 'No'},{entry.file_size},{entry.decompressed_size or ''},{md5_raw},{md5_data}\n")
+                        f"{compressed},{entry.file_size},{entry.decompressed_size or ''},{md5_raw},{md5_data}\n")
                 entry.clear_cache()
             print(" done!")
 
