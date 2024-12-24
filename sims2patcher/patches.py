@@ -22,6 +22,7 @@ interface by doubling the density of graphics and fonts and adjusting UI geometr
 #
 # Copyright (C) 2022-2024 Luke Horwell <code@horwell.me>
 #
+import enum
 import io
 from typing import Callable
 
@@ -40,11 +41,13 @@ LEAVE_UNCOMPRESSED: bool = False
 UPSCALE_FILTER: Image.Resampling = Image.Resampling.NEAREST
 
 # Image file types
-IMAGE_FORMAT_BMP = "BMP"
-IMAGE_FORMAT_JPG = "JPEG"
-IMAGE_FORMAT_PNG = "PNG"
-IMAGE_FORMAT_TGA = "TGA"
-IMAGE_UNKNOWN = "Unknown"
+class ImageFormat(enum.Enum):
+    """File extension for known image formats"""
+    BMP = "BMP"
+    JPEG = "JPEG"
+    PNG = "PNG"
+    TGA = "TGA"
+    UNKNOWN = "Unknown"
 
 
 class UnknownImageFormatError(ValueError):
@@ -54,7 +57,7 @@ class UnknownImageFormatError(ValueError):
     """
 
 
-def get_image_file_type(data: bytes) -> str:
+def get_image_file_type(data: bytes) -> ImageFormat:
     """
     The file in the DBPF package is simply "Image File".
     Read the header to get the real file type.
@@ -63,22 +66,22 @@ def get_image_file_type(data: bytes) -> str:
     start = data[:4]
 
     if start[:3] in [b"\x00\x00\x02", b"\x00\x00\n"]:
-        return IMAGE_FORMAT_TGA
+        return ImageFormat.TGA
     elif start[:2] == b"BM":
-        return IMAGE_FORMAT_BMP
+        return ImageFormat.BMP
     elif start[:3] == b"\xff\xd8\xff":
-        return IMAGE_FORMAT_JPG
+        return ImageFormat.JPEG
     elif start[:4] == b"\x89PNG":
-        return IMAGE_FORMAT_PNG
+        return ImageFormat.PNG
     else:
-        return IMAGE_UNKNOWN
+        return ImageFormat.UNKNOWN
 
 
 def _upscale_graphic(entry: dbpf.Entry) -> bytes:
     """
     Return binary data for an upscaled (or intact) image.
 
-    Graphics could be a TGA, PNG, JPG or BMP file. Most UI graphics are TGA (Targa).
+    Graphics could be a TGA, PNG, JPEG or BMP file. Most UI graphics are TGA (Targa).
 
     To upscale, multiply the width and height by UI_MULTIPLIER, so the UI
     is comfortably readable at double its original density.
@@ -87,14 +90,14 @@ def _upscale_graphic(entry: dbpf.Entry) -> bytes:
     """
     file_type = get_image_file_type(entry.data)
 
-    if file_type == IMAGE_UNKNOWN:
+    if file_type == ImageFormat.UNKNOWN:
         raise UnknownImageFormatError()
 
-    original = Image.open(io.BytesIO(entry.data), formats=[file_type])
+    original = Image.open(io.BytesIO(entry.data), formats=[file_type.value])
     resized = original.resize((int(original.width * UI_MULTIPLIER), int(original.height * UI_MULTIPLIER)), resample=UPSCALE_FILTER)
 
     output = io.BytesIO()
-    resized.save(output, format=file_type)
+    resized.save(output, format=file_type.value)
     return output.getvalue()
 
 

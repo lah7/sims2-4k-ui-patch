@@ -40,9 +40,10 @@ def extract(package_path: str, output_dir: str):
 
         # Append file extension (where known)
         if entry.type_id == dbpf.TYPE_IMAGE:
-            image_ext = patches.get_image_file_type(entry.data)
-            if image_ext != patches.IMAGE_UNKNOWN:
-                path += "." + image_ext.lower()
+            image_format = patches.get_image_file_type(entry.data)
+            image_ext = image_format.value.lower()
+            if image_ext != patches.ImageFormat.UNKNOWN:
+                path += "." + image_ext
 
         elif entry.type_id == dbpf.TYPE_UI_DATA:
             path += ".uidata"
