@@ -46,6 +46,10 @@ def decompress(compressed_data: bytearray, decompressed_size: int) -> bytes:
     pos = 9 # skip header
     control1 = 0
 
+    # Check header for QFS magic number
+    if int.from_bytes(compressed_data[4:6], byteorder="little") != 0xFB10:
+        raise ValueError("Unexpected QFS header")
+
     while control1 < 0xFC and pos < len(compressed_data):
         control1 = compressed_data[pos]
         pos += 1

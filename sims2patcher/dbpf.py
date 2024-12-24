@@ -281,7 +281,7 @@ class Entry(object):
             if len(compressed_data) > self.decompressed_size:
                 return bytes()
 
-        except (IndexError, OverflowError):
+        except (ValueError, IndexError, OverflowError):
             # Compression not possible
             return bytes()
 
@@ -290,7 +290,7 @@ class Entry(object):
             expected_data = qfs.decompress(bytearray(compressed_data), decompressed_size)
             if expected_data != data:
                 return bytes()
-        except IndexError:
+        except (ValueError, IndexError):
             return bytes()
 
         return compressed_data
