@@ -15,7 +15,7 @@ Describes a game file and whether it is currently patched.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2023-2024 Luke Horwell <code@horwell.me>
+# Copyright (C) 2023-2025 Luke Horwell <code@horwell.me>
 #
 import configparser
 import os

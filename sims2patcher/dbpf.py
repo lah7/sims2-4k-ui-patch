@@ -18,7 +18,7 @@ Supports DBPF 1.1 and index versions 7.0, 7.1, 7.2.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2022-2024 Luke Horwell <code@horwell.me>
+# Copyright (C) 2022-2025 Luke Horwell <code@horwell.me>
 #
 import io
 from typing import Optional
