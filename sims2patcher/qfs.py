@@ -14,6 +14,8 @@ Handles QFS compressed data in DBPF files as used by The Sims 2.
 #
 
 # Compression constants
+from typing import Literal
+
 from sims2patcher import errors
 
 MAX_OFFSET = 0x20000
@@ -249,7 +251,7 @@ def compress(data: bytearray) -> bytes:
     last_read_index += copy_count
 
     # Write the header for the compressed data
-    def _write_bytes(data, offset, value, count, endian):
+    def _write_bytes(data, offset: int, value: int, count: int, endian: Literal["little", "big"]) -> bytearray:
         try:
             b = bytearray(value.to_bytes(count, byteorder=endian))
         except OverflowError as e:
