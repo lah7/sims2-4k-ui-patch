@@ -47,6 +47,12 @@ class BytesOverflow(QFSError):
         super().__init__(f"Byte buffer overflow: {value} cannot fit in {count} bytes, {endian} endian")
 
 
+class FileTooLarge(QFSError):
+    """File is too large to be compressed, as data wouldn't fit in the QFS header"""
+    def __init__(self, size):
+        super().__init__(f"File too large to compress: {int(size / 1024 / 1024)} MiB (max 16 MiB)")
+
+
 #########################
 # DBPF
 #########################

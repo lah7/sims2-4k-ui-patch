@@ -127,6 +127,9 @@ def compress(data: bytearray) -> bytes:
     # Contains the compressed data (maximal size = uncompressedSize+MAX_COPY_COUNT)
     output = bytearray(len(data) + MAX_COPY_COUNT)
 
+    if len(data) > 16 * 1024 * 1024:
+        raise errors.FileTooLarge(len(data))
+
     write_index: int = 9 # reserved for header
     last_read_index: int = 0
     index_list: list = []
@@ -267,7 +270,7 @@ def compress(data: bytearray) -> bytes:
     # -- Offset 04 - Compression ID (QFS)
     output = _write_bytes(output, 4, 0xFB10, 2, "little")
 
-    # -- Offset 06 - Uncompressed file size
+    # -- Offset 06 - Uncompressed file size (max. 16 MiB)
     output = _write_bytes(output, 6, len(data), 3, "big")
 
     # Did anything actually compress?
