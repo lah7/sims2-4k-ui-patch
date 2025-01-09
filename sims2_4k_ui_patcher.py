@@ -941,6 +941,7 @@ class QueueWindow(QDialog):
 if __name__ == "__main__":
     multiprocessing.freeze_support()  # Required for Windows
 
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
     app = QApplication(sys.argv)
     window = PatcherApplication()
 
