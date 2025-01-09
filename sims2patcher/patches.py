@@ -148,7 +148,7 @@ def process_package(file: GameFile, package: dbpf.DBPF, ui_update_progress: Call
 
     ui_update_progress() is a callback function that updates the UI details window.
     """
-    entries = package.get_entries()
+    entries = package.entries
     completed = 0
     total = len(entries)
     for entry in entries:

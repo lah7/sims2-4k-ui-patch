@@ -42,7 +42,7 @@ def inspect(package_path: str):
     print("\nEntries Summary")
     print("-" * (col - 2))
     total_count = len(package.index.entries)
-    compressed_count = len([e for e in package.get_entries() if e.compress])
+    compressed_count = len([e for e in package.entries if e.compress])
 
     print("Compressed:".ljust(col), "Yes" if compressed_count > 0 else "No")
     print("Total files:".ljust(col), f"{total_count} files")
@@ -53,7 +53,7 @@ def inspect(package_path: str):
     data_types: dict[int, int] = {}
     avg_size: dict[int, list] = {}
 
-    for entry in package.get_entries():
+    for entry in package.entries:
         try:
             data_types[entry.type_id] += 1
         except KeyError:
@@ -93,7 +93,7 @@ def inspect(package_path: str):
         print(f"Exporting {os.path.basename(package_path)}.csv", end="")
         with open(f"{package_path}.csv", "w", encoding="utf-8") as f:
             f.write("File Type,Type ID,Group ID,Instance ID,Resource ID,Compressed,Size in index (bytes),Uncompressed (bytes),Index MD5,Data MD5\n")
-            for entry in package.get_entries():
+            for entry in package.entries:
                 print(".", end="", flush=True)
 
                 md5_raw = hashlib.md5(entry.raw).hexdigest()

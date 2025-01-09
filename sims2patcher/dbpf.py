@@ -479,7 +479,8 @@ class DBPF(Stream):
         self.header = Header(self.stream)
         self.index = Index(self.stream, self.header)
 
-    def get_entries(self) -> list[Entry]:
+    @property
+    def entries(self) -> list[Entry]:
         """
         Return all the entries from the index.
         """
@@ -537,7 +538,7 @@ class DBPF(Stream):
             f.seek(end)
 
         # Before writing, read anything from the original package that hasn't been read yet
-        for entry in self.get_entries():
+        for entry in self.entries:
             entry.populate_bytes()
 
         # Check the file is writable, and create if doesn't exist
@@ -558,7 +559,7 @@ class DBPF(Stream):
         self.index.dir.files = []
         needs_dir_record = False
 
-        for entry in self.get_entries():
+        for entry in self.entries:
             entry.file_location = f.tell()
             f.write(entry.raw)
 

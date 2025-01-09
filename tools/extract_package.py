@@ -16,7 +16,7 @@ def extract(package_path: str, output_dir: str):
     """Extract the decompresed contents of a .package file to a specified directory"""
     print("Extracting:", package_path)
     package = dbpf.DBPF(package_path)
-    entries = package.get_entries()
+    entries = package.entries
 
     for entry in entries:
         path = os.path.join(output_dir, f"{hex(entry.type_id)}_{hex(entry.group_id)}_{hex(entry.instance_id)}")
