@@ -857,6 +857,9 @@ class PatcherApplication(QMainWindow):
         self.state.refresh_file_list()
         self.refresh_patch_state()
 
+        if not self.stop_requested and not self.btn_patch.isEnabled():
+            QMessageBox.information(self, "UI Patching Complete", "Patching completed successfully!", QMessageBox.StandardButton.Ok)
+
     def revert_patches(self):
         """
         Undo the patches by restoring the backup files.
