@@ -626,23 +626,23 @@ class PatcherApplication(QMainWindow):
 
         if patch_count == total_count:
             self.update_status_icon(StatusIcon.GREEN)
-            self.status_text.setText(f"{patch_count} file{"s" if patch_count > 0 else ""} patched")
+            self.status_text.setText(f"{patch_count} file{'s' if patch_count > 0 else ''} patched")
 
         if update_count > 0:
             self.update_status_icon(StatusIcon.YELLOW)
-            self.status_text.setText(f"{update_count} file{" needs" if update_count == 1 else "s need"} updating")
+            self.status_text.setText(f"{update_count} file{' needs' if update_count == 1 else 's need'} updating")
 
         if missing_backups:
             QMessageBox.warning(self, "Missing backup files", "Backup files are missing from your game folder. Patching or reverting may not be possible. In the worst case, you will need to re-install the game.")
 
         if incomplete:
             self.update_status_icon(StatusIcon.RED)
-            self.status_text.setText(f"{patch_count}/{total_count} file{"s" if patch_count != 0 else ""} patched")
+            self.status_text.setText(f"{patch_count}/{total_count} file{'s' if patch_count != 0 else ''} patched")
 
         if patch_count == 0:
             self.group_options.setEnabled(True)
             self.update_status_icon(StatusIcon.GREY)
-            self.status_text.setText(f"{total_count} file{"s" if patch_count != 1 else ""} ready to patch")
+            self.status_text.setText(f"{total_count} file{'s' if patch_count != 1 else ''} ready to patch")
 
     def _check_file_permissions(self):
         """
@@ -769,7 +769,7 @@ class PatcherApplication(QMainWindow):
         done = self.patch_thread.count_done_processes()
         total = self.patch_thread.count_total_processes()
 
-        self.queue_window.remaining.setText(f"{pending} file{"s" if pending != 1 else ""} queued")
+        self.queue_window.remaining.setText(f"{pending} file{'s' if pending != 1 else ''} queued")
         self.queue_window.update_window_title(done, total)
 
         if not self.stop_requested:

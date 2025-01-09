@@ -1,5 +1,5 @@
 [MESSAGES CONTROL]
-disable=line-too-long,too-many-instance-attributes,too-many-arguments,no-name-in-module
+disable=line-too-long,too-many-instance-attributes,too-many-arguments,no-name-in-module,inconsistent-quotes
 
 [STRING]
-check-quote-consistency=yes
+check-quote-consistency=no

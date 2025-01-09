@@ -6,6 +6,9 @@ jobs:
   tests:
     name: Linux
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.11", "3.10", "3.9"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -13,14 +16,14 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-            python-version: '3.12'
+            python-version: ${{ matrix.python-version }}
             architecture: 'x64'
 
       - name: Cache Dependencies
         uses: actions/cache@v4
         with:
           path: venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements.txt') }}
+          key: ${{ runner.os }}-venv-${{ matrix.python-version }}-${{ hashFiles('**/requirements.txt') }}
 
       - name: Install Dependencies
         run: |
