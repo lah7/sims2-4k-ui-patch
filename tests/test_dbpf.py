@@ -420,3 +420,9 @@ class DBPFTest(unittest.TestCase):
             raise RuntimeError("Expected a compressed entry")
 
         self.assertGreater(entry.decompressed_size, entry.file_size)
+
+    def test_large_file_compression(self):
+        """Check that a file isn't marked as compressed if it's too large"""
+        pkg = dbpf.DBPF()
+        entry = pkg.add_entry(0x00, 0x10, 0x20, 0x30, bytearray(16 * 1024 * 1024), compress=True)
+        self.assertFalse(entry.compress)

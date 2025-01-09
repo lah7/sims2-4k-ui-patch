@@ -271,7 +271,7 @@ class Entry(object):
         compressed_data = bytes()
 
         # Uncompressed files larger then 16 MiB won't fit in the QFS header (3 bytes)
-        if decompressed_size > 16 * 1024 * 1024:
+        if decompressed_size >= 16 * 1024 * 1024:
             return bytes()
 
         try:

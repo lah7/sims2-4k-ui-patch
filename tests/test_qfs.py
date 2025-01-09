@@ -9,7 +9,7 @@ import unittest
 # Our modules are in the parent directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) # pylint: disable=wrong-import-position
 
-from sims2patcher import qfs
+from sims2patcher import errors, qfs
 
 
 class QFSTest(unittest.TestCase):
@@ -43,13 +43,19 @@ class QFSTest(unittest.TestCase):
         expected = len(bytes(output))
         self.assertTrue(got == expected)
 
-    def test_header_compression_id(self):
+    def test_header_magic_number(self):
         """Test the header of the binary when compressed is QFS"""
         original = b"AAABBBCCCAAAAAABBBCCCDDDAAABBBABABAB"
         output = qfs.compress(bytearray(original))
         got = int.from_bytes(output[4:6], byteorder="little")
         expected = 0xFB10
         self.assertTrue(got == expected)
+
+        # Sabotage the header, expect a raised error
+        output = bytearray(output)
+        output[4] = 0x00
+        with self.assertRaises(errors.InvalidMagicHeader):
+            qfs.decompress(output, len(original))
 
     def test_header_uncompressed_size(self):
         """Test the size of the original data is read correctly"""
@@ -58,3 +64,16 @@ class QFSTest(unittest.TestCase):
         got = int.from_bytes(output[6:9], byteorder="big")
         expected = len(bytes(original))
         self.assertTrue(got == expected)
+
+    def test_large_file_limit(self):
+        """Catch that QFS header can't store a decompressed size larger than 16 MiB"""
+        original = bytearray(18 * 1024 * 1024) # 18 MiB
+        with self.assertRaises(errors.FileTooLarge):
+            qfs.compress(original)
+
+    def test_array_too_small(self):
+        """Catch that the decompressed data array is smaller than expected"""
+        original = b"AAABBBCCCAAAAAABBBCCCDDDAAABBBABABAB"
+        output = qfs.compress(bytearray(original))
+        with self.assertRaises(errors.ArrayTooSmall):
+            qfs.decompress(bytearray(output), len(original) - 8)
