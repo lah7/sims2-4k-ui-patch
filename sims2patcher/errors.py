@@ -41,12 +41,6 @@ class ArrayTooSmall(QFSError):
         super().__init__("Array too small")
 
 
-class BytesOverflow(QFSError):
-    """Integer value to too large to fit in the specified number of bytes."""
-    def __init__(self, value, count, endian):
-        super().__init__(f"Byte buffer overflow: {value} cannot fit in {count} bytes, {endian} endian")
-
-
 class FileTooLarge(QFSError):
     """File is too large to be compressed, as data wouldn't fit in the QFS header"""
     def __init__(self, size):

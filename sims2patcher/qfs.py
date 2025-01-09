@@ -255,10 +255,7 @@ def compress(data: bytearray) -> bytes:
 
     # Write the header for the compressed data
     def _write_bytes(data, offset: int, value: int, count: int, endian: Literal["little", "big"]) -> bytearray:
-        try:
-            b = bytearray(value.to_bytes(count, byteorder=endian))
-        except OverflowError as e:
-            raise errors.BytesOverflow(value, count, endian) from e
+        b = bytearray(value.to_bytes(count, byteorder=endian))
         for index, pos in enumerate(range(offset, offset + count)):
             data[pos] = b[index]
         return data
