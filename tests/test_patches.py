@@ -14,7 +14,7 @@ import unittest
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) # pylint: disable=wrong-import-position
 
 from sims2patcher import dbpf, patches
-from sims2patcher.gamefile import GameFile
+from sims2patcher.gamefile import GameFileReplacement
 
 
 class PatchesTest(unittest.TestCase):
@@ -56,8 +56,8 @@ class PatchesTest(unittest.TestCase):
         tmp_path = self._mktemp()
         shutil.copy(self._get_test_file_path("FontStyle-A.ini"), tmp_path)
 
-        dummy_file = GameFile(tmp_path)
-        dummy_file.backup_path = self._get_test_file_path("FontStyle-A.ini")
+        dummy_file = GameFileReplacement(tmp_path)
+        dummy_file._backup_path = self._get_test_file_path("FontStyle-A.ini")
         patches.process_fontstyle_ini(dummy_file, write_meta_file=False)
 
         # Compare output with expected output

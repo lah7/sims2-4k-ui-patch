@@ -22,7 +22,6 @@ the The Sims 2 user interface for HiDPI resolutions.
 The patcher keeps a backup of the original file to allow patches to
 be reverted, to "uninstall" the modifcations, or for future patcher updates.
 """
-import glob
 import multiprocessing
 import os
 import signal
@@ -46,7 +45,7 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
                              QToolButton, QTreeWidget, QTreeWidgetItem,
                              QVBoxLayout, QWidget)
 
-from sims2patcher import dbpf, gamefile, patches
+from sims2patcher import gamefile, patches
 from sims2patcher.gamefile import GameFile
 
 VERSION = "v0.2.0"
@@ -70,7 +69,7 @@ DEFAULT_DIRS = [
 
 PROJECT_URL = "https://github.com/lah7/sims2-4k-ui-patch"
 
-# Options
+# Labels for options
 LABELS_UI_SCALE = {
     "200% (4K / 2160p)": 2.0,
     "150% (2K / 1440p)": 1.5,
@@ -111,7 +110,7 @@ class State:
     Store details about the current patcher inputs.
     """
     def __init__(self):
-        # Parent folder containing The Sims 2 installations
+        # Folder containing The Sims 2 installations
         self.game_install_dir = ""
 
         # List of game files that will be patched
@@ -133,15 +132,8 @@ class State:
         """
         Return a list of files that will be patched by this program.
         """
-        files: List[str] = []
-        for filename in ["ui.package", "FontStyle.ini", "CaSIEUI.data"]:
-            files += glob.glob(self.game_install_dir + f"/**/{filename}", recursive=True)
-
-        self.game_paths = sorted(list(set(files)))
-        if len(self.game_paths) == 0:
-            raise ValueError("No patchable files found")
-
-        self.game_files = [GameFile(path) for path in self.game_paths]
+        self.game_paths = gamefile.get_patchable_paths(self.game_install_dir)
+        self.game_files = gamefile.get_patchable_files(self.game_paths)
 
     def set_game_install_path(self, path: str):
         """
@@ -151,7 +143,9 @@ class State:
         self.refresh_file_list()
 
     def auto_detect_game_path(self):
-        """Automatically detect the game installation folder"""
+        """
+        Automatically detect the game installation folder
+        """
         for path in DEFAULT_DIRS:
             if os.path.exists(path):
                 self.set_game_install_path(path)
@@ -242,7 +236,7 @@ class PatcherApplication(QMainWindow):
         self.base_widget.setLayout(self.base_layout)
         self.setCentralWidget(self.base_widget)
 
-        # Build layout
+        # Build UI controls
         self._create_top_banner()
         self._create_folder_selector()
         self._create_options()
@@ -650,10 +644,8 @@ class PatcherApplication(QMainWindow):
         def _has_permission(file: GameFile) -> bool:
             """Return a boolean to indicate whether a file can be modified"""
             # For existing files, make sure they're not read-only.
-            for path in [file.file_path, file.backup_path, file.meta_path]:
-                if os.path.exists(path):
-                    if not os.access(path, os.W_OK):
-                        return False
+            if os.path.exists(file.file_path) and not os.access(file.file_path, os.W_OK):
+                return False
 
             # Is the folder writable?
             testfile = os.path.join(os.path.dirname(file.file_path), "test.tmp")
@@ -700,14 +692,14 @@ class PatcherApplication(QMainWindow):
             """Use the progress dictionary to pass an error message"""
             progress_dict[file_path] = f"Error: {reason}"
 
-        # Sync state
+        # Sync state to module variables
         patches.UI_MULTIPLIER = state.scale
         patches.LEAVE_UNCOMPRESSED = state.leave_uncompressed
         patches.UPSCALE_FILTER = state.filter
 
         # Begin!
         _update_progress(0, 1)
-        file = GameFile(file_path)
+        file = gamefile.get_game_file(file_path)
 
         try:
             # Skip file if already up-to-date
@@ -727,13 +719,8 @@ class PatcherApplication(QMainWindow):
             # Always create a copy of the original before processing
             file.backup()
 
-            # Perform appropriate patch
-            if file.filename == "FontStyle.ini":
-                patches.process_fontstyle_ini(file)
-
-            elif file.filename in ["ui.package", "CaSIEUI.data"]:
-                package = dbpf.DBPF(file.backup_path)
-                patches.process_package(file, package, _update_progress)
+            # Patch the file!
+            patches.patch_file(file, _update_progress)
 
         except PermissionError:
             _fail(f"Insufficient file permissions:\n{file.file_path}\n\nThe file might be in use by another program. Please close any processes using the file and try again.")

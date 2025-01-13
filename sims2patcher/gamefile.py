@@ -18,59 +18,86 @@ Describes a game file and whether it is currently patched.
 # Copyright (C) 2023-2025 Luke Horwell <code@horwell.me>
 #
 import configparser
+import glob
 import os
 import shutil
-from hashlib import md5
+from typing import List
 
 FILE_PATCH_VERSION: float = 0.0 # Set by main program
 
 
+def get_patchable_paths(install_dir: str) -> list[str]:
+    """
+    Return a list of game files paths that can be patched.
+    """
+    paths: List[str] = []
+
+    for filename in ["ui.package", "FontStyle.ini", "CaSIEUI.data"]:
+        paths += glob.glob(install_dir + f"/**/{filename}", recursive=True)
+
+    if not paths:
+        raise ValueError("No patchable files found")
+
+    return paths
+
+
+def get_game_file(path: str) -> 'GameFile':
+    """
+    Return a game file object for patching.
+    """
+    if path.endswith("objects.package"):
+        return GameFileOverride(path)
+    return GameFileReplacement(path)
+
+
+def get_patchable_files(files_to_patch: list[str]) -> list['GameFile']:
+    """
+    Return a list of game files objects for patching.
+    """
+    files: List['GameFile'] = []
+
+    for path in files_to_patch:
+        files.append(get_game_file(path))
+
+    return files
+
+
 class GameFile():
     """
-    Describes a game file and whether it is currently patched.
-
-    This tool will create these adjacent files:
-        - *.bak         Backup of the original game file
-        - *.patched     Details about patch (e.g. which version of this tool and checksums)
-
-    Backup files (*.bak) are essential to undo modifications, such as to revert the patch back
-    to the original, or to re-patch using newer versions of this program.
+    Base class describing a game file and its current patch state.
     """
     def __init__(self, path: str):
         self.file_path = path
-        self.backup_path = path + ".bak"
-        self.meta_path = path + ".patched"
         self.filename = os.path.basename(path)
+        self._meta_path = path + ".patched"
 
-        self.backed_up = os.path.exists(self.backup_path)
+        # Patch status
         self.patched = False
         self.outdated = False
         self.patch_version = 0.0
 
+        # Patch settings
         self.uncompressed: bool = False
         self.scale: float = 2.0
         self.upscale_filter: int = 0 # Image.Resampling.NEAREST
 
-        self.md5_checksum_backup = ""
-        self.md5_checksum_patched = ""
-
         self.read_meta_file()
 
     def __str__(self):
-        return os.path.basename(self.file_path)
+        return self.filename
 
     def read_meta_file(self):
         """
         Read an INI-like file describing the patch status.
-        Stored next to game file (and its backup) is a ".patched" text file containing:
+        This is stored next to game file (along with its backup, if necessary) with a ".patched" extension.
         """
-        if os.path.exists(self.meta_path):
+        if os.path.exists(self._meta_path):
             config = configparser.ConfigParser()
             try:
-                config.read(self.meta_path)
+                config.read(self._meta_path)
             except configparser.MissingSectionHeaderError:
                 # v0.1.0 wrote lines directly with an expected order. Replaced since v0.2.0.
-                with open(self.meta_path, "r", encoding="utf-8") as f:
+                with open(self._meta_path, "r", encoding="utf-8") as f:
                     lines = f.readlines()
                     if lines[4] == "0.1\n":
                         self.patched = True
@@ -86,8 +113,6 @@ class GameFile():
                 self.uncompressed = config.getboolean("patch", "uncompressed")
                 self.scale = config.getfloat("patch", "scale")
                 self.upscale_filter = config.getint("patch", "upscale_filter")
-                self.md5_checksum_backup = config.get("patch", "md5_checksum_backup")
-                self.md5_checksum_patched = config.get("patch", "md5_checksum_patched")
             except (configparser.NoOptionError, configparser.NoSectionError):
                 self.patch_version = 0.0
 
@@ -101,49 +126,142 @@ class GameFile():
             raise RuntimeError("Not patched or backup file missing!")
 
         # Generate checksums
-        with open(self.file_path, "rb") as f:
-            self.md5_checksum_patched = md5(f.read(), usedforsecurity=False).hexdigest()
-        with open(self.backup_path, "rb") as f:
-            self.md5_checksum_backup = md5(f.read(), usedforsecurity=False).hexdigest()
-
         config = configparser.ConfigParser()
         config["patch"] = {
             "version": str(FILE_PATCH_VERSION),
             "uncompressed": str(self.uncompressed),
             "scale": str(self.scale),
             "upscale_filter": str(self.upscale_filter),
-            "md5_checksum_backup": self.md5_checksum_backup,
-            "md5_checksum_patched": self.md5_checksum_patched,
         }
-        with open(self.meta_path, "w", encoding="utf-8") as f:
+        with open(self._meta_path, "w", encoding="utf-8") as f:
             config.write(f)
 
         # Prepend comment at the start of file
-        with open(self.meta_path, "r+", encoding="utf-8") as f:
+        with open(self._meta_path, "r+", encoding="utf-8") as f:
             content = f.read()
             f.seek(0, 0)
-            f.write("# File patched by lah7's sims2-4k-ui-patch program.\n")
-            f.write("# Keep this file (and the backup) so you can update the patches or revert without reinstalling the game.\n")
+            f.write("#\n# File patched by lah7/sims2-4k-ui-patch program.\n")
+            f.write("# Keep this file (and any backup files) so you can update or revert the patches\n")
+            f.write("# without reinstalling the game.\n")
+            f.write("#\n# ==============================\n")
             f.write("# === Do not edit this file! ===\n")
-            f.write("\n")
+            f.write("# ==============================\n")
+            f.write("#\n")
             f.write(content)
+
+    @property
+    def original_file_path(self) -> str:
+        """
+        Return the path to a streamable package file.
+        """
+        raise NotImplementedError("Implemented by subclass")
+
+    @property
+    def target_file_path(self) -> str:
+        """
+        Return the path to where the patched package file will be saved.
+        """
+        return self.file_path
+
+    @property
+    def backed_up(self) -> bool:
+        """
+        Whether the original game file has been backed up.
+        """
+        raise NotImplementedError("Implemented by subclass")
 
     def backup(self):
         """
         Create a backup of the original game file.
         """
-        if os.path.exists(self.backup_path):
-            raise RuntimeError("Backup already exists: " + self.backup_path)
-        shutil.copyfile(self.file_path, self.backup_path)
-        self.backed_up = True
+        raise NotImplementedError("Implemented by subclass")
 
     def restore(self):
         """
         Restore the original game file from backup.
         """
-        if os.path.exists(self.backup_path):
+        raise NotImplementedError("Implemented by subclass")
+
+
+class GameFileReplacement(GameFile):
+    """
+    Describes a game file that will be replaced with a patched version in-place.
+
+    The original file is backed up in order to undo modifications.
+    Patches can be reverted (without game reinstallation), or be updated
+    with a newer version of this program.
+    """
+    def __init__(self, path: str):
+        super().__init__(path)
+        self._backup_path = f"{self.file_path}.bak"
+
+    @property
+    def original_file_path(self) -> str:
+        return self._backup_path
+
+    @property
+    def backed_up(self) -> bool:
+        return os.path.exists(self._backup_path)
+
+    def backup(self):
+        if os.path.exists(self._backup_path):
+            raise RuntimeError(f"Backup already exists: {self._backup_path}")
+        shutil.copyfile(self.file_path, self._backup_path)
+
+    def restore(self):
+        if os.path.exists(self._backup_path):
             os.remove(self.file_path)
-            shutil.move(self.backup_path, self.file_path)
-            if os.path.exists(self.meta_path):
-                os.remove(self.meta_path)
-            self.backed_up = False
+            shutil.move(self._backup_path, self.file_path)
+            if os.path.exists(self._meta_path):
+                os.remove(self._meta_path)
+
+
+class GameFileOverride(GameFile):
+    """
+    Describes a game file that is saved to that installation's "Overrides" folder.
+
+    The original package is left intact, and any patched files within the package
+    is saved to a new one in the "Overrides" folder. The game loads the new
+    changes provided the files use the same IDs.
+    """
+    def __init__(self, path: str):
+        super().__init__(path)
+        self._override_path = self._get_override_path()
+
+    def _get_override_path(self) -> str:
+        """
+        Return path to the file current game's "Overrides" folder, from the "Res" folder.
+        """
+        parts = self.file_path.split(os.sep)
+        try:
+            while parts[-1] != "Res" and len(parts) > 0:
+                parts.pop()
+        except IndexError as e:
+            raise RuntimeError(f"Couldn't find 'Res' folder for file: {self.file_path}") from e
+
+        overrides_dir = os.path.join(os.sep.join(parts), "Overrides")
+        if not os.path.exists(overrides_dir):
+            os.makedirs(overrides_dir)
+
+        return os.path.join(overrides_dir, f"hidpi-patches-{self.filename}")
+
+    @property
+    def original_file_path(self) -> str:
+        return self.file_path
+
+    @property
+    def target_file_path(self) -> str:
+        return self._override_path
+
+    @property
+    def backed_up(self) -> bool:
+        return os.path.exists(self._meta_path) or os.path.exists(self._override_path)
+
+    def backup(self):
+        pass
+
+    def restore(self):
+        if os.path.exists(self._override_path):
+            os.remove(self._override_path)
+        if os.path.exists(self._meta_path):
+            os.remove(self._meta_path)

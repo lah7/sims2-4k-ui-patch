@@ -40,7 +40,7 @@ LEAVE_UNCOMPRESSED: bool = False
 # Image upscaling filter
 UPSCALE_FILTER: Image.Resampling = Image.Resampling.NEAREST
 
-# Image file types
+
 class ImageFormat(enum.Enum):
     """File extension for known image formats"""
     BMP = "BMP"
@@ -48,7 +48,6 @@ class ImageFormat(enum.Enum):
     PNG = "PNG"
     TGA = "TGA"
     UNKNOWN = "Unknown"
-
 
 
 def get_image_file_type(data: bytes) -> ImageFormat:
@@ -142,15 +141,17 @@ def _upscale_uiscript(entry: dbpf.Entry):
     return data.encode("utf-8")
 
 
-def process_package(file: GameFile, package: dbpf.DBPF, ui_update_progress: Callable):
+def process_package(file: GameFile, ui_update_progress: Callable):
     """
     Processes a DBPF package and upscales the user interface resources.
 
     ui_update_progress() is a callback function that updates the UI details window.
     """
+    package = dbpf.DBPF(file.original_file_path)
     entries = package.entries
     completed = 0
     total = len(entries)
+
     for entry in entries:
         ui_update_progress(completed, total)
 
@@ -173,7 +174,7 @@ def process_package(file: GameFile, package: dbpf.DBPF, ui_update_progress: Call
         entry.clear_cache()
         completed += 1
 
-    package.save_package(file.file_path)
+    package.save_package(file.target_file_path)
     file.patched = True
     file.write_meta_file()
 
@@ -187,7 +188,7 @@ def process_fontstyle_ini(file: GameFile, write_meta_file=True):
     Default = "ITC Benguiat Gothic", "11", "bold|aa=bg", 0x68963c4c
                                       ^^
     """
-    with open(file.backup_path, "r", encoding="utf-8") as f:
+    with open(file.original_file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
     output = []
@@ -210,3 +211,14 @@ def process_fontstyle_ini(file: GameFile, write_meta_file=True):
     file.patched = True
     if write_meta_file:
         file.write_meta_file()
+
+
+def patch_file(file: GameFile, ui_update_progress: Callable):
+    """
+    Patch a file with the appropriate function based on the filename.
+    """
+    if file.filename == "FontStyle.ini":
+        process_fontstyle_ini(file)
+
+    elif file.filename in ["ui.package", "CaSIEUI.data"]:
+        process_package(file, ui_update_progress)
