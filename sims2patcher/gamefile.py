@@ -255,7 +255,11 @@ class GameFileOverride(GameFile):
 
     @property
     def backed_up(self) -> bool:
-        return os.path.exists(self._meta_path) or os.path.exists(self._override_path)
+        # Technically, it's always backed up. Original file is left intact.
+        # This response is for the current status UI:
+        # - True  = File patched, revertable
+        # - False = File to be patched
+        return os.path.exists(self._override_path)
 
     def backup(self):
         pass
