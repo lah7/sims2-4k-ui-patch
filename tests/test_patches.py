@@ -41,6 +41,7 @@ class PatchesTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        os.chdir(os.path.join(os.path.dirname(__file__), ".."))
         cls.ui_package = dbpf.DBPF(cls._get_test_file_path("ui.package"))
         return super().setUpClass()
 

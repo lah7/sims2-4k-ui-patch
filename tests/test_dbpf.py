@@ -33,6 +33,7 @@ class DBPFTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up a test against package: The Sims 2 University (TSData/Res/UI/ui.package)"""
+        os.chdir(os.path.join(os.path.dirname(__file__), ".."))
         cls.package = dbpf.DBPF("tests/files/ui.package") # DBPF 1.1, Index 7.1
 
         # Known compressed file (TGA Image)
