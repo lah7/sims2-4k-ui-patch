@@ -19,34 +19,40 @@ class GameFileTest(unittest.TestCase):
     Test our "gamefile" module against a dummy installation.
     """
     @classmethod
+    def _abspath(cls, path: str) -> str:
+        """Return a path to the real file in our dummy installation"""
+        return os.path.join(cls.game_dir, path.replace("/", os.sep))
+
+    @classmethod
     def setUpClass(cls):
         """Create the files for the dummy installation"""
         gamefile.FILE_PATCH_VERSION = 3.0
         cls.game_dir = tempfile.mkdtemp()
+
         cls.file_structure = [
             #    <!> Do not change order! <!>  Indexes of files are used in the tests.
 
             # Replacements for Base Game
-            "Test Games/The Sims 2/TSData/Res/UI/CaSIEUI.data",                 ### 0
-            "Test Games/The Sims 2/TSData/Res/Fonts/FontStyle.ini",             ### 1
-            "Test Games/The Sims 2/TSData/Res/UI/ui.package",                   ### 2
-            "Test Games/The Sims 2/TSData/Res/Locale/French/UI/CaSIEUI.data",   ### 3
-            "Test Games/The Sims 2/TSData/Res/Locale/French/UI/ui.package",
-            "Test Games/The Sims 2/TSData/Res/Locale/German/UI/CaSIEUI.data",
-            "Test Games/The Sims 2/TSData/Res/Locale/German/UI/ui.package",
+            cls._abspath("Test Games/The Sims 2/TSData/Res/UI/CaSIEUI.data"),                   ### 0
+            cls._abspath("Test Games/The Sims 2/TSData/Res/Fonts/FontStyle.ini"),               ### 1
+            cls._abspath("Test Games/The Sims 2/TSData/Res/UI/ui.package"),                     ### 2
+            cls._abspath("Test Games/The Sims 2/TSData/Res/Locale/French/UI/CaSIEUI.data"),     ### 3
+            cls._abspath("Test Games/The Sims 2/TSData/Res/Locale/French/UI/ui.package"),
+            cls._abspath("Test Games/The Sims 2/TSData/Res/Locale/German/UI/CaSIEUI.data"),
+            cls._abspath("Test Games/The Sims 2/TSData/Res/Locale/German/UI/ui.package"),
 
             # Replacements for Expansion Pack
-            "Test Games/The Sims 2 University/TSData/Res/UI/CaSIEUI.data",
-            "Test Games/The Sims 2 University/TSData/Res/UI/ui.package",
-            "Test Games/The Sims 2 University/TSData/Res/Locale/French/UI/ui.package",
+            cls._abspath("Test Games/The Sims 2 University/TSData/Res/UI/CaSIEUI.data"),
+            cls._abspath("Test Games/The Sims 2 University/TSData/Res/UI/ui.package"),
+            cls._abspath("Test Games/The Sims 2 University/TSData/Res/Locale/French/UI/ui.package"),
 
             # Overrides
-            "Test Games/The Sims 2/TSData/Res/Objects/objects.package",         ### 10
+            cls._abspath("Test Games/The Sims 2/TSData/Res/Objects/objects.package"),           ### 10
 
             # Files that wouldn't be touched
-            "Test Games/The Sims 2 University/TSData/Res/Sims3D/Objects.package", ### 11
-            "Test Games/The Sims 2 University/TSData/Res/Overrides/existing.package", ### 12
-            "Test Games/The Sims 2/TSData/Res/Sims3D/random.package",           ### 13
+            cls._abspath("Test Games/The Sims 2 University/TSData/Res/Sims3D/Objects.package"), ### 11
+            cls._abspath("Test Games/The Sims 2 University/TSData/Res/Overrides/existing.package"), ### 12
+            cls._abspath("Test Games/The Sims 2/TSData/Res/Sims3D/random.package"),             ### 13
         ]
         cls.total_files = len(cls.file_structure) - 4
 
@@ -61,7 +67,9 @@ class GameFileTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """Clean up our dummy installation"""
-        shutil.rmtree(cls.game_dir)
+        if cls.game_dir:
+            os.chdir("..")
+            shutil.rmtree(cls.game_dir)
         return super().tearDownClass()
 
     def test_patchable_paths(self):
@@ -70,10 +78,10 @@ class GameFileTest(unittest.TestCase):
         self.assertEqual(len(paths), self.total_files)
 
         for path in self.file_structure[0:8]:
-            self.assertTrue(f"{self.game_dir}/{path}" in paths, "Expected file to patch is missing")
+            self.assertTrue(path in paths, "Expected file to patch is missing")
 
         for path in self.file_structure[11:14]:
-            self.assertFalse(f"{self.game_dir}/{path}" in paths, "Unexpected file found in patch list")
+            self.assertFalse(path in paths, "Unexpected file found in patch list")
 
     def test_patchable_files(self):
         """Check we are able to process GameFile objects"""
@@ -82,8 +90,8 @@ class GameFileTest(unittest.TestCase):
 
     def test_game_file(self):
         """Check we create the correct kind of GameFile objects"""
-        self.assertIsInstance(gamefile.get_game_file("Test Games/The Sims 2/TSData/Res/Objects/objects.package"), gamefile.GameFileOverride)
-        self.assertIsInstance(gamefile.get_game_file("Test Games/The Sims 2/TSData/Res/UI/ui.package"), gamefile.GameFileReplacement)
+        self.assertIsInstance(gamefile.get_game_file(self._abspath("Test Games/The Sims 2/TSData/Res/Objects/objects.package")), gamefile.GameFileOverride)
+        self.assertIsInstance(gamefile.get_game_file(self._abspath("Test Games/The Sims 2/TSData/Res/UI/ui.package")), gamefile.GameFileReplacement)
 
     def test_legacy_meta_file(self):
         """Check files patched under version 0.1.0 are marked as outdated"""
