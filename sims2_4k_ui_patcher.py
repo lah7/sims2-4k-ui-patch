@@ -48,7 +48,7 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
 from sims2patcher import gamefile, patches
 from sims2patcher.gamefile import GameFile
 
-VERSION = "v0.2.0"
+VERSION = "v0.3.0-dev"
 MAJOR = 0
 MINOR = 2
 PATCH = 0
@@ -930,6 +930,11 @@ if __name__ == "__main__":
     multiprocessing.freeze_support()  # Required for Windows
 
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
+    if os.path.exists("version.txt") and os.path.exists("lib") and os.path.exists("share"):
+        # Read version for dist builds
+        VERSION = open("version.txt", "r", encoding="utf-8").read().strip()
+
     app = QApplication(sys.argv)
     window = PatcherApplication()
 
