@@ -102,7 +102,7 @@ def get_resource(relative_path: str) -> str:
     """
     if hasattr(sys, "_MEIPASS"):
         return os.path.join(sys._MEIPASS, relative_path) # type: ignore # pylint: disable=protected-access
-    return os.path.join(os.path.abspath("."), relative_path)
+    return os.path.join(os.path.abspath(os.path.dirname(os.path.realpath(__file__))), relative_path)
 
 
 class State:
@@ -928,8 +928,6 @@ class QueueWindow(QDialog):
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()  # Required for Windows
-
-    os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
     if os.path.exists("version.txt") and os.path.exists("lib") and os.path.exists("share"):
         # Read version for dist builds
