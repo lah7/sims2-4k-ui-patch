@@ -98,11 +98,13 @@ class StatusIcon(Enum):
 @staticmethod
 def get_resource(relative_path: str) -> str:
     """
-    Get a resource bundled with the application. When run as a Python script, use the current directory.
+    Get a resource bundled with the application or from the same directory as the program.
     """
-    if hasattr(sys, "_MEIPASS"):
-        return os.path.join(sys._MEIPASS, relative_path) # type: ignore # pylint: disable=protected-access
-    return os.path.join(os.path.abspath(os.path.dirname(os.path.realpath(__file__))), relative_path)
+    if getattr(sys, "frozen", False):
+        data_dir = os.path.dirname(sys.executable)
+    else:
+        data_dir = os.path.dirname(__file__)
+    return os.path.join(data_dir, relative_path)
 
 
 class State:
