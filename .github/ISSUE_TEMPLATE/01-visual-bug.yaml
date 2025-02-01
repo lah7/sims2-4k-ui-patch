@@ -36,8 +36,11 @@ body:
     attributes:
       label: Installation Type
       options:
-        - "Retail (installed separately from CD/DVDs)"
-        - "Origin/EA App (Ultimate Collection)"
-        - "Repack or other automated installation"
+        - "Retail (CD/DVDs)"
+        - "The Sims 2: Ultimate Collection (2014)"
+        - "The Sims 2: Legacy Collection (2025)"
+        - "Repack (or other automated installation)"
+        - "The Sims: Life Stories"
+        - "The Sims 2 Super Collection (Mac)"
     validations:
       required: true
