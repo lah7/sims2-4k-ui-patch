@@ -262,6 +262,19 @@ class Entry(object):
 
         return self._bytes
 
+    @property
+    def data_safe(self) -> bytes:
+        """
+        Like data(), but "safe" from exceptions if the data is incorrectly marked as compressed.
+        The compression state of this entry will be corrected, if so.
+        """
+        try:
+            return self.data
+        except errors.InvalidMagicHeader:
+            self.compress = False
+            self._bytes_compressed = False
+            return self.raw
+
     def _compress_data(self, data: bytes) -> bytes:
         """
         Return the bytes for how it will be stored in the resulting package.

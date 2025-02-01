@@ -45,6 +45,8 @@ class DBPFTest(unittest.TestCase):
         # Known uncompressed and incompressible file (Bitmap)
         cls.bmp_index = 85
         cls.bmp_md5 = "4d450dd3b45e2cebae3ef949bde06292"
+        cls.bmp_group_id = 0x499db772
+        cls.bmp_instance_id = 0xecdb3005
 
     def tearDown(self) -> None:
         # Clean up temporary files
@@ -427,3 +429,14 @@ class DBPFTest(unittest.TestCase):
         pkg = dbpf.DBPF()
         entry = pkg.add_entry(0x00, 0x10, 0x20, 0x30, bytearray(16 * 1024 * 1024), compress=True)
         self.assertFalse(entry.compress)
+
+    def test_compression_bad_state(self):
+        """Check a file incorrectly marked as compressed can still be extracted"""
+        package = dbpf.DBPF("tests/files/ui.package")
+        entry = package.entries[self.bmp_index]
+        entry._bytes_compressed = True # pylint: disable=protected-access
+        entry.compress = True
+
+        with self.assertRaises(dbpf.errors.InvalidMagicHeader):
+            entry.data # pylint: disable=pointless-statement
+        self.assertIsInstance(entry.data_safe, bytes)

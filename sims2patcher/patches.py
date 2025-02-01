@@ -81,12 +81,12 @@ def _upscale_graphic(entry: dbpf.Entry) -> bytes:
 
     UPSCALE_FILTER may influence the resulting quality of the image.
     """
-    file_type = get_image_file_type(entry.data)
+    file_type = get_image_file_type(entry.data_safe)
 
     if file_type == ImageFormat.UNKNOWN:
         raise errors.UnknownImageFormatError()
 
-    original = Image.open(io.BytesIO(entry.data), formats=[file_type.value])
+    original = Image.open(io.BytesIO(entry.data_safe), formats=[file_type.value])
     resized = original.resize((int(original.width * UI_MULTIPLIER), int(original.height * UI_MULTIPLIER)), resample=UPSCALE_FILTER)
 
     output = io.BytesIO()
