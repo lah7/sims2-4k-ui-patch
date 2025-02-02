@@ -148,38 +148,42 @@ def process_package(file: GameFile, ui_update_progress: Callable):
     ui_update_progress() is a callback function that updates the UI details window.
     """
     package = dbpf.DBPF(file.original_file_path)
-    entries = package.entries
-    completed = 0
-    total = len(entries)
 
-    for entry in entries:
-        ui_update_progress(completed, total)
+    ui_files = [e for e in package.entries if e.type_id == dbpf.TYPE_UI_DATA]
+    image_files = [e for e in package.entries if e.type_id == dbpf.TYPE_IMAGE]
+    total = len(ui_files) + len(image_files)
+    current = 0
 
-        # Skip files we don't need to modify
-        if entry.type_id not in [dbpf.TYPE_UI_DATA, dbpf.TYPE_IMAGE]:
-            continue
-
+    for entry in ui_files:
         if LEAVE_UNCOMPRESSED:
             entry.compress = False
 
-        if entry.type_id == dbpf.TYPE_UI_DATA:
-            entry.data = _upscale_uiscript(entry)
-
-        elif entry.type_id == dbpf.TYPE_IMAGE:
-            try:
-                entry.data = _upscale_graphic(entry)
-            except errors.ArrayTooSmall:
-                print(f"Skipping file: Unknown image contents. Type ID {hex(entry.type_id)}, Group ID {hex(entry.group_id)}, Instance ID {hex(entry.instance_id)}")
-            except errors.UnknownImageFormatError:
-                print(f"Skipping file: Unknown image header. Type ID {hex(entry.type_id)}, Group ID {hex(entry.group_id)}, Instance ID {hex(entry.instance_id)}")
+        ui_update_progress(current, total)
+        entry.data = _upscale_uiscript(entry)
 
         entry.clear_cache()
-        completed += 1
+        current += 1
+
+    for entry in image_files:
+        if LEAVE_UNCOMPRESSED:
+            entry.compress = False
+
+        ui_update_progress(current, total)
+        try:
+            entry.data = _upscale_graphic(entry)
+        except errors.ArrayTooSmall:
+            print(f"Skipping file: Unknown image contents. Type ID {hex(entry.type_id)}, Group ID {hex(entry.group_id)}, Instance ID {hex(entry.instance_id)}")
+        except errors.UnknownImageFormatError:
+            print(f"Skipping file: Unknown image header. Type ID {hex(entry.type_id)}, Group ID {hex(entry.group_id)}, Instance ID {hex(entry.instance_id)}")
+
+        entry.clear_cache()
+        current += 1
 
     # For packages to be stored in "Overrides", only save changes
     if isinstance(file, GameFileOverride):
         package = dbpf.DBPF()
-        package.index.entries.extend(entry for entry in entries if entry.modified)
+        for file_group in [ui_files, image_files]:
+            package.index.entries.extend(e for e in file_group if e.modified)
 
     package.save_package(file.target_file_path)
     file.patched = True
