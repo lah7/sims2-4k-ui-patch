@@ -97,6 +97,8 @@ This project is written in Python. To start hacking, clone this repository
 and set up a [virtual environment](https://docs.python.org/3/library/venv.html#creating-virtual-environments)
 to install [requirements.txt](requirements.txt).
 
+Python 3.10 is the minimum supported version.
+
 For Windows, [install Python 3.12](https://www.python.org/downloads/windows/), and run:
 
     python -m venv venv
