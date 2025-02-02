@@ -178,6 +178,9 @@ def process_package(file: GameFile, ui_update_progress: Callable):
                 current += 1
                 continue
 
+            # Workaround: Leave TGAs uncompressed as they could become invisible if compressed (#54)
+            entry.compress = False
+
         ui_update_progress(current, total)
         try:
             entry.data = _upscale_graphic(entry)
