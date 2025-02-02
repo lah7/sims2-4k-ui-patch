@@ -219,6 +219,7 @@ class Entry(object):
         # This could be storing compressed or uncompressed data.
         self._bytes = bytes()
         self._bytes_compressed = False
+        self.modified = False
 
         # Cached uncompressed data for this session (for compressed files only)
         self._cache_uncompressed_data = bytes()
@@ -323,6 +324,7 @@ class Entry(object):
         """
         self.decompressed_size = len(data)
         self._cache_uncompressed_data = bytes()
+        self.modified = True
 
         if self.compress:
             compressed_data = self._compress_data(data)

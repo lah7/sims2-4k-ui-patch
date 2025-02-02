@@ -29,7 +29,7 @@ from typing import Callable
 from PIL import Image
 
 from sims2patcher import dbpf, errors
-from sims2patcher.gamefile import GameFile
+from sims2patcher.gamefile import GameFile, GameFileOverride
 
 # Density to multiply the UI dialog geometry and graphics
 UI_MULTIPLIER: float = 2.0
@@ -173,6 +173,11 @@ def process_package(file: GameFile, ui_update_progress: Callable):
 
         entry.clear_cache()
         completed += 1
+
+    # For packages to be stored in "Overrides", only save changes
+    if isinstance(file, GameFileOverride):
+        package = dbpf.DBPF()
+        package.index.entries.extend(entry for entry in entries if entry.modified)
 
     package.save_package(file.target_file_path)
     file.patched = True

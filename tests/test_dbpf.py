@@ -440,3 +440,10 @@ class DBPFTest(unittest.TestCase):
         with self.assertRaises(dbpf.errors.InvalidMagicHeader):
             entry.data # pylint: disable=pointless-statement
         self.assertIsInstance(entry.data_safe, bytes)
+
+    def test_modified_flag(self):
+        """Check that modifying an entry sets the modified flag"""
+        package = dbpf.DBPF("tests/files/ui.package")
+        entry = package.entries[self.tga_index]
+        entry.data = b"Hello World!"
+        self.assertTrue(entry.modified)
