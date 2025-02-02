@@ -54,7 +54,7 @@ class GameFileTest(unittest.TestCase):
             cls._abspath("Test Games/The Sims 2 University/TSData/Res/Overrides/existing.package"), ### 12
             cls._abspath("Test Games/The Sims 2/TSData/Res/Sims3D/random.package"),             ### 13
         ]
-        cls.total_files = len(cls.file_structure) - 4
+        cls.total_files = len(cls.file_structure) - 3
 
         os.chdir(cls.game_dir)
         for path in cls.file_structure:

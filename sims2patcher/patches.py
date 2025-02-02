@@ -168,6 +168,8 @@ def process_package(file: GameFile, ui_update_progress: Callable):
         elif entry.type_id == dbpf.TYPE_IMAGE:
             try:
                 entry.data = _upscale_graphic(entry)
+            except errors.ArrayTooSmall:
+                print(f"Skipping file: Unknown image contents. Type ID {hex(entry.type_id)}, Group ID {hex(entry.group_id)}, Instance ID {hex(entry.instance_id)}")
             except errors.UnknownImageFormatError:
                 print(f"Skipping file: Unknown image header. Type ID {hex(entry.type_id)}, Group ID {hex(entry.group_id)}, Instance ID {hex(entry.instance_id)}")
 
@@ -225,5 +227,8 @@ def patch_file(file: GameFile, ui_update_progress: Callable):
     if file.filename == "FontStyle.ini":
         process_fontstyle_ini(file)
 
-    elif file.filename in ["ui.package", "CaSIEUI.data"]:
+    elif file.filename in ["ui.package", "CaSIEUI.data", "objects.package"]:
         process_package(file, ui_update_progress)
+
+    else:
+        raise NotImplementedError(f"Unknown patch operation: {file.file_path}")

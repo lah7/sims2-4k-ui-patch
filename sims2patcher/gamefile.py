@@ -32,7 +32,7 @@ def get_patchable_paths(install_dir: str) -> list[str]:
     """
     paths: List[str] = []
 
-    for filename in ["ui.package", "FontStyle.ini", "CaSIEUI.data"]:
+    for filename in ["ui.package", "FontStyle.ini", "CaSIEUI.data", "Objects/objects.package"]:
         paths += glob.glob(install_dir + f"/**/{filename}", recursive=True)
 
     if not paths:
