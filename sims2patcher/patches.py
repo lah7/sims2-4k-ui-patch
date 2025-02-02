@@ -168,6 +168,16 @@ def process_package(file: GameFile, ui_update_progress: Callable):
         if LEAVE_UNCOMPRESSED:
             entry.compress = False
 
+        if file.filename == "objects.package":
+            # These JPEGs are Sim portraits, don't touch them as the game crashes
+            try:
+                if get_image_file_type(entry.data_safe) != ImageFormat.TGA:
+                    current += 1
+                    continue
+            except (errors.ArrayTooSmall, errors.UnknownImageFormatError):
+                current += 1
+                continue
+
         ui_update_progress(current, total)
         try:
             entry.data = _upscale_graphic(entry)
