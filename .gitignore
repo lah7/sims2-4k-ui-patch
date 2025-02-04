@@ -1,4 +1,9 @@
+# Cache & Build
 __pycache__
-/tests/files/ui.package
 /build/
-benchmark.csv
+
+# User must supply files
+/tests/files/ui.package
+
+# Output from tools
+*.csv
