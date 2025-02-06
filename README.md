@@ -24,11 +24,33 @@ This project is a patcher program to automatically upscale UI resources from you
 
 Yes, but there's [few visual UI glitches] that may degrade the gameplay experience!
 
-If you've like to **get involved**, [check out the issues] or [report any issues]. Some things are still misaligned or could be improved.
+If you've like to **get involved**, [check out the issues] or [report any glitches].
+Some things are still misaligned or could be improved. Still a work in progress!
 
 [few visual UI glitches]: https://github.com/lah7/sims2-4k-ui-patch/issues?q=is%3Aissue+is%3Aopen+label%3A%22visual+bug%22
 [check out the issues]: https://github.com/lah7/sims2-4k-ui-patch/issues?q=is%3Aissue+is%3Aopen+label%3A%22visual+bug%22
-[report any issues]: https://github.com/lah7/sims2-4k-ui-patch/issues/new/choose
+[report any glitches]: https://github.com/lah7/sims2-4k-ui-patch/issues/new/choose
+
+
+## Compatibility
+
+This program is compatible with all copies of The Sims 2, expansions and stuff
+packs for PC, and likely the Life Stories series too.
+[The Sims™ 2 Legacy Collection] and [The Sims™ 2: Super Collection] haven't
+been tested.
+
+Any downloads or custom content that alters the user interface from your
+The Sims 2 save folder or game installation folder are not yet patched by
+this program. It is recommended to disable/uninstall these mods until this is
+integrated, but you can hack the code to include them[<sup>[1]</sup>](https://github.com/lah7/sims2-4k-ui-patch/issues/46#issuecomment-2289635309)
+
+It seems that [The Sims™ 2 Legacy Collection] (2025 re-release) is scaling
+the UI using pixel resolution scaling, but under the hood, it's still at
+its original scaling. Since our patcher modifies the geometry and assets,
+ours is native 4K UI, providing much crisper fonts and Sim detail.
+
+[The Sims™ 2 Legacy Collection]: https://store.steampowered.com/app/3314070
+[The Sims™ 2: Super Collection]: https://apps.apple.com/us/app/the-sims-2-super-collection/id883782620?mt=12
 
 
 ## Instructions
@@ -37,12 +59,7 @@ Your game files are always backed up, so you can revert without reinstalling the
 or to repatch later using a newer version of this program with fixes and improvements.
 
 While patching, you should have **at least 2 GB of RAM free**. It may take
-a while to complete, depending on the single core performance of your CPU.
-
-The game originally compressed its package files with QFS compression.
-You can optionally turn this on, but it will take longer to complete.
-Without compression, a retail game with all expansions and backup files
-would use an **additional 7.7 GiB of disk space**.
+a while to complete, depending on the performance of your CPU.
 
 The program automatically checks this repository for an update, to ensure you have the latest version.
 
@@ -64,7 +81,7 @@ For users who play The Sims 2 under the Wine/Proton compatibility layer. [It wor
 
 1. Download the latest `linux-x64` asset from the [Releases] page.
 2. Extract the contents and run `./sims2-4k-ui-patcher`.
-    * You may need to mark it as executable first (e.g. right click -> Properties -> Permissions tab).
+    * You may need to mark it as executable first (usually by right clicking → Properties → Permissions tab).
 3. Find your "EA GAMES" directory, e.g. a wine prefix at `~/.wine/drive_c/Program Files (x86)/EA GAMES`.
 4. Click "Patch"!
 
@@ -74,21 +91,11 @@ For users who play The Sims 2 under the Wine/Proton compatibility layer. [It wor
 We don't have a pre-built binary for macOS, but you can run the Python script directly. See [Development](#development) for instructions.
 
 This patch program will work fine if you play the game under a Wine compatibility layer.
-However, if you purchased the [The Sims™ 2: Super Collection](https://apps.apple.com/us/app/the-sims-2-super-collection/id883782620?mt=12),
+However, if you purchased the [The Sims™ 2: Super Collection],
 we don't know whether files are exposed in a way that is compatible with this program. Please let us know!
 
 
 [Releases]: https://github.com/lah7/sims2-4k-ui-patch/releases/latest
-
-
-## Compatibility
-
-This program is compatible with all copies of The Sims 2, expansions and stuff
-packs for PC.
-
-Any downloads or custom content that alters the user interface or modifies
-graphical interface elements via your The Sims 2 save folder are not patched by
-this program. Using such mods may result in mixed UI scaling. It is possible to hack the patcher to patch other files [<sup>[1]</sup>](https://github.com/lah7/sims2-4k-ui-patch/issues/46#issuecomment-2289635309) although your mileage may vary.
 
 
 ## Development
@@ -115,6 +122,11 @@ For Linux, your distribution likely already has Python 3 installed:
     pip install -r requirements.txt
     python3 sims2_4k_ui_patcher.py
 
+Alternatively, you could use your system's interpreter by installing packages
+that provides the dependencies (names vary by distro):
+
+    python-requests python-pillow python-pyqt6
+
 For macOS, [install Python 3.12](https://www.python.org/downloads/macos/), and run:
 
     python3 -m venv venv
@@ -136,7 +148,7 @@ You'll need to copy a file from The Sims 2 University into the `tests/files` fol
 
     python -m unittest discover ./tests/
 
-This checks the package read, write and compression procedures are working correctly.
+This checks the modules and compression procedures are working correctly.
 
 
 ## License
