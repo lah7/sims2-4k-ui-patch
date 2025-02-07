@@ -30,6 +30,7 @@ jobs:
           python -m venv venv
           source venv/bin/activate
           pip install -r requirements.txt
+          pip install PyQt6-WebEngine
 
       - name: Check Python code for errors
         run: |
