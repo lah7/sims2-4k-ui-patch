@@ -89,12 +89,13 @@ window.onload = function() {
             element.setAttribute("title", element.getAttribute("tiptext"));
     });
 
-    // Children should be nested inside the previous LEGACY element
-    document.querySelectorAll(".CHILDREN").forEach((children) => {
-        const parent = children.previousElementSibling;
-        children.querySelectorAll(".LEGACY").forEach((child) => {
-            parent.appendChild(child);
-        });
-        children.remove();
-    });
+    // CHILDREN should be nested into the previous LEGACY element
+    while (document.querySelectorAll(".CHILDREN").length > 0) {
+        let childElement = document.querySelector(".CHILDREN");
+        let parent = childElement.previousElementSibling;
+        while (childElement.children.length > 0) {
+            parent.appendChild(childElement.children[0]);
+        }
+        childElement.remove();
+    };
 };

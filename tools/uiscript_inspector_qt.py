@@ -64,7 +64,10 @@ def uiscript_to_html(orig: str) -> str:
         output += line + "\n"
 
     # Replace <LEGACY> and <CHILDREN> tags with <div>
-    output = re.sub(r'<(\w+)', r'<div class="\1"', output)
+    output = output.replace("<LEGACY", "<div class=\"LEGACY\"")
+    output = output.replace("<CHILDREN", "<div class=\"CHILDREN\"")
+    output = output.replace("</LEGACY>", "</div>")
+    output = output.replace("</CHILDREN>", "</div>")
 
     # <LEGACY> tags didn't have closing tags, add one if not present
     output = output.replace(" >", "></div>")
