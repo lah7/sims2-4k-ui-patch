@@ -13,6 +13,9 @@ window.onload = function() {
 
     // Render each element roughly based on the UI script.
     // Many attributes origin from older Maxis games and may not be used.
+    const style = document.createElement("style");
+    document.head.appendChild(style);
+
     document.querySelectorAll(".LEGACY").forEach((element) => {
         const clsid = element.getAttribute("clsid");
         const iid = element.getAttribute("iid");
@@ -74,9 +77,7 @@ window.onload = function() {
                     element.classList.add("missing");
                     return;
                 }
-                const style = document.createElement("style");
-                style.innerHTML = `.${clsid}[image="${image}"] { background-image: url(data:image/png;base64,${b64data}); }`;
-                document.body.appendChild(style);
+                style.sheet.insertRule(`.${clsid}[image="${image}"] { background-image: url(data:image/png;base64,${b64data}); }`, style.sheet.cssRules.length);
             });
         }
 
