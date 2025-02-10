@@ -43,6 +43,10 @@ window.onload = function() {
         const forecolor = `rgb${element.getAttribute("forecolor")}`;
 
         const image = element.getAttribute("image");
+        const edgeImage = element.getAttribute("edgeimage");
+        const blttype = element.getAttribute("blttype");
+        const wparam = element.getAttribute("wparam");
+
         const caption = element.getAttribute("caption");
         const noShowCaption = element.getAttribute("showcaption") == "no";
         const tips = element.getAttribute("tips") === "yes" || false;
@@ -71,13 +75,25 @@ window.onload = function() {
 
         /* Load images */
         if (image) {
-            python.get_image(image, function(b64data) {
+            python.get_image(image, edgeImage === "yes" || blttype === "edge", area.height, area.width, function(b64data) {
                 if (!b64data && element.children.length === 0) {
                     element.style.backgroundColor = "red";
                     element.classList.add("missing");
                     return;
                 }
-                style.sheet.insertRule(`.${clsid}[image="${image}"] { background-image: url(data:image/png;base64,${b64data}); }`, style.sheet.cssRules.length);
+                const rule = [`div[image="${image}"] {`];
+                rule.push(`background-image: url(data:image/png;base64,${b64data});`);
+                switch (blttype) {
+                    case "tile":
+                        rule.push("background-repeat: repeat;");
+                        break;
+                    case "normal":
+                    case "edge":
+                        rule.push("background-repeat: no-repeat;");
+                        break;
+                }
+                rule.push("}");
+                style.sheet.insertRule(rule.join(" "), style.sheet.cssRules.length);
             });
         }
 
