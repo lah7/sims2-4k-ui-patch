@@ -22,6 +22,8 @@ The Sims 2 by parsing .uiScript files and associated graphics.
 Requires QWebEngineView.
 """
 import base64
+import glob
+import hashlib
 import io
 import os
 import re
@@ -78,10 +80,8 @@ def uiscript_to_html(orig: str) -> str:
 class State:
     """A collection of entries from a .package file"""
     def __init__(self):
-        self.package = dbpf.DBPF()
-        self.package_path = ""
-        self.ui_files: list[dbpf.Entry] = []
-        self.graphics: list[dbpf.Entry] = []
+        self.game_dir = ""
+        self.graphics: dict[tuple, dbpf.Entry] = {} # (group_id, instance_id) -> Entry
 
 
 class Bridge(QObject):
@@ -113,9 +113,9 @@ class Bridge(QObject):
             return ""
 
         try:
-            entry = self.state.package.get_entry(dbpf.TYPE_IMAGE, group_id, instance_id)
-        except ValueError:
-            print(f"Image not found: Group ID {group_id}, Instance ID {instance_id}")
+            entry = self.state.graphics[(group_id, instance_id)]
+        except KeyError:
+            print(f"Image not found: Group ID {hex(group_id)}, Instance ID {hex(instance_id)}")
             return ""
 
         # Convert to PNG as browser doesn't support TGA
@@ -126,7 +126,7 @@ class Bridge(QObject):
             tga = tga.convert("RGBA") # Remove transparency
             tga.save(io_out, format="PNG")
         except dbpf.errors.QFSError:
-            print(f"Image failed to extract: Group ID {group_id}, Instance ID {instance_id}")
+            print(f"Image failed to extract: Group ID {hex(group_id)}, Instance ID {hex(instance_id)}")
             return ""
 
         # Post processing required?
@@ -194,14 +194,16 @@ class MainInspectorWindow(QMainWindow):
 
         self.file_tree = QTreeWidget(self.base_widget)
         self.file_tree.setSizeAdjustPolicy(QAbstractScrollArea.SizeAdjustPolicy.AdjustToContentsOnFirstShow)
-        self.file_tree.setHeaderLabels(["Group ID", "Instance ID", "Caption Hint"])
-        self.file_tree.setColumnWidth(0, 100)
+        self.file_tree.setHeaderLabels(["Group ID", "Instance ID", "Caption Hint", "Package", "Appears in"])
+        self.file_tree.setColumnWidth(0, 120)
         self.file_tree.setColumnWidth(1, 100)
         self.file_tree.setColumnWidth(2, 150)
+        self.file_tree.setColumnWidth(3, 130)
+        self.file_tree.setColumnWidth(4, 100)
         self.file_tree.setSortingEnabled(True)
         self.file_tree.currentItemChanged.connect(self.open_ui_file)
 
-        self.list_dock = QDockWidget("UI Files", self)
+        self.list_dock = QDockWidget("UI Scripts", self)
         self.list_dock.setMinimumWidth(400)
         self.list_dock.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetFloatable | QDockWidget.DockWidgetFeature.DockWidgetMovable)
         self.list_dock.setWidget(self.file_tree)
@@ -250,10 +252,10 @@ class MainInspectorWindow(QMainWindow):
         self.setWindowIcon(QIcon(os.path.abspath(os.path.join(DATA_DIR, "..", "..", "assets", "status_default@2x.png"))))
         self.show()
 
-        # Auto load package when passed as a command line argument
+        # Auto load directory when passed as a command line argument
         if len(sys.argv) > 1:
-            self.state.package_path = sys.argv[1]
-            if os.path.exists(self.state.package_path):
+            self.state.game_dir = sys.argv[1]
+            if os.path.exists(self.state.game_dir):
                 self.load_files()
         else:
             self.browse()
@@ -261,41 +263,132 @@ class MainInspectorWindow(QMainWindow):
     def browse(self):
         """Show the file dialog to select a package file"""
         browser = QFileDialog(self)
-        browser.setFileMode(QFileDialog.FileMode.ExistingFile)
-        browser.setNameFilter("The Sims 2 Package Files (*.package CaSIEUI.data)")
-        browser.setViewMode(QFileDialog.ViewMode.Detail)
+        browser.setFileMode(QFileDialog.FileMode.Directory)
+        browser.setViewMode(QFileDialog.ViewMode.List)
 
         if browser.exec() == QFileDialog.DialogCode.Accepted:
-            self.state.package_path = browser.selectedFiles()[0]
+            self.state.game_dir = browser.selectedFiles()[0]
             self.load_files()
         else:
             sys.exit(130)
 
     def load_files(self):
-        """Load the .uiScript files from the selected package"""
-        self.status_bar.showMessage(f"Reading: {self.state.package_path}")
+        """Load all UI scripts found in game directories"""
+        self.status_bar.showMessage(f"Loading UI scripts from: {self.state.game_dir}")
         self.setCursor(Qt.CursorShape.WaitCursor)
         QApplication.processEvents()
 
-        self.state.package = dbpf.DBPF(self.state.package_path)
-        self.state.ui_files = [entry for entry in self.state.package.entries if entry.type_id == dbpf.TYPE_UI_DATA]
-        self.state.graphics = [entry for entry in self.state.package.entries if entry.type_id == dbpf.TYPE_IMAGE]
-        total = len(self.state.ui_files)
+        # Reset state
+        self.state.graphics = {}
+        for item in self.items:
+            item.takeChildren()
+        self.items = []
 
-        for entry in self.state.ui_files:
-            item = QTreeWidgetItem(self.file_tree, [str(hex(entry.group_id)), str(hex(entry.instance_id)), ""])
-            item.setData(0, Qt.ItemDataRole.UserRole, entry)
-            self.items.append(item)
+        # Locate package files with UI scripts
+        file_list: list[str] = []
+        for filename in ["TSData/Res/UI/ui.package", "TSData/Res/UI/CaSIEUI.data"]:
+            file_list += glob.glob(self.state.game_dir + f"/**/{filename}", recursive=True)
 
-        self.status_bar.showMessage(f"Listed {total} UI files from {self.state.package_path}", 3000)
+        ui_dups: dict[tuple, list[dbpf.Entry]] = {}
+        entry_to_game: dict[dbpf.Entry, str] = {}
+        entry_to_package: dict[dbpf.Entry, str] = {}
+
+        for path in file_list:
+            package = dbpf.DBPF(path)
+            package_name = os.path.basename(path)
+
+            # Create list of UI files, but also identify duplicates across EPs/SPs
+            for entry in [entry for entry in package.entries if entry.type_id == dbpf.TYPE_UI_DATA]:
+                key = (entry.group_id, entry.instance_id)
+
+                # Ignore binary files
+                if entry.decompressed_size > 1024 * 1024:
+                    continue
+
+                # Look up an entry by group and instance ID
+                if key in ui_dups:
+                    ui_dups[key].append(entry)
+                else:
+                    ui_dups[key] = [entry]
+
+                # Look up which game/package an entry belongs to
+                entry_to_game[entry] = package.game_name
+                entry_to_package[entry] = package_name
+
+            # Graphics can be looked up by group and instance ID
+            for entry in [entry for entry in package.entries if entry.type_id == dbpf.TYPE_IMAGE]:
+                self.state.graphics[(entry.group_id, entry.instance_id)] = entry
+
+        self.status_bar.showMessage(f"Reading {len(ui_dups.keys())} UI scripts...")
+        QApplication.processEvents()
+
+        # Display items by group/instance; secondary by game (if the contents differ)
+        for group_id, instance_id in ui_dups:
+            entries: list[dbpf.Entry] = ui_dups[(group_id, instance_id)]
+            key = (group_id, instance_id)
+            checksums: dict[dbpf.Entry, str] = {}
+            for entry in entries:
+                checksums[entry] = hashlib.md5(entry.data_safe).hexdigest()
+            identical = len(set(checksums.values())) == 1
+            package_names = ", ".join(list(set(entry_to_package[entry] for entry in entries)))
+
+            # Display a single item when UI scripts are identical across all games (or is only one)
+            if identical:
+                game_names = ", ".join([entry_to_game[entry] for entry in entries])
+                entry = entries[0]
+                item = QTreeWidgetItem(self.file_tree, [str(hex(group_id)), str(hex(instance_id)), "", package_names, game_names])
+                item.setData(0, Qt.ItemDataRole.UserRole, entry)
+                self.items.append(item)
+
+            # Display a tree item for each unique instance of the UI script
+            else:
+                parent = QTreeWidgetItem(self.file_tree, [str(hex(group_id)), str(hex(instance_id)), "", package_names, f"{len(entries)} games"])
+                parent.setData(0, Qt.ItemDataRole.UserRole, entries[0])
+                self.items.append(parent)
+                _md5_to_item: dict[str, QTreeWidgetItem] = {}
+                _game_names = []
+
+                for entry in entries:
+                    checksum = checksums[entry]
+                    game_name = entry_to_game[entry]
+                    package_name = entry_to_package[entry]
+                    _game_names.append(game_name)
+
+                    try:
+                        # Append to existing item
+                        child: QTreeWidgetItem = _md5_to_item[checksum]
+                        if not package_name in child.text(3):
+                            child.setText(3, f"{child.text(3)}, {package_name}")
+                        if not game_name in child.text(4):
+                            child.setText(4, f"{child.text(4)}, {game_name}")
+                    except KeyError:
+                        # Create new item
+                        child = QTreeWidgetItem(parent, [str(hex(group_id)), str(hex(instance_id)), "", package_name, game_name])
+                        child.setData(0, Qt.ItemDataRole.UserRole, entry)
+                        self.items.append(child)
+                        _md5_to_item[checksum] = child
+
+                parent.setToolTip(4, "\n".join(sorted(_game_names)))
+
+        # Show games under tooltips
+        for item in self.items:
+            games = item.text(4).split(", ")
+            if len(games) > 1:
+                games = sorted(games)
+                item.setToolTip(4, "\n".join(games))
+                item.setText(4, f"{len(games)} games")
+
+        total = len(ui_dups.keys())
+        self.status_bar.showMessage(f"Found {total} UI scripts from {self.state.game_dir}", 3000)
         self.setCursor(Qt.CursorShape.ArrowCursor)
 
         timer = QTimer(self)
-        timer.singleShot(1, self.preload_files)
+        timer.singleShot(1000, self.preload_files)
 
     def open_ui_file(self, item: QTreeWidgetItem):
         """Open the selected .uiScript file in the web view"""
         entry: dbpf.Entry = item.data(0, Qt.ItemDataRole.UserRole)
+
         try:
             html = uiscript_to_html(entry.data.decode("utf-8"))
         except UnicodeDecodeError:
@@ -319,7 +412,7 @@ class MainInspectorWindow(QMainWindow):
             # Use longest caption as the title
             if matches:
                 # Exclude captions used for technical key/value pairs
-                matches = [match for match in matches if not match.find("=") != -1 and not match.isupper()]
+                matches = [match.replace("\n", "") for match in matches if (not match.find("=") != -1 and not match.isupper()) or match.islower()]
 
                 item.setText(2, max(matches, key=len))
                 item.setToolTip(2, "\n".join(matches))
