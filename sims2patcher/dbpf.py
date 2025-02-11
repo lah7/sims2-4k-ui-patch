@@ -491,6 +491,7 @@ class DBPF(Stream):
             with open(path, "rb") as f:
                 self.stream = io.BytesIO(f.read())
 
+        self.path = path
         self.header = Header(self.stream)
         self.index = Index(self.stream, self.header)
 
@@ -500,6 +501,29 @@ class DBPF(Stream):
         Return all the entries from the index.
         """
         return self.index.entries
+
+    @property
+    def game_name(self) -> str:
+        """
+        Return a suitable game name based on the path of the package.
+        """
+        if not self.path:
+            return "Unknown"
+
+        parts = self.path.replace("\\", "/").split("/") # Both OS separator
+        return_next = False
+        while parts:
+            name = parts.pop()
+            if return_next:
+                split = name.split("Sims 2")
+                if len(split) > 1 and split[1] == "":
+                    return "Base"
+                elif len(split) > 1:
+                    return split[1].strip()
+                return name
+            if name == "TSData":
+                return_next = True
+        raise ValueError("Unknown game name for package file")
 
     def get_entry(self, type_id: int, group_id: int, instance_id: int, resource_id = 0) -> Entry:
         """

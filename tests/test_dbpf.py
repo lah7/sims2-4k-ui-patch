@@ -447,3 +447,21 @@ class DBPFTest(unittest.TestCase):
         entry = package.entries[self.tga_index]
         entry.data = b"Hello World!"
         self.assertTrue(entry.modified)
+
+    def test_game_name(self):
+        """Check we can determine suitable names for a package file"""
+        def _test_path(path):
+            package = dbpf.DBPF()
+            package.path = path
+            return package.game_name
+
+        self.assertEqual(_test_path("/tmp/The Sims 2 Ultimate Collection/Double Deluxe/SP4/TSData/Res/UI/ui.package"), "SP4")
+        self.assertEqual(_test_path("/tmp/The Sims 2 Ultimate Collection/Bon Voyage/TSData/Res/UI/CaSIEUI.data"), "Bon Voyage")
+        self.assertEqual(_test_path("/tmp/The Sims 2 Legacy Collection/EP9/TSData/Res/UI/ui.package"), "EP9")
+        self.assertEqual(_test_path("/tmp/The Sims 2 Legacy Collection/Base/TSData/Res/UI/ui.package"), "Base")
+        self.assertEqual(_test_path("/tmp/The Sims 2/TSData/Res/UI/ui.package"), "Base")
+        self.assertEqual(_test_path("/tmp/EA GAMES/The Sims 2 Apartment Life/TSData/Res/UI/ui.package"), "Apartment Life")
+        self.assertEqual(_test_path("/tmp/EA GAMES/Die Sims 2 Apartment Life/TSData/Res/Locale/German/UI/ui.package"), "Apartment Life")
+        self.assertEqual(_test_path("/tmp/EA GAMES/Les Sims 2 Apartment Life/TSData/Res/Locale/French/UI/ui.package"), "Apartment Life")
+        with self.assertRaises(ValueError):
+            _test_path("/tmp/ui.package")
