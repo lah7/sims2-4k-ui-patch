@@ -5,6 +5,3 @@ requests
 # Build only
 cx_Freeze
 pylint
-
-# Inspector tool only
-#PyQt6-WebEngine
