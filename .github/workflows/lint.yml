@@ -18,22 +18,15 @@ jobs:
         with:
             python-version: ${{ matrix.python-version }}
             architecture: 'x64'
-
-      - name: Cache Dependencies
-        uses: actions/cache@v4
-        with:
-          path: venv
-          key: ${{ runner.os }}-venv-${{ matrix.python-version }}-${{ hashFiles('**/requirements.txt') }}
+            cache: 'pip'
+            cache-dependency-path: '**/requirements.txt'
 
       - name: Install Dependencies
         run: |
-          python -m venv venv
-          source venv/bin/activate
           pip install -r requirements.txt
 
       - name: Check Python code for errors
         run: |
-          source venv/bin/activate
           pylint \
             --rcfile=.pylintrc \
             --disable=R \

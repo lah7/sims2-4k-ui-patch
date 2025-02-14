@@ -15,22 +15,15 @@ jobs:
         with:
             python-version: '3.12'
             architecture: 'x64'
-
-      - name: Cache Dependencies
-        uses: actions/cache@v4
-        with:
-          path: venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements.txt') }}
+            cache: 'pip'
+            cache-dependency-path: '**/requirements.txt'
 
       - name: Install Dependencies
         run: |
-          python -m venv venv
-          .\venv\Scripts\activate
           pip install -r requirements.txt
 
       - name: Build
         run: |
-          .\venv\Scripts\activate
           python setup.py build
           git fetch --tags --unshallow
           git describe --tags > dist\version.txt
@@ -55,22 +48,15 @@ jobs:
         with:
             python-version: '3.12'
             architecture: 'x64'
-
-      - name: Cache Dependencies
-        uses: actions/cache@v4
-        with:
-          path: venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements.txt') }}
+            cache: 'pip'
+            cache-dependency-path: '**/requirements.txt'
 
       - name: Install Dependencies
         run: |
-          python -m venv venv
-          source venv/bin/activate
           pip install -r requirements.txt
 
       - name: Build
         run: |
-          source venv/bin/activate
           python setup.py build
           git fetch --tags --unshallow
           git describe --tags > dist/version.txt
