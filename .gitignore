@@ -1,6 +1,7 @@
 # Cache & Build
 __pycache__
 /build/
+/dist/
 
 # User must supply files
 /tests/files/ui.package
