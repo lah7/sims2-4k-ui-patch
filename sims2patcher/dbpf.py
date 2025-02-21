@@ -523,7 +523,8 @@ class DBPF(Stream):
                 return name
             if name == "TSData":
                 return_next = True
-        raise ValueError("Unknown game name for package file")
+
+        return "Unknown"
 
     def get_entry(self, type_id: int, group_id: int, instance_id: int, resource_id = 0) -> Entry:
         """

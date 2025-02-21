@@ -463,5 +463,4 @@ class DBPFTest(unittest.TestCase):
         self.assertEqual(_test_path("/tmp/EA GAMES/The Sims 2 Apartment Life/TSData/Res/UI/ui.package"), "Apartment Life")
         self.assertEqual(_test_path("/tmp/EA GAMES/Die Sims 2 Apartment Life/TSData/Res/Locale/German/UI/ui.package"), "Apartment Life")
         self.assertEqual(_test_path("/tmp/EA GAMES/Les Sims 2 Apartment Life/TSData/Res/Locale/French/UI/ui.package"), "Apartment Life")
-        with self.assertRaises(ValueError):
-            _test_path("/tmp/ui.package")
+        self.assertEqual(_test_path("/tmp/ui.package"), "Unknown")
