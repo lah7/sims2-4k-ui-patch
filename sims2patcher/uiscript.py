@@ -133,7 +133,8 @@ def deserialize_uiscript(root: UIScriptRoot) -> str:
             if not value and not ALWAYS_QUOTED:
                 elements.append(key)
             elif " " in value or key in ALWAYS_QUOTED:
-                elements.append(f"{key}=\"{value.replace(NEWLINE_PLACEHOLDER, "\r\n")}\"")
+                value = value.replace(NEWLINE_PLACEHOLDER, "\r\n")
+                elements.append(f"{key}=\"{value}\"")
             else:
                 elements.append(f"{key}={value}")
 
