@@ -74,3 +74,120 @@ class UIScriptTest(unittest.TestCase):
 
         first_child_first_element = root.children[0].children[0]
         self.assertEqual(first_child_first_element["image"], "{499db772,a9b30210}")
+
+    def test_deserialize(self):
+        """Check we can deserialize a conceptual .uiScript file"""
+        root = UIScriptRoot()
+        root.comments.append("# This is a test")
+        root.children = [UIScriptElement()]
+        root.children[0].attributes = {
+            "clsid": "GZWinGen",
+            "iid": "IGZWinGen",
+            "area": "(10,10,605,432)"
+        }
+        root.children[0].children = [UIScriptElement(), UIScriptElement()]
+        root.children[0].children[0].attributes = {
+            "clsid": "GZWinBMP",
+            "iid": "IGZWinBMP",
+            "transparentbkg": "yes"
+        }
+        root.children[0].children[1].attributes = {
+            "clsid": "GZWinText",
+            "caption": "Hello, World!"
+        }
+
+        output = uiscript.deserialize_uiscript(root)
+        expected = "# This is a test\r\n" \
+                   "<LEGACY clsid=GZWinGen iid=IGZWinGen area=(10,10,605,432) >\r\n" \
+                   "<CHILDREN>\r\n" \
+                   "   <LEGACY clsid=GZWinBMP iid=IGZWinBMP transparentbkg=yes >\r\n" \
+                   "   <LEGACY clsid=GZWinText caption=\"Hello, World!\" >\r\n" \
+                   "</CHILDREN>\r\n"
+
+        self.assertEqual(output, expected)
+
+    def test_deserialize_from_package(self):
+        """Check deserialization against all UI scripts in the package, ensuring 1:1 match"""
+        def _find_duplicate_attribute(text: str, keyword: str) -> bool:
+            for line in text.split("\n"):
+                if keyword in line and line.count(f"{keyword}=") > 1:
+                    return True
+            return False
+
+        for entry in self.ui_package.entries:
+            try:
+                original = entry.data.decode("utf-8")
+                root = uiscript.serialize_uiscript(original)
+            except UnicodeDecodeError:
+                # Binary UI Script file
+                continue
+
+            output = uiscript.deserialize_uiscript(root)
+
+            # Skip files with duplicate "wparam" attributes
+            # Assume the game (and our logic) uses the last instance of the attribute.
+            # If that's not the case, we'll need to update our logic.
+            #
+            # Incomplete list of affected [group] and instance IDs
+            # ====================================================
+            # [0xa99d8a11]
+            #   0x030000f0,
+            #   0x2cb242f6, 0x2cb242f8, 0x2cb242f9,
+            #   0x49000000, 0x49001057, 0x4905f85b, 0x49001000, 0x49001003, 0x49001004,
+            #   0x8c159251, 0x8c159280, 0x8c159286,
+            #   0xcb980e50,
+            #   0xcc16a49e, 0xcc16a50a,
+            # [0x8000600]
+            #   0x49001000, 0x49060f033, 0x49060f088,
+            #   0xcb980e50, 0xcc16a49e,
+
+            if _find_duplicate_attribute(original, "wparam"):
+                continue
+
+            # Skip known files that don't fit the pattern
+            if entry.group_id == 0xa99d8a11 and entry.instance_id in [
+                # Duplicate "style" attribute
+                0xfffffff0, 0xfffffff1,
+                0x49060f00,
+                0x90617b7,
+
+                # Attribute with no value: "transparent"
+                0xa0000001, 0xa0000002,
+
+                # Whitespace not preserved for multi-line caption
+                0x49000010, 0x4906501b,
+                0xeeca0006,
+
+                # Attribute with an equals sign: "initvalue="
+                0xed0aa720,
+
+                # We assume initvalue is always quoting, but not these ("=0")
+                0xcb980e51, 0xcb980e52,
+
+                # Debugging dialogs
+                0x8baff56f,
+
+                # Early UI? Unused? comments* attributes
+                0xffff8000,
+            ]:
+                continue
+
+            if entry.group_id == 0x8000600 and entry.instance_id in [
+                # We assume initvalue is always quoting, but not these ("=0")
+                0xcb980e51, 0xcb980e52,
+
+                # Whitespace not preserved for multi-line caption
+                0xeeca0006,
+            ]:
+                continue
+
+            self.assertEqual(output, entry.data.decode("utf-8"))
+
+    def test_deserialize_with_duplicate_attributes(self):
+        """Check deserialization deduplicates any attributes with the same key"""
+        raw = """<LEGACY clsid=GZWinGen wparam=0 wparam="2" wparam="0x030000f0,string,currentNeighborhoodType!=university" wparam="0x030000f2,string,currentNeighborhoodType!=university" >"""
+        root = uiscript.serialize_uiscript(raw)
+        output = uiscript.deserialize_uiscript(root)
+        expected = """<LEGACY clsid=GZWinGen wparam="0x030000f2,string,currentNeighborhoodType!=university" >\r\n"""
+
+        self.assertEqual(output, expected)

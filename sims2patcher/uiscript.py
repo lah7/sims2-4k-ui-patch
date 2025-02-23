@@ -21,6 +21,9 @@ processing.
 #
 import re
 
+ALWAYS_QUOTED = ["caption", "tiptext", "wparam", "initvalue"]
+NEWLINE_PLACEHOLDER = "$NEWLINE$"
+
 
 class UIScriptRoot:
     """
@@ -58,6 +61,10 @@ def _read_element(line) -> UIScriptElement:
     for attrib, value in re.findall(r"(\w+)=(\".*?\")", line):
         element.attributes[attrib] = value.replace("\"", "")
 
+    # Extract attributes with no values
+    for attrib in re.findall(r' (\w+)(?=[^"]*(?:"[^"]*"[^"]*)*$) ', line):
+        element.attributes[attrib] = ""
+
     return element
 
 
@@ -77,6 +84,18 @@ def serialize_uiscript(data: str) -> UIScriptRoot:
         # Ignore empty lines
         if not line:
             continue
+
+        # Each line with an element is expected to be closed on the same line. If not, it might be a multi-line caption.
+        if line.startswith("<") and not line.endswith(">"):
+            _first_line = line
+            new_line = [line]
+            try:
+                while not line.endswith(">"):
+                    line = lines.pop(0).strip()
+                    new_line.append(line)
+            except IndexError as e:
+                raise ValueError(f"Expected closing tag, but reached end of file instead: {_first_line}") from e
+            line = NEWLINE_PLACEHOLDER.join(new_line)
 
         # Capture comments or random strings
         if line.startswith("#") or not line.startswith("<"):
@@ -100,3 +119,38 @@ def serialize_uiscript(data: str) -> UIScriptRoot:
         raise ValueError("Expected to be at the root level. Perhaps a </CHILDREN> tag is missing?")
 
     return root
+
+
+def deserialize_uiscript(root: UIScriptRoot) -> str:
+    """
+    Convert a serialised representation of a UI script file back into
+    the XML-like Maxis format.
+    """
+    def _process_element(element: UIScriptElement, ident: int = 0):
+        identation = "   " * ident
+        elements = []
+        for key, value in element.attributes.items():
+            if not value and not ALWAYS_QUOTED:
+                elements.append(key)
+            elif " " in value or key in ALWAYS_QUOTED:
+                elements.append(f"{key}=\"{value.replace(NEWLINE_PLACEHOLDER, "\r\n")}\"")
+            else:
+                elements.append(f"{key}={value}")
+
+        lines.append(f"{identation}<LEGACY {' '.join(elements)} >")
+        if element.children:
+            lines.append(f"{identation}<CHILDREN>")
+            for child in element.children:
+                _process_element(child, ident + 1)
+            lines.append(f"{identation}</CHILDREN>")
+
+    lines = []
+
+    for comment in root.comments:
+        lines.append(comment)
+
+    for child in root.children:
+        _process_element(child)
+
+    # Game originally used CR+LF (Windows) line endings
+    return "\r\n".join(lines) + "\r\n"
