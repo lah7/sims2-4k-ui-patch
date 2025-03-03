@@ -34,6 +34,23 @@ class UIScriptRoot:
         self.comments: list[str] = []
         self.children: list["UIScriptElement"] = []
 
+    def get_all_elements(self) -> list["UIScriptElement"]:
+        """
+        Return a complete list of all the elements under the root element(s)
+        """
+        def _get_children_recursively(element: "UIScriptElement") -> list["UIScriptElement"]:
+            elements = []
+            for child in element.children:
+                elements.append(child)
+                elements.extend(_get_children_recursively(child))
+            return elements
+
+        elements = []
+        for element in self.children:
+            elements.append(element)
+            elements.extend(_get_children_recursively(element))
+        return elements
+
 
 class UIScriptElement:
     """

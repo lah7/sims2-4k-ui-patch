@@ -191,3 +191,51 @@ class UIScriptTest(unittest.TestCase):
         expected = """<LEGACY clsid=GZWinGen wparam="0x030000f2,string,currentNeighborhoodType!=university" >\r\n"""
 
         self.assertEqual(output, expected)
+
+    def test_list_all_elements(self):
+        """Check we can list all elements in a UI script file"""
+        root = uiscript.UIScriptRoot()
+
+        for c in range(10):
+            element = uiscript.UIScriptElement()
+            element.attributes = {"testdata": str(c)}
+            if c in [2, 4, 6, 8]:
+                element.children = [uiscript.UIScriptElement()]
+                element.children[0].attributes = {"testdata": str(c + 0.5)}
+            root.children.append(element)
+
+        all_elements = root.get_all_elements()
+
+        self.assertEqual(len(all_elements), 14)
+        self.assertEqual(all(isinstance(element, uiscript.UIScriptElement) for element in all_elements), True)
+        self.assertEqual(all_elements[0].attributes, {"testdata": "0"})
+        self.assertEqual(all_elements[2].attributes, {"testdata": "2"})
+        self.assertEqual(all_elements[3].attributes, {"testdata": "2.5"})
+        self.assertEqual(all_elements[4].attributes, {"testdata": "3"})
+        self.assertEqual(all_elements[8].attributes, {"testdata": "6"})
+        self.assertEqual(all_elements[9].attributes, {"testdata": "6.5"})
+
+    def test_edit_all_elements(self):
+        """Check elements are edited when using get_all_elements()"""
+        root = uiscript.UIScriptRoot()
+        for _ in range(10):
+            element = uiscript.UIScriptElement()
+            element.attributes = {"state": "old"}
+            element.children = [uiscript.UIScriptElement(), uiscript.UIScriptElement()]
+            element.children[0].attributes = {"state": "old"}
+            element.children[1].attributes = {"state": "old"}
+            root.children.append(element)
+
+        all_elements = root.get_all_elements()
+        self.assertEqual(len(all_elements), 30)
+        all_elements[1].attributes["state"] = "new"
+        all_elements[2].attributes["state"] = "new"
+        all_elements[27].attributes["state"] = "new"
+
+        all_elements_2 = root.get_all_elements()
+        self.assertEqual(all_elements_2[1].attributes["state"], "new")
+        self.assertEqual(all_elements_2[2].attributes["state"], "new")
+        self.assertEqual(all_elements_2[27].attributes["state"], "new")
+        self.assertEqual(root.children[0].children[0].attributes["state"], "new")
+        self.assertEqual(root.children[0].children[1].attributes["state"], "new")
+        self.assertEqual(root.children[9].attributes["state"], "new")
