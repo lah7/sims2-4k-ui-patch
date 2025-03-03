@@ -464,3 +464,8 @@ class DBPFTest(unittest.TestCase):
         self.assertEqual(_test_path("/tmp/EA GAMES/Die Sims 2 Apartment Life/TSData/Res/Locale/German/UI/ui.package"), "Apartment Life")
         self.assertEqual(_test_path("/tmp/EA GAMES/Les Sims 2 Apartment Life/TSData/Res/Locale/French/UI/ui.package"), "Apartment Life")
         self.assertEqual(_test_path("/tmp/ui.package"), "Unknown")
+
+    def test_entries_by_type(self):
+        """Check that we can filter entries by type"""
+        self.assertEqual(len(self.package.get_entries_by_type(dbpf.TYPE_UI_DATA)), 259)
+        self.assertEqual(len(self.package.get_entries_by_type(dbpf.TYPE_IMAGE)), 346)

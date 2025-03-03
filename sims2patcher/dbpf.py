@@ -535,6 +535,12 @@ class DBPF(Stream):
                 return entry
         raise ValueError(f"Entry not found: Type ID {hex(type_id)}, Group ID {hex(group_id)}, Instance ID {hex(instance_id)}, Resource ID {hex(resource_id)}")
 
+    def get_entries_by_type(self, type_id: int) -> list[Entry]:
+        """
+        Return all entries for a specific file type ID.
+        """
+        return [entry for entry in self.entries if entry.type_id == type_id]
+
     def add_entry(self, type_id: int, group_id: int, instance_id: int, resource_id: int, data: bytes, compress=False) -> Entry:
         """
         Add a new file to the index.

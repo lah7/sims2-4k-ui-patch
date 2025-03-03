@@ -149,8 +149,8 @@ def process_package(file: GameFile, ui_update_progress: Callable):
     """
     package = dbpf.DBPF(file.original_file_path)
 
-    ui_files = [e for e in package.entries if e.type_id == dbpf.TYPE_UI_DATA]
-    image_files = [e for e in package.entries if e.type_id == dbpf.TYPE_IMAGE]
+    ui_files = package.get_entries_by_type(dbpf.TYPE_UI_DATA)
+    image_files = package.get_entries_by_type(dbpf.TYPE_IMAGE)
     total = len(ui_files) + len(image_files)
     current = 0
 
