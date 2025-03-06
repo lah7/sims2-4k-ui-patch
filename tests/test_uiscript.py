@@ -239,3 +239,15 @@ class UIScriptTest(unittest.TestCase):
         self.assertEqual(root.children[0].children[0].attributes["state"], "new")
         self.assertEqual(root.children[0].children[1].attributes["state"], "new")
         self.assertEqual(root.children[9].attributes["state"], "new")
+
+    def test_list_all_elements_by_attribute(self):
+        """Check we can list filter elements in a UI script file"""
+        root = uiscript.UIScriptRoot()
+
+        for c in range(10):
+            element = uiscript.UIScriptElement()
+            element.attributes = {"testdata": str(c), "dummy": "1"}
+            root.children.append(element)
+
+        self.assertEqual(len(root.get_elements_by_attribute("testdata", "6")), 1)
+        self.assertEqual(len(root.get_elements_by_attribute("dummy", "1")), 10)

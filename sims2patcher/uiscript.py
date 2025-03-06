@@ -51,6 +51,16 @@ class UIScriptRoot:
             elements.extend(_get_children_recursively(element))
         return elements
 
+    def get_elements_by_attribute(self, attribute: str, value: str) -> list["UIScriptElement"]:
+        """
+        Return a list of all elements that have a specific attribute and value.
+        """
+        elements = []
+        for element in self.get_all_elements():
+            if attribute in element.attributes and element[attribute] == value:
+                elements.append(element)
+        return elements
+
 
 class UIScriptElement:
     """
