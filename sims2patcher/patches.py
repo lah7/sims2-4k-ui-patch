@@ -28,7 +28,7 @@ from typing import Callable
 
 from PIL import Image
 
-from sims2patcher import dbpf, errors
+from sims2patcher import dbpf, errors, uiscript
 from sims2patcher.gamefile import GameFile, GameFileOverride
 
 # Density to multiply the UI dialog geometry and graphics
@@ -94,51 +94,28 @@ def _upscale_graphic(entry: dbpf.Entry) -> bytes:
     return output.getvalue()
 
 
-def _upscale_uiscript(entry: dbpf.Entry):
+def _upscale_uiscript(entry: dbpf.Entry) -> bytes:
     """
     Return binary data for a modified .uiScript file.
 
     .uiScript is a modified XML file that specifies the dialog geometry and element positions.
 
-    To upscale, multiply the attribute's value (which are comma separated values) by UI_MULTIPLIER.
+    To upscale, multiply attributes with dimension/position values by UI_MULTIPLIER.
     """
     try:
-        data = entry.data.decode("utf-8")
+        data: uiscript.UIScriptRoot = uiscript.serialize_uiscript(entry.data.decode("utf-8"))
     except UnicodeDecodeError:
         # Skip binary .uiScript file
         return entry.data
 
-    def _update_attribute_coord(data, name):
-        """
-        Update an attribute that contains geometry in this format: (1,2,3,4)
+    for element in data.get_all_elements():
+        for attrib, value in element.attributes.items():
+            if attrib in ["area", "gutters"]:
+                parts = value.strip("()").split(",")
+                parts = [str(int(int(p) * UI_MULTIPLIER)) for p in parts]
+                element.attributes[attrib] = "(" + ",".join(parts) + ")"
 
-        Examples:
-        - area=(0,0,175,21)
-        - area=(60,20,511,342)
-        - gutters=(4,4)
-        - gutters=(0,0,0,0)
-
-        Useful documentation: https://www.wiki.sc4devotion.com/index.php?title=UI
-        """
-        output = []
-        parts = data.split(name + "=")
-        for part in parts:
-            if not part.startswith("("):
-                output.append(part)
-                continue
-
-            new_values = []
-            values = part.split("(")[1].split(")")[0]
-            for number in values.split(","):
-                new_values.append(str(int(int(number) * UI_MULTIPLIER)))
-            part = f"{name}={part.replace(values, ','.join(new_values))}"
-            output.append(part)
-        return "".join(output)
-
-    data = _update_attribute_coord(data, "area")
-    data = _update_attribute_coord(data, "gutters")
-
-    return data.encode("utf-8")
+    return uiscript.deserialize_uiscript(data).encode("utf-8")
 
 
 def process_package(file: GameFile, ui_update_progress: Callable):
