@@ -1,6 +1,9 @@
 """
 Perform tests on the UI scripts module to ensure that the data
 can be serialised and deserialised correctly.
+
+"Serialisation" means converting the data structure between Maxis' XML-like format
+and our own Python format, which should be reconstructed as accurately as possible.
 """
 import os
 import sys
@@ -15,7 +18,7 @@ from sims2patcher.uiscript import UIScriptElement, UIScriptRoot
 
 class UIScriptTest(unittest.TestCase):
     """
-    Test our "UI scripts" module against test files.
+    Test our "UI scripts" module against game files and edge cases.
     """
     tmp_files = []
 
@@ -25,8 +28,8 @@ class UIScriptTest(unittest.TestCase):
         cls.ui_package = dbpf.DBPF("tests/files/ui.package")
         return super().setUpClass()
 
-    def test_serialize_from_text(self):
-        """Check we can serialize a conceptual .uiScript file"""
+    def test_serialize(self):
+        """Check we can serialize UI script files"""
         raw = """# This is a comment
         <LEGACY clsid=GZWinGen iid=IGZWinGen area=(10,10,605,432) >
         <CHILDREN>
@@ -55,7 +58,7 @@ class UIScriptTest(unittest.TestCase):
         })
 
     def test_serialize_from_package(self):
-        """Check serialization is accurate for a .uiScript file with 1 child"""
+        """Check serialization is accurate for a UI script file with 1 child"""
         entry = self.ui_package.get_entry(dbpf.TYPE_UI_DATA, 0xa99d8a11, 0x8c159250)
         root = uiscript.serialize_uiscript(entry.data.decode("utf-8"))
 
@@ -76,7 +79,7 @@ class UIScriptTest(unittest.TestCase):
         self.assertEqual(first_child_first_element["image"], "{499db772,a9b30210}")
 
     def test_deserialize(self):
-        """Check we can deserialize a conceptual .uiScript file"""
+        """Check we can correctly deserialize to a UI script file"""
         root = UIScriptRoot()
         root.comments.append("# This is a test")
         root.children = [UIScriptElement()]
@@ -108,12 +111,6 @@ class UIScriptTest(unittest.TestCase):
 
     def test_deserialize_from_package(self):
         """Check deserialization against all UI scripts in the package, ensuring 1:1 match"""
-        def _find_duplicate_attribute(text: str, keyword: str) -> bool:
-            for line in text.split("\n"):
-                if keyword in line and line.count(f"{keyword}=") > 1:
-                    return True
-            return False
-
         for entry in self.ui_package.entries:
             try:
                 original = entry.data.decode("utf-8")
@@ -123,26 +120,6 @@ class UIScriptTest(unittest.TestCase):
                 continue
 
             output = uiscript.deserialize_uiscript(root)
-
-            # Skip files with duplicate "wparam" attributes
-            # Assume the game (and our logic) uses the last instance of the attribute.
-            # If that's not the case, we'll need to update our logic.
-            #
-            # Incomplete list of affected [group] and instance IDs
-            # ====================================================
-            # [0xa99d8a11]
-            #   0x030000f0,
-            #   0x2cb242f6, 0x2cb242f8, 0x2cb242f9,
-            #   0x49000000, 0x49001057, 0x4905f85b, 0x49001000, 0x49001003, 0x49001004,
-            #   0x8c159251, 0x8c159280, 0x8c159286,
-            #   0xcb980e50,
-            #   0xcc16a49e, 0xcc16a50a,
-            # [0x8000600]
-            #   0x49001000, 0x49060f033, 0x49060f088,
-            #   0xcb980e50, 0xcc16a49e,
-
-            if _find_duplicate_attribute(original, "wparam"):
-                continue
 
             # Skip known files that don't fit the pattern
             if entry.group_id == 0xa99d8a11 and entry.instance_id in [
@@ -181,16 +158,20 @@ class UIScriptTest(unittest.TestCase):
             ]:
                 continue
 
-            self.assertEqual(output, entry.data.decode("utf-8"))
+            self.assertEqual(output, original)
 
-    def test_deserialize_with_duplicate_attributes(self):
-        """Check deserialization deduplicates any attributes with the same key"""
-        raw = """<LEGACY clsid=GZWinGen wparam=0 wparam="2" wparam="0x030000f0,string,currentNeighborhoodType!=university" wparam="0x030000f2,string,currentNeighborhoodType!=university" >"""
+    def test_duplicate_attributes(self):
+        """Check deserialization preserves duplicated attributes"""
+        raw = """<LEGACY clsid=GZWinGen wparam="0x123" wparam="0x030000f0" wparam="0x030000f2" z=789 >\r\n"""
         root = uiscript.serialize_uiscript(raw)
+        self.assertEqual(root.children[0].attributes, {
+            "clsid": "GZWinGen",
+            "wparam": ["0x123", "0x030000f0", "0x030000f2"],
+            "z": "789"
+        })
         output = uiscript.deserialize_uiscript(root)
-        expected = """<LEGACY clsid=GZWinGen wparam="0x030000f2,string,currentNeighborhoodType!=university" >\r\n"""
 
-        self.assertEqual(output, expected)
+        self.assertEqual(output, raw)
 
     def test_list_all_elements(self):
         """Check we can list all elements in a UI script file"""
@@ -251,3 +232,40 @@ class UIScriptTest(unittest.TestCase):
 
         self.assertEqual(len(root.get_elements_by_attribute("testdata", "6")), 1)
         self.assertEqual(len(root.get_elements_by_attribute("dummy", "1")), 10)
+
+    def test_multiline_values(self):
+        """Check attributes with multi-line values are preserved"""
+        raw = """<LEGACY example="This is my \r\nmultiline\r\nstring" >\r\n"""
+        root = uiscript.serialize_uiscript(raw)
+        self.assertEqual(root.children[0].attributes, {
+            "example": "This is my \r\nmultiline\r\nstring",
+        })
+        output = uiscript.deserialize_uiscript(root)
+        self.assertEqual(output, raw)
+
+    def test_embedded_key_values(self):
+        """Check key-value pairs inside an attribute's value are processed correctly"""
+        raw = """<LEGACY wparam="0x030000f2,string,currentNeighborhoodtype!=university and EPInstalled!=EP6" >\r\n"""
+        root = uiscript.serialize_uiscript(raw)
+        self.assertEqual(root.children[0].attributes, {
+            "wparam": "0x030000f2,string,currentNeighborhoodtype!=university and EPInstalled!=EP6",
+        })
+        output = uiscript.deserialize_uiscript(root)
+        self.assertEqual(output, raw)
+
+    def test_serialization_repeatability(self):
+        """Check serialization followed by deserialization preserves the original content"""
+        entry = self.ui_package.get_entry(dbpf.TYPE_UI_DATA, 0xa99d8a11, 0x49000016)
+        original = entry.data.decode("utf-8")
+
+        root = uiscript.serialize_uiscript(original)
+        result = uiscript.deserialize_uiscript(root)
+        self.assertEqual(result, original)
+
+        root2 = uiscript.serialize_uiscript(result)
+        result2 = uiscript.deserialize_uiscript(root2)
+
+        root3 = uiscript.serialize_uiscript(result2)
+        result3 = uiscript.deserialize_uiscript(root3)
+
+        self.assertEqual(result3, original)

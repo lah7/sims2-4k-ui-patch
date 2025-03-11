@@ -57,8 +57,14 @@ class UIScriptRoot:
         """
         elements = []
         for element in self.get_all_elements():
-            if attribute in element.attributes and element[attribute] == value:
-                elements.append(element)
+            if attribute in element.attributes:
+                if isinstance(element[attribute], list):
+                    for v in element[attribute]:
+                        if v == value:
+                            elements.append(element)
+                else:
+                    if element[attribute] == value:
+                        elements.append(element)
         return elements
 
 
@@ -67,7 +73,7 @@ class UIScriptElement:
     Serialised representation of an element in a UI script file.
     """
     def __init__(self):
-        self.attributes: dict[str, str] = {}
+        self.attributes: dict[str, str|list[str]] = {}
         self.children: list["UIScriptElement"] = []
 
     def __getitem__(self, key):
@@ -82,11 +88,34 @@ def _read_element(line) -> UIScriptElement:
 
     # Extract unquoted attributes
     for attrib, value in re.findall(r"(\w+)=(\S+)", line):
+        assert isinstance(value, str)
+        if value.startswith("\""):
+            # Store an empty string to preserve original order. Quoted attributes will be processed next.
+            element.attributes[attrib] = ""
+            continue
+
         element.attributes[attrib] = value
 
     # Extract quoted attributes
     for attrib, value in re.findall(r"(\w+)=(\".*?\")", line):
-        element.attributes[attrib] = value.replace("\"", "")
+        assert isinstance(value, str)
+        value = value.strip("\"")
+
+        if attrib in element.attributes:
+            existing_value = element.attributes[attrib]
+
+            # Attributes like "wparam" may be duplicated, store these in a list.
+            if isinstance(existing_value, str):
+                if existing_value == "":
+                    element.attributes[attrib] = value
+                else:
+                    # Multiple values for the same attribute
+                    element.attributes[attrib] = [existing_value, value]
+
+            elif isinstance(existing_value, list):
+                existing_value.append(value)
+        else:
+            element.attributes[attrib] = value
 
     # Extract attributes with no values
     for attrib in re.findall(r' (\w+)(?=[^"]*(?:"[^"]*"[^"]*)*$) ', line):
@@ -157,13 +186,17 @@ def deserialize_uiscript(root: UIScriptRoot) -> str:
         identation = "   " * ident
         elements = []
         for key, value in element.attributes.items():
-            if not value and not ALWAYS_QUOTED:
-                elements.append(key)
-            elif " " in value or key in ALWAYS_QUOTED:
-                value = value.replace(NEWLINE_PLACEHOLDER, "\r\n")
-                elements.append(f"{key}=\"{value}\"")
+            if isinstance(value, list):
+                for v in value:
+                    elements.append(f"{key}=\"{v}\"")
             else:
-                elements.append(f"{key}={value}")
+                if not value and not ALWAYS_QUOTED:
+                    elements.append(key)
+                elif " " in value or key in ALWAYS_QUOTED:
+                    value = value.replace(NEWLINE_PLACEHOLDER, "\r\n")
+                    elements.append(f"{key}=\"{value}\"")
+                else:
+                    elements.append(f"{key}={value}")
 
         lines.append(f"{identation}<LEGACY {' '.join(elements)} >")
         if element.children:

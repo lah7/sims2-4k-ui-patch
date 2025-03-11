@@ -111,6 +111,7 @@ def _upscale_uiscript(entry: dbpf.Entry) -> bytes:
     for element in data.get_all_elements():
         for attrib, value in element.attributes.items():
             if attrib in ["area", "gutters"]:
+                assert isinstance(value, str)
                 parts = value.strip("()").split(",")
                 parts = [str(int(int(p) * UI_MULTIPLIER)) for p in parts]
                 element.attributes[attrib] = "(" + ",".join(parts) + ")"
