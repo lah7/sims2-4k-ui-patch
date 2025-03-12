@@ -131,7 +131,7 @@ class UIScriptTest(unittest.TestCase):
                 # Attribute with no value: "transparent"
                 0xa0000001, 0xa0000002,
 
-                # Whitespace not preserved for multi-line caption
+                # EOL whitespace not preserved for multi-line caption
                 0x49000010, 0x4906501b,
                 0xeeca0006,
 
@@ -234,14 +234,31 @@ class UIScriptTest(unittest.TestCase):
         self.assertEqual(len(root.get_elements_by_attribute("dummy", "1")), 10)
 
     def test_multiline_values(self):
-        """Check attributes with multi-line values are preserved"""
-        raw = """<LEGACY example="This is my \r\nmultiline\r\nstring" >\r\n"""
+        """Check attributes with multi-line values have escaped newlines"""
+        raw = """<LEGACY example="This is my\r\nmultiline\r\nstring" >\r\n"""
         root = uiscript.serialize_uiscript(raw)
         self.assertEqual(root.children[0].attributes, {
-            "example": "This is my \r\nmultiline\r\nstring",
+            "example": "This is my\\r\\nmultiline\\r\\nstring",
         })
         output = uiscript.deserialize_uiscript(root)
-        self.assertEqual(output, raw)
+        self.assertEqual(repr(output), repr(raw))
+
+    def test_multiline_stripped(self):
+        """Our logic strips whitespace for multi-line values"""
+        raw = """<LEGACY example="My whitespace   \r\nis being    \r\nstripped  " >\r\n"""
+        expected = """<LEGACY example="My whitespace\r\nis being\r\nstripped  " >\r\n"""
+        root = uiscript.serialize_uiscript(raw)
+        output = uiscript.deserialize_uiscript(root)
+        self.assertEqual(repr(output), repr(expected))
+
+    def test_multiline_stripped_from_package(self):
+        """Check a known file has its trailing whitespace striped at the end"""
+        entry = self.ui_package.get_entry(dbpf.TYPE_UI_DATA, 0xa99d8a11, 0x49000010)
+        original = entry.data.decode("utf-8")
+        root = uiscript.serialize_uiscript(original)
+        output = uiscript.deserialize_uiscript(root)
+        self.assertTrue(original.find(". \r\n") > -1)
+        self.assertFalse(output.find(". \r\n") > -1)
 
     def test_embedded_key_values(self):
         """Check key-value pairs inside an attribute's value are processed correctly"""

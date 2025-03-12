@@ -22,7 +22,6 @@ processing.
 import re
 
 ALWAYS_QUOTED = ["caption", "tiptext", "wparam", "initvalue"]
-NEWLINE_PLACEHOLDER = "$NEWLINE$"
 
 
 class UIScriptRoot:
@@ -141,17 +140,16 @@ def serialize_uiscript(data: str) -> UIScriptRoot:
         if not line:
             continue
 
-        # Each line with an element is expected to be closed on the same line. If not, it might be a multi-line caption.
+        # Each line with an element is expected to be closed on the same line. If not, it might be a multi-line value.
         if line.startswith("<") and not line.endswith(">"):
-            _first_line = line
             new_line = [line]
             try:
                 while not line.endswith(">"):
                     line = lines.pop(0).strip()
                     new_line.append(line)
             except IndexError as e:
-                raise ValueError(f"Expected closing tag, but reached end of file instead: {_first_line}") from e
-            line = NEWLINE_PLACEHOLDER.join(new_line)
+                raise ValueError("Expected closing tag, but reached end of file instead.") from e
+            line = "\\r\\n".join(new_line)
 
         # Capture comments or random strings
         if line.startswith("#") or not line.startswith("<"):
@@ -193,7 +191,7 @@ def deserialize_uiscript(root: UIScriptRoot) -> str:
                 if not value and not ALWAYS_QUOTED:
                     elements.append(key)
                 elif " " in value or key in ALWAYS_QUOTED:
-                    value = value.replace(NEWLINE_PLACEHOLDER, "\r\n")
+                    value = value.replace("\\r", "\r").replace("\\n", "\n")
                     elements.append(f"{key}=\"{value}\"")
                 else:
                     elements.append(f"{key}={value}")
