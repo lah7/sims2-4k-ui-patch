@@ -170,7 +170,22 @@ class UIScriptTest(unittest.TestCase):
             "z": "789"
         })
         output = uiscript.deserialize_uiscript(root)
+        self.assertEqual(output, raw)
 
+    def test_duplicate_attributes_with_whitespace(self):
+        """Check deserialization preserves duplicated attributes that also contain whitespace"""
+        raw = """<LEGACY captionres={12345678,12345678} wparam="0x030000f0,string,currentNeighborhoodType!=university and EPInstalled=EP6" wparam="0x030000f2,string,currentNeighborhoodType!=university and EPInstalled=EP6" winflag_visible=no >\r\n"""
+        root = uiscript.serialize_uiscript(raw)
+        print(root.children[0].attributes)
+        self.assertEqual(root.children[0].attributes, {
+            "captionres": "{12345678,12345678}",
+            "wparam": [
+                "0x030000f0,string,currentNeighborhoodType!=university and EPInstalled=EP6",
+                "0x030000f2,string,currentNeighborhoodType!=university and EPInstalled=EP6"
+            ],
+            "winflag_visible": "no",
+        })
+        output = uiscript.deserialize_uiscript(root)
         self.assertEqual(output, raw)
 
     def test_list_all_elements(self):
@@ -235,10 +250,10 @@ class UIScriptTest(unittest.TestCase):
 
     def test_multiline_values(self):
         """Check attributes with multi-line values have escaped newlines"""
-        raw = """<LEGACY example="This is my\r\nmultiline\r\nstring" >\r\n"""
+        raw = """<LEGACY example="This is my\r\nmultiline=test\r\nstring" >\r\n"""
         root = uiscript.serialize_uiscript(raw)
         self.assertEqual(root.children[0].attributes, {
-            "example": "This is my\\r\\nmultiline\\r\\nstring",
+            "example": "This is my\\r\\nmultiline=test\\r\\nstring",
         })
         output = uiscript.deserialize_uiscript(root)
         self.assertEqual(repr(output), repr(raw))

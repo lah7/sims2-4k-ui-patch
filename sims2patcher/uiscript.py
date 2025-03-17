@@ -93,6 +93,12 @@ def _read_element(line) -> UIScriptElement:
             element.attributes[attrib] = ""
             continue
 
+        if value.endswith("\""):
+            # Skip as we don't want to capture "unquoted" attribute values like this:
+            # wparam="0x030000f2,string,currentNeighborhoodType!=university and EPInstalled=EP6"
+            #                                                                   ^^^^^^^^^^^^^^^
+            continue
+
         element.attributes[attrib] = value
 
     # Extract quoted attributes
