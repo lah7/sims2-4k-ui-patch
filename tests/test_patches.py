@@ -69,7 +69,7 @@ class PatchesTest(unittest.TestCase):
 
     def test_uiscript_patch(self):
         """Test a known UI script doubled its geometry/positions"""
-        entry = self.ui_package.get_entry(dbpf.TYPE_UI_DATA, 134219264, 1012948880)
+        entry = self.ui_package.get_entry(dbpf.TYPE_UI_DATA, 0x8000600, 0x3c605f90)
         checksum_before = hashlib.md5(entry.data).hexdigest()
         if checksum_before != "5a41f089015d0b2a3c5333661691044f":
             raise ValueError("Bad test file, checksum mismatch")
@@ -81,19 +81,19 @@ class PatchesTest(unittest.TestCase):
 
     def test_graphic_patch_bmp(self):
         """Test a bitmap image is modified and at least double its size"""
-        entry = self.ui_package.get_entry(dbpf.TYPE_IMAGE, 1235072882, 3973787653)
+        entry = self.ui_package.get_entry(dbpf.TYPE_IMAGE, 0x499db772, 0xecdb3005)
         new_data = patches._upscale_graphic(entry)
         self.assertGreater(len(new_data), len(entry.data), "Bitmap image was not modified")
 
     def test_graphic_patch_tga(self):
         """Test a Targa image is modified"""
-        entry = self.ui_package.get_entry(dbpf.TYPE_IMAGE, 1235072882, 725504)
+        entry = self.ui_package.get_entry(dbpf.TYPE_IMAGE, 0x499db772, 0xb1200)
         new_data = patches._upscale_graphic(entry)
         self.assertGreater(len(new_data), len(entry.data), "Targa image was not modified")
 
     def test_graphic_patch_png(self):
         """Test a PNG image is modified"""
-        entry = self.ui_package.get_entry(dbpf.TYPE_IMAGE, 1235072882, 2376314362)
+        entry = self.ui_package.get_entry(dbpf.TYPE_IMAGE, 0x499db772, 0x8da3adfa)
         new_data = patches._upscale_graphic(entry)
         self.assertGreater(len(new_data), len(entry.data), "PNG image was not modified")
 
