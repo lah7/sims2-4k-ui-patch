@@ -108,6 +108,22 @@ def _upscale_uiscript(entry: dbpf.Entry) -> bytes:
         # Skip binary .uiScript file
         return entry.data
 
+    def _patched_constant(caption: str):
+        """
+        The 'Constants Table' are text elements nested together holding
+        key/value data in the "caption" attribute. Patch these to fix/improve
+        dynamic UI controls, like listbox, notifications and pie menu.
+        """
+        key, value = caption.split("=")
+
+        if key in [
+            # List Box Items
+            "kListBoxRowHeight"
+        ]:
+            value = int(int(value) * UI_MULTIPLIER)
+
+        return f"{key}={value}"
+
     for element in data.get_all_elements():
         for attrib, value in element.attributes.items():
             if attrib in ["area", "gutters"]:
@@ -115,6 +131,9 @@ def _upscale_uiscript(entry: dbpf.Entry) -> bytes:
                 parts = value.strip("()").split(",")
                 parts = [str(int(int(p) * UI_MULTIPLIER)) for p in parts]
                 element.attributes[attrib] = "(" + ",".join(parts) + ")"
+
+            elif attrib == "caption" and isinstance(value, str) and value.startswith("k") and value.find("=") != -1:
+                element.attributes[attrib] = _patched_constant(value)
 
     return uiscript.deserialize_uiscript(data).encode("utf-8")
 

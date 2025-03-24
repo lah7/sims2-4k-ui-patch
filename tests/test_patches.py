@@ -13,7 +13,7 @@ import unittest
 # Our modules are in the parent directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) # pylint: disable=wrong-import-position
 
-from sims2patcher import dbpf, patches
+from sims2patcher import dbpf, patches, uiscript
 from sims2patcher.gamefile import GameFileReplacement
 
 
@@ -96,3 +96,15 @@ class PatchesTest(unittest.TestCase):
         entry = self.ui_package.get_entry(dbpf.TYPE_IMAGE, 1235072882, 2376314362)
         new_data = patches._upscale_graphic(entry)
         self.assertGreater(len(new_data), len(entry.data), "PNG image was not modified")
+
+    def test_uiscript_constants(self):
+        """Test values in a "constants table" are doubled"""
+        entry = self.ui_package.get_entry(dbpf.TYPE_UI_DATA, 0xa99d8a11, 0x8c159244)
+
+        before = uiscript.serialize_uiscript(entry.data.decode("utf-8"))
+        self.assertEqual(len(before.get_elements_by_attribute("caption", "kListBoxRowHeight=20")), 1)
+
+        data = patches._upscale_uiscript(entry)
+
+        after = uiscript.serialize_uiscript(data.decode("utf-8"))
+        self.assertEqual(len(after.get_elements_by_attribute("caption", "kListBoxRowHeight=40")), 1)
