@@ -106,7 +106,7 @@ to install [requirements.txt](requirements.txt).
 
 Python 3.10 is the minimum supported version.
 
-For Windows, [install Python 3.12](https://www.python.org/downloads/windows/), and run:
+For Windows, [install Python 3.13](https://www.python.org/downloads/windows/), and run:
 
     python -m venv venv
     venv\Scripts\activate
@@ -127,7 +127,7 @@ that provides the dependencies (names vary by distro):
 
     python-requests python-pillow python-pyqt6
 
-For macOS, [install Python 3.12](https://www.python.org/downloads/macos/), and run:
+For macOS, [install Python 3.13](https://www.python.org/downloads/macos/), and run:
 
     python3 -m venv venv
     source venv/bin/activate
