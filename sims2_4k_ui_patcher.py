@@ -42,8 +42,8 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
                              QHeaderView, QLabel, QLineEdit, QMainWindow,
                              QMessageBox, QProgressBar, QPushButton,
                              QSizePolicy, QSlider, QStatusBar, QStyle,
-                             QToolButton, QTreeWidget, QTreeWidgetItem,
-                             QVBoxLayout, QWidget)
+                             QTabWidget, QToolButton, QTreeWidget,
+                             QTreeWidgetItem, QVBoxLayout, QWidget)
 
 from sims2patcher import gamefile, patches
 from sims2patcher.gamefile import GameFile
@@ -385,29 +385,22 @@ class PatcherApplication(QMainWindow):
             """Callback when the user adjusts the threads slider."""
             self.state.threads = self.threads_slider.value()
 
-        self.layout_options = QFormLayout()
+        self.tabs = QTabWidget()
+        self.tabs.setTabPosition(QTabWidget.TabPosition.North)
+        self.tabs.setTabShape(QTabWidget.TabShape.Rounded)
+        self.tabs.setEnabled(False)
+        self.base_layout.addWidget(self.tabs)
 
-        self.group_options = QGroupBox("Options")
-        self.group_options.setLayout(self.layout_options)
-        self.group_options.setEnabled(False)
+        # Options Tab
+        self.tab_options = QWidget()
+        self.tab_options_layout = QFormLayout()
+        self.tab_options.setLayout(self.tab_options_layout)
 
         self.scale_option = QComboBox()
         self.scale_option.addItems(list(LABELS_UI_SCALE.keys()))
-        self.scale_option.setToolTip("The desired game UI scaling")
-        self.layout_options.addRow("Scale:", self.scale_option)
+        self.scale_option.setToolTip("The desired UI scaling in-game")
         self.scale_option.currentIndexChanged.connect(_scale_changed)
-
-        self.filter_option = QComboBox()
-        self.filter_option.addItems(list(LABELS_UI_FILTER.keys()))
-        self.filter_option.setToolTip("Recommended to leave as default.\nFor experimenting with image resampling filters")
-        self.layout_options.addRow("Upscale Filter:", self.filter_option)
-        self.filter_option.currentIndexChanged.connect(_filter_changed)
-
-        self.compress_option = QCheckBox("Uncompressed files")
-        self.compress_option.setChecked(False)
-        self.compress_option.setToolTip("Don't compress modified files. Faster, but significantly uses more disk space.")
-        self.layout_options.addRow("Testing:", self.compress_option)
-        self.compress_option.stateChanged.connect(_compress_changed)
+        self.tab_options_layout.addRow("Scale:", self.scale_option)
 
         self.threads_slider = QSlider(Qt.Orientation.Horizontal)
         self.threads_slider.setMinimum(1)
@@ -417,9 +410,30 @@ class PatcherApplication(QMainWindow):
         self.threads_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.threads_slider.setToolTip("How many CPU cores/threads to use for parallel processing.\nHigher values require more memory and I/O throughput!")
         self.threads_slider.valueChanged.connect(_threads_changed)
-        self.layout_options.addRow("Patch Threads:", self.threads_slider)
+        self.tab_options_layout.addRow("Patch Threads:", self.threads_slider)
 
-        self.base_layout.addWidget(self.group_options)
+        self.tabs.addTab(self.tab_options, "Options")
+
+        # Advanced Tab
+        self.tab_advanced = QWidget()
+        self.tab_advanced_layout = QFormLayout()
+        self.tab_advanced.setLayout(self.tab_advanced_layout)
+
+        self.filter_option = QComboBox()
+        self.filter_option.addItems(list(LABELS_UI_FILTER.keys()))
+        self.filter_option.setToolTip("Recommended to leave as default.\nFor experimenting with image resampling filters")
+        self.filter_option.currentIndexChanged.connect(_filter_changed)
+        self.tab_advanced_layout.addRow("Upscale Filter:", self.filter_option)
+
+        self.compress_option = QCheckBox("Uncompressed files")
+        self.compress_option.setChecked(False)
+        self.compress_option.setToolTip("Don't compress modified files. Faster, but uses significantly more disk space.")
+        self.compress_option.stateChanged.connect(_compress_changed)
+        self.tab_advanced_layout.addRow("Testing:", self.compress_option)
+
+        self.tabs.addTab(self.tab_advanced, "Advanced")
+
+        self.base_layout.addWidget(self.tabs)
 
     def _create_patch_status(self):
         """Create a view showing the overall patch status"""
@@ -552,7 +566,7 @@ class PatcherApplication(QMainWindow):
         self.btn_patch.setEnabled(False)
         self.btn_revert.setEnabled(False)
         self.group_folders.setEnabled(True)
-        self.group_options.setEnabled(False)
+        self.tabs.setEnabled(False)
         self.status_progress.setHidden(True)
 
         if not self.state.game_install_dir:
@@ -634,7 +648,7 @@ class PatcherApplication(QMainWindow):
             self.status_text.setText(f"{patch_count}/{total_count} file{'s' if patch_count != 0 else ''} patched")
 
         if patch_count == 0:
-            self.group_options.setEnabled(True)
+            self.tabs.setEnabled(True)
             self.update_status_icon(StatusIcon.GREY)
             self.status_text.setText(f"{total_count} file{'s' if patch_count != 1 else ''} ready to patch")
 
@@ -782,7 +796,7 @@ class PatcherApplication(QMainWindow):
         self.btn_patch.setEnabled(False)
         self.btn_revert.setEnabled(False)
         self.btn_cancel.setEnabled(True)
-        self.group_options.setEnabled(False)
+        self.tabs.setEnabled(False)
         self.group_folders.setEnabled(False)
 
         total = len(self.state.game_files)
@@ -857,7 +871,7 @@ class PatcherApplication(QMainWindow):
 
         self.btn_patch.setEnabled(False)
         self.btn_revert.setEnabled(False)
-        self.group_options.setEnabled(False)
+        self.tabs.setEnabled(False)
         self.group_folders.setEnabled(False)
 
         self.update_status_icon(StatusIcon.YELLOW)
