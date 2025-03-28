@@ -630,6 +630,9 @@ class PatcherApplication(QMainWindow):
         if any_backups:
             self.btn_revert.setEnabled(True)
 
+        self.tabs.setEnabled(True)
+        self.scale_option.setEnabled(not incomplete)
+        self.filter_option.setEnabled(not incomplete)
         self.status_progress.setValue(patch_count - update_count)
 
         if patch_count == total_count:
@@ -648,7 +651,6 @@ class PatcherApplication(QMainWindow):
             self.status_text.setText(f"{patch_count}/{total_count} file{'s' if patch_count != 0 else ''} patched")
 
         if patch_count == 0:
-            self.tabs.setEnabled(True)
             self.update_status_icon(StatusIcon.GREY)
             self.status_text.setText(f"{total_count} file{'s' if patch_count != 1 else ''} ready to patch")
 
