@@ -830,14 +830,20 @@ class PatcherApplication(QMainWindow):
         self.patch_thread.quit()
 
         self.update_status_icon(StatusIcon.RED)
+        self.status_text.setText("Stopping processes...")
         self.btn_cancel.setEnabled(False)
-        self.status_text.setText("Waiting for current tasks to stop...")
-        self.status_progress.setMaximum(self.patch_thread.count_total_processes())
+        QApplication.processEvents()
+
+        for process in multiprocessing.active_children():
+            try:
+                if process.pid:
+                    os.kill(process.pid, signal.SIGINT)
+            except OSError:
+                # Process might have ended already
+                pass
 
         while self.patch_thread.isRunning():
-            self.status_progress.setValue(self.patch_thread.count_done_processes())
-            QApplication.processEvents()
-            time.sleep(0.1)
+            time.sleep(0.05)
 
         self.finished_patching()
         return True
@@ -965,13 +971,18 @@ if __name__ == "__main__":
     def _handle_sigint(*args): # pylint: disable=unused-argument
         """
         Handle the SIGINT signal (CTRL+C).
-        When there's no subprocesses running, quitting is easy.
-        However, when the patching thread is running, it's more difficult.
-        The best solution is to ask the user to close using the GUI so Qt and event loops are handled correctly.
+
+        If the patching was aborted as a child process, then terminate immediately.
+        Otherwise, quit the application gracefully. If currently patching, pressing
+        CTRL+C (or press the window close button) twice is necessary.
         """
-        if not window.patch_thread.isRunning():
+        if multiprocessing.parent_process():
+            os.kill(os.getpid(), signal.SIGKILL)
+            return
+        else:
+            if window.patch_thread.isRunning():
+                window.stop_requested = True
             return QApplication.quit()
-        print(" SIGINT received. but not supported. Close application using the GUI instead.")
 
     signal.signal(signal.SIGINT, _handle_sigint)
 
