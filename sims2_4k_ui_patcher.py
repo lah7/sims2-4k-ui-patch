@@ -716,6 +716,9 @@ class PatcherApplication(QMainWindow):
         # Begin!
         _update_progress(0, 1)
         file = gamefile.get_game_file(file_path)
+        file.scale = state.scale
+        file.upscale_filter = state.filter
+        file.uncompressed = state.leave_uncompressed
 
         try:
             # Skip file if already up-to-date
