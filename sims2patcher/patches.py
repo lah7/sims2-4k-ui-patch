@@ -142,6 +142,12 @@ def _upscale_uiscript(entry: dbpf.Entry) -> bytes:
             "kVerticalSpacing",
             "kXMargin",
             "kYMargin",
+
+            # Pie Menu (0xa99d8a11 0x90617b7)
+            "kCancelBoundary",
+            "kGesturePickBoundary",
+            "kHeadAreaInflateForItemOverlap",
+            "kItemRadius",
         ]:
             value = int(int(value) * UI_MULTIPLIER)
 
