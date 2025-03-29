@@ -118,7 +118,30 @@ def _upscale_uiscript(entry: dbpf.Entry) -> bytes:
 
         if key in [
             # List Box Items
-            "kListBoxRowHeight"
+            "kListBoxRowHeight",
+
+            # Audio Options List / Radio Stations
+            "kTrackSpacingY",
+
+            # Object Catalog
+            "kCollapsedThumbMarginX",
+            "kCollapsedThumbMarginY",
+            "kExpandedThumbMarginX",
+            "kExpandedThumbMarginY",
+
+            # Action Queue (0xa99d8a11 0xccd02691)
+            "kIconMarginX",
+
+            # Notifications (0xa99d8a11 0xccd02692)
+            "kTopOffset",
+            "kRightOffset",
+            "kNotificationMargin",
+            "kMaxWidth",
+
+            # Family Tree (0xa99d8a11 0x49065190)
+            "kVerticalSpacing",
+            "kXMargin",
+            "kYMargin",
         ]:
             value = int(int(value) * UI_MULTIPLIER)
 
