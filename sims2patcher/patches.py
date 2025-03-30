@@ -102,6 +102,16 @@ def _upscale_uiscript(entry: dbpf.Entry) -> bytes:
 
     To upscale, multiply attributes with dimension/position values by UI_MULTIPLIER.
     """
+    # Skip debugging UI
+    script_id = (entry.group_id, entry.instance_id)
+    if script_id in [
+        (0xa99d8a11, 0xfffffff0), # Skin Browser
+        (0xa99d8a11, 0xfffffff1), # Outfit Browser
+        (0xa99d8a11, 0xfffffff3), # Cheat Object Browser
+        (0xa99d8a11, 0x8baff56f), # UI Browser
+    ]:
+        return entry.data
+
     try:
         data: uiscript.UIScriptRoot = uiscript.serialize_uiscript(entry.data.decode("utf-8"))
     except UnicodeDecodeError:
