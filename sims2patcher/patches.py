@@ -86,6 +86,24 @@ def _upscale_graphic(entry: dbpf.Entry) -> bytes:
     if file_type == ImageFormat.UNKNOWN:
         raise errors.UnknownImageFormatError()
 
+    # Skip images that are:
+    # - Texture atlases ("spritesheet" / "9-slice") used by scalable UI elements
+    # - Alpha masks with fixed dimensions, like overlays
+    # - Images that seem to expect a fixed size
+    graphic_id = (entry.group_id, entry.instance_id)
+    if file_type == ImageFormat.TGA and graphic_id in [
+        (0x499db772, 0xa9500615), # Dialog background (e.g. "Choose Lot Type", "Rename Lot")
+        (0x499db772, 0xa9500630), # Dialog buttons
+        (0x499db772, 0x14416190), # Tooltip background
+        (0x499db772, 0x14416193), # Lot details popup background in neighbourhood
+        # (0x499db772, 0x14500100), # Not sure
+        (0x499db772, 0x14500140), # Assumed dialog button element
+        (0x499db772, 0x14500145), # Assumed dialog button element
+        (0x499db772, 0x14500157), # Assumed dialog button element
+        (0x499db772, 0x14500150), # Not sure
+    ]:
+        return entry.data_safe
+
     original = Image.open(io.BytesIO(entry.data_safe), formats=[file_type.value])
     resized = original.resize((int(original.width * UI_MULTIPLIER), int(original.height * UI_MULTIPLIER)), resample=UPSCALE_FILTER)
 
