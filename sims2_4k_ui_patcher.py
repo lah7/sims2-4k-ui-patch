@@ -71,8 +71,8 @@ PROJECT_URL = "https://github.com/lah7/sims2-4k-ui-patch"
 
 # Labels for options
 LABELS_UI_SCALE = {
-    "200% (4K / 2160p)": 2.0,
-    "150% (2K / 1440p)": 1.5,
+    "200% | 4K / 2160p": 2.0,
+    "150% | 2K / 1440p (Experimental)": 1.5,
 }
 
 LABELS_UI_FILTER = {
@@ -307,6 +307,7 @@ class PatcherApplication(QMainWindow):
         self.layout_folders.addWidget(self.game_files_label)
 
         self.game_files_input = QLineEdit()
+        self.game_files_input.setToolTip("The folder containing The Sims 2 folder (and all of its expansion packs)")
         self.game_files_input.setPlaceholderText(DEFAULT_DIRS[1])
         self.layout_folders.addWidget(self.game_files_input)
 
@@ -398,7 +399,7 @@ class PatcherApplication(QMainWindow):
 
         self.scale_option = QComboBox()
         self.scale_option.addItems(list(LABELS_UI_SCALE.keys()))
-        self.scale_option.setToolTip("The desired UI scaling in-game")
+        self.scale_option.setToolTip("Desired UI density to apply.")
         self.scale_option.currentIndexChanged.connect(_scale_changed)
         self.tab_options_layout.addRow("Scale:", self.scale_option)
 
@@ -408,7 +409,7 @@ class PatcherApplication(QMainWindow):
         self.threads_slider.setValue(self.state.threads)
         self.threads_slider.setTickInterval(1)
         self.threads_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.threads_slider.setToolTip("How many CPU cores/threads to use for parallel processing.\nHigher values require more memory and I/O throughput!")
+        self.threads_slider.setToolTip("Specify how many CPU threads to use while patching.\nHigher values require more memory and I/O throughput!")
         self.threads_slider.valueChanged.connect(_threads_changed)
         self.tab_options_layout.addRow("Patch Threads:", self.threads_slider)
 
@@ -421,13 +422,13 @@ class PatcherApplication(QMainWindow):
 
         self.filter_option = QComboBox()
         self.filter_option.addItems(list(LABELS_UI_FILTER.keys()))
-        self.filter_option.setToolTip("Recommended to leave as default.\nFor experimenting with image resampling filters")
+        self.filter_option.setToolTip("For experimenting with image resampling filters.\nRecommended to leave as default.")
         self.filter_option.currentIndexChanged.connect(_filter_changed)
         self.tab_advanced_layout.addRow("Upscale Filter:", self.filter_option)
 
         self.compress_option = QCheckBox("Uncompressed files")
         self.compress_option.setChecked(False)
-        self.compress_option.setToolTip("Don't compress modified files. Faster, but uses significantly more disk space.")
+        self.compress_option.setToolTip("Complete the patching much faster, but significantly uses more disk space.")
         self.compress_option.stateChanged.connect(_compress_changed)
         self.tab_advanced_layout.addRow("Testing:", self.compress_option)
 
