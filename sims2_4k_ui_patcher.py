@@ -514,23 +514,26 @@ class PatcherApplication(QMainWindow):
         self.setStatusBar(self.status_bar)
 
         self.version_label = QLabel(VERSION)
-        self.version_label.mousePressEvent = self._open_homepage # type: ignore
+        self.version_label.mousePressEvent = self._open_releases_url # type: ignore
         self.version_label.setCursor(Qt.CursorShape.PointingHandCursor)
         self.version_label.setStyleSheet("color: #888;")
         self.status_bar.addWidget(self.version_label)
 
         self.project_url_label = QLabel(PROJECT_URL)
-        self.project_url_label.mousePressEvent = self._open_homepage # type: ignore
+        self.project_url_label.mousePressEvent = self._open_homepage_url # type: ignore
         self.project_url_label.setCursor(Qt.CursorShape.PointingHandCursor)
         self.project_url_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.project_url_label.setStyleSheet("color: #888;")
         self.status_bar.addPermanentWidget(self.project_url_label)
 
-    def _open_homepage(self, event: QMouseEvent): # pylint: disable=unused-argument
+    def _open_homepage_url(self, event: QMouseEvent): # pylint: disable=unused-argument
+        webbrowser.open(PROJECT_URL)
+
+    def _open_releases_url(self, event: QMouseEvent): # pylint: disable=unused-argument
         if self.state.update_available:
             webbrowser.open(f"{PROJECT_URL}/releases/latest")
         else:
-            webbrowser.open(PROJECT_URL)
+            webbrowser.open(f"{PROJECT_URL}/releases")
 
     def update_status_icon(self, status: StatusIcon):
         """Update the status icon"""
