@@ -428,7 +428,7 @@ class PatcherApplication(QMainWindow):
 
         self.compress_option = QCheckBox("Uncompressed files")
         self.compress_option.setChecked(False)
-        self.compress_option.setToolTip("Complete the patching much faster, but significantly uses more disk space.")
+        self.compress_option.setToolTip("Faster patching, but significantly uses more disk space.")
         self.compress_option.stateChanged.connect(_compress_changed)
         self.tab_advanced_layout.addRow("Testing:", self.compress_option)
 
