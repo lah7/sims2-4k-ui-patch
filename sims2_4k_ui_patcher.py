@@ -596,9 +596,13 @@ class PatcherApplication(QMainWindow):
         self.status_progress.setHidden(False)
 
         # Use the first patched file as the baseline for options
+        self.scale_option.setEnabled(True)
+        self.filter_option.setEnabled(True)
+
         for file in self.state.game_files:
             if file.patched and not file.outdated:
                 self.state.scale = file.scale
+                self.scale_option.setEnabled(False)
                 try:
                     self.scale_option.setCurrentIndex(self.scale_option.findText(next(key for key, value in LABELS_UI_SCALE.items() if value == file.scale)))
                 except StopIteration:
@@ -606,6 +610,7 @@ class PatcherApplication(QMainWindow):
                     self.scale_option.setCurrentIndex(0)
 
                 self.state.filter = int(file.upscale_filter)
+                self.filter_option.setEnabled(False)
                 try:
                     self.filter_option.setCurrentIndex(self.filter_option.findText(next(key for key, value in LABELS_UI_FILTER.items() if value == file.upscale_filter)))
                 except StopIteration:
@@ -641,8 +646,6 @@ class PatcherApplication(QMainWindow):
             self.btn_revert.setEnabled(True)
 
         self.tabs.setEnabled(True)
-        self.scale_option.setEnabled(not incomplete)
-        self.filter_option.setEnabled(not incomplete)
         self.status_progress.setValue(patch_count - update_count)
 
         if patch_count == total_count:
