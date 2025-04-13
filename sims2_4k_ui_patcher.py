@@ -224,11 +224,9 @@ class PatcherApplication(QMainWindow):
         self.state = State()
 
         # Parallel processing for later
+        self._init_multiprocessing()
         self.patch_ui_timer = QTimer()
         self.patch_ui_timer.timeout.connect(self._update_patch_progress)
-        self.process_manager = multiprocessing.Manager()
-        self.progress_dict = self.process_manager.dict()
-        self.patch_thread = PatchThread(self.state, self._patch_file, self.process_manager, self.progress_dict)
         self.queue_window = QueueWindow()
         self.stop_requested = False
 
@@ -278,6 +276,14 @@ class PatcherApplication(QMainWindow):
             event.accept()
 
         event.ignore()
+
+    def _init_multiprocessing(self):
+        """
+        Initialise the multiprocessing logic.
+        """
+        self.process_manager = multiprocessing.Manager()
+        self.progress_dict = self.process_manager.dict()
+        self.patch_thread = PatchThread(self.state, self._patch_file, self.process_manager, self.progress_dict)
 
     def _create_top_banner(self):
         """Create a banner displaying the project logo"""
@@ -795,6 +801,8 @@ class PatcherApplication(QMainWindow):
         """
         if not self._check_file_permissions():
             return
+
+        self._init_multiprocessing()
 
         # Swap buttons
         self.btn_patch.setHidden(True)
