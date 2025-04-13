@@ -8,7 +8,15 @@ from cx_Freeze import Executable, setup
 
 build_exe_options = {
     "build_exe": "dist",
-    "excludes": ["unittest"],
+    "excludes": [
+        "email",
+        "gzip",
+        "tcl",
+        "tk",
+        "tkinter",
+        "unittest",
+        "xml",
+    ],
     "includes": ["sims2patcher"],
     "include_files": [
         ("assets/banner@2x.png", "assets/banner@2x.png"),
