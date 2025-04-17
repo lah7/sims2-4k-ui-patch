@@ -48,12 +48,10 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
 from sims2patcher import gamefile, patches
 from sims2patcher.gamefile import GameFile
 
-VERSION = "v0.3.0-dev"
-MAJOR = 0
-MINOR = 2
-PATCH = 0
+VERSION_STRING = "v0.3.0-dev"
+VERSION = (0, 3, 0) # Major, Minor, Patch
 
-gamefile.FILE_PATCH_VERSION = float(f"{MAJOR}.{MINOR}") # Stored in file describing patch status
+gamefile.FILE_PATCH_VERSION = float(f"{VERSION[0]}.{VERSION[1]}") # Stored in file describing patch status
 
 DEFAULT_DIRS = [
     "C:\\Program Files\\The Sims 2 Ultimate Collection",
@@ -522,7 +520,7 @@ class PatcherApplication(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
 
-        self.version_label = QLabel(VERSION)
+        self.version_label = QLabel(VERSION_STRING)
         self.version_label.mousePressEvent = self._open_releases_url # type: ignore
         self.version_label.setCursor(Qt.CursorShape.PointingHandCursor)
         self.version_label.setStyleSheet("color: #888;")
@@ -559,14 +557,15 @@ class PatcherApplication(QMainWindow):
             return
 
         if r.status_code == 200:
-            latest_version = r.text.split("\n")[0]
-            latest_ver_parts = latest_version.split(".")
+            latest_version_string = r.text.split("\n")[0]
             try:
-                if int(latest_ver_parts[0]) > MAJOR or int(latest_ver_parts[1]) > MINOR:
-                    self.version_label.setText(f"{VERSION} (update available: v{latest_version})")
+                latest_version = tuple(map(int, latest_version_string.split(".")))
+                if int(latest_version[0]) > VERSION[0] or (int(latest_version[0]) == VERSION[0] and int(latest_version[1]) > VERSION[1]):
+                    self.version_label.setText(f"{VERSION_STRING} (update available: v{latest_version_string})")
                     self.version_label.setStyleSheet("")
                     self.state.update_available = True
             except (TypeError, ValueError):
+                print("Error parsing version string from GitHub")
                 return
 
     def refresh_patch_state(self):
@@ -974,9 +973,10 @@ class QueueWindow(QDialog):
 if __name__ == "__main__":
     multiprocessing.freeze_support()  # Required for Windows
 
-    if os.path.exists("version.txt") and os.path.exists("lib") and os.path.exists("share"):
+    if os.path.exists("version.txt") and os.path.exists("assets") and os.path.exists("lib"):
         # Read version for dist builds
-        VERSION = open("version.txt", "r", encoding="utf-8").read().strip()
+        with open("version.txt", "r", encoding="utf-8") as _f:
+            VERSION_STRING = _f.read().strip()
 
     app = QApplication(sys.argv)
     window = PatcherApplication()
