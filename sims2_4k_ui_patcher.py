@@ -56,14 +56,14 @@ PATCH = 0
 gamefile.FILE_PATCH_VERSION = float(f"{MAJOR}.{MINOR}") # Stored in file describing patch status
 
 DEFAULT_DIRS = [
-    "C:\\Program Files\\EA GAMES",
-    "C:\\Program Files (x86)\\EA GAMES",
     "C:\\Program Files\\The Sims 2 Ultimate Collection",
     "C:\\Program Files (x86)\\The Sims 2 Ultimate Collection",
     "C:\\Program Files\\Origin Games\\The Sims 2 Ultimate Collection",
     "C:\\Program Files (x86)\\Origin Games\\The Sims 2 Ultimate Collection",
     "C:\\Program Files\\The Sims 2 Starter Pack",
     "C:\\Program Files (x86)\\The Sims 2 Starter Pack",
+    "C:\\Program Files\\EA GAMES",
+    "C:\\Program Files (x86)\\EA GAMES",
     "EA GAMES",
 ]
 
@@ -150,8 +150,11 @@ class State:
         """
         for path in DEFAULT_DIRS:
             if os.path.exists(path):
-                self.set_game_install_path(path)
-                return
+                try:
+                    self.set_game_install_path(path)
+                    return
+                except ValueError:
+                    self.game_install_dir = ""
 
 
 class PatchThread(QThread):
@@ -314,7 +317,7 @@ class PatcherApplication(QMainWindow):
 
         self.game_files_input = QLineEdit()
         self.game_files_input.setToolTip("The folder containing The Sims 2 folder (and all of its expansion packs)")
-        self.game_files_input.setPlaceholderText(DEFAULT_DIRS[1])
+        self.game_files_input.setPlaceholderText(DEFAULT_DIRS[7])
         self.layout_folders.addWidget(self.game_files_input)
 
         self.browse_button = QToolButton()
