@@ -420,6 +420,12 @@ class PatcherApplication(QMainWindow):
         self.threads_slider.valueChanged.connect(_threads_changed)
         self.tab_options_layout.addRow("Patch Threads:", self.threads_slider)
 
+        self.compress_option = QCheckBox("Uncompressed files")
+        self.compress_option.setChecked(False)
+        self.compress_option.setToolTip("Patch faster, but use more disk space.")
+        self.compress_option.stateChanged.connect(_compress_changed)
+        self.tab_options_layout.addRow("Storage:", self.compress_option)
+
         self.tabs.addTab(self.tab_options, "Options")
 
         # Experiments Tab
@@ -432,12 +438,6 @@ class PatcherApplication(QMainWindow):
         self.filter_option.setToolTip("For experimenting with image resampling filters.\nRecommended to leave as default.")
         self.filter_option.currentIndexChanged.connect(_filter_changed)
         self.tab_experiments_layout.addRow("Upscale Filter:", self.filter_option)
-
-        self.compress_option = QCheckBox("Uncompressed files")
-        self.compress_option.setChecked(False)
-        self.compress_option.setToolTip("Faster patching, but significantly uses more disk space.")
-        self.compress_option.stateChanged.connect(_compress_changed)
-        self.tab_experiments_layout.addRow("Testing:", self.compress_option)
 
         self.tabs.addTab(self.tab_experiments, "Experiments")
 
