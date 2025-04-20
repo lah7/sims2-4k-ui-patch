@@ -422,24 +422,24 @@ class PatcherApplication(QMainWindow):
 
         self.tabs.addTab(self.tab_options, "Options")
 
-        # Advanced Tab
-        self.tab_advanced = QWidget()
-        self.tab_advanced_layout = QFormLayout()
-        self.tab_advanced.setLayout(self.tab_advanced_layout)
+        # Experiments Tab
+        self.tab_experiments = QWidget()
+        self.tab_experiments_layout = QFormLayout()
+        self.tab_experiments.setLayout(self.tab_experiments_layout)
 
         self.filter_option = QComboBox()
         self.filter_option.addItems(list(LABELS_UI_FILTER.keys()))
         self.filter_option.setToolTip("For experimenting with image resampling filters.\nRecommended to leave as default.")
         self.filter_option.currentIndexChanged.connect(_filter_changed)
-        self.tab_advanced_layout.addRow("Upscale Filter:", self.filter_option)
+        self.tab_experiments_layout.addRow("Upscale Filter:", self.filter_option)
 
         self.compress_option = QCheckBox("Uncompressed files")
         self.compress_option.setChecked(False)
         self.compress_option.setToolTip("Faster patching, but significantly uses more disk space.")
         self.compress_option.stateChanged.connect(_compress_changed)
-        self.tab_advanced_layout.addRow("Testing:", self.compress_option)
+        self.tab_experiments_layout.addRow("Testing:", self.compress_option)
 
-        self.tabs.addTab(self.tab_advanced, "Advanced")
+        self.tabs.addTab(self.tab_experiments, "Experiments")
 
         self.base_layout.addWidget(self.tabs)
 
