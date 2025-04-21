@@ -48,7 +48,7 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
 from sims2patcher import gamefile, patches
 from sims2patcher.gamefile import GameFile
 
-VERSION_STRING = "v0.3.0-dev"
+VERSION_STRING = "v0.3.0"
 VERSION = (0, 3, 0) # Major, Minor, Patch
 
 gamefile.FILE_PATCH_VERSION = float(f"{VERSION[0]}.{VERSION[1]}") # Stored in file describing patch status
