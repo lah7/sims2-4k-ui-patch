@@ -146,13 +146,13 @@ For users who play The Sims 2 under the Wine+DXVK or Proton compatibility layer.
 2. Extract the contents and run `./sims2-4k-ui-patcher`.
     * You may need to mark it as executable first (usually by right clicking → Properties → Permissions tab).
 
-Alternately, see [Development](#development) for running from the repository.
+Alternately, see [DEVELOPMENT.md](DEVELOPMENT.md#linux) for running from the repository.
 This will provide a better desktop integration.
 
 
 ### macOS
 
-We don't have a pre-built binary for macOS, but you can run the Python script directly. See [Development](#development) for instructions.
+We don't have a pre-built binary for macOS, but you can run the Python script directly. See [DEVELOPMENT.md](DEVELOPMENT.md#macos) for instructions.
 
 This patch program will work fine if you play the game under a Wine compatibility layer.
 However, if you purchased the [The Sims™ 2: Super Collection],
@@ -165,56 +165,8 @@ we don't know whether files are exposed in a way that is compatible with this pr
 
 ## Development
 
-This project is written in Python. To start hacking, clone this repository
-and set up a [virtual environment](https://docs.python.org/3/library/venv.html#creating-virtual-environments)
-to install [requirements.txt](requirements.txt).
-
-Python 3.10 is the minimum supported version.
-
-**For Windows,** [install Python 3.13](https://www.python.org/downloads/windows/), and run:
-
-    python -m venv venv
-    venv\Scripts\activate
-    pip install --upgrade pip
-    pip install -r requirements.txt
-    python sims2_4k_ui_patcher.py
-
-**For Linux,** your distribution likely already has Python 3 installed:
-
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install --upgrade pip
-    pip install -r requirements.txt
-    python3 sims2_4k_ui_patcher.py
-
-Alternatively, you could use your system's interpreter by installing packages
-that provides the dependencies (names vary by distro):
-
-    python-requests python-pillow python-pyqt6
-
-**For macOS,** [install Python 3.13](https://www.python.org/downloads/macos/), and run:
-
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install --upgrade pip
-    pip install -r requirements.txt
-    python3 sims2_4k_ui_patcher.py
-
-
-### Tests
-
-Unit tests check everything is in working order.
-
-You'll need to copy a file from The Sims 2 University (EP1) into the `tests/files` folder:
-
-    724723ddc5b020a55bdefc60a7cf1304    The Sims 2 University/TSData/Res/UI/ui.package
-
-**File not included.** With this file present, you can locally run the tests:
-
-    python -m unittest discover ./tests/
-
-This checks the modules and compression procedures are working correctly.
-
+See [DEVELOPMENT.md](DEVELOPMENT.md) for instructions on hacking the code
+and running from the repository.
 
 ## Game UI Tips
 
