@@ -64,6 +64,35 @@ game's newer rendering engine.
 Patching will double the density and make the UI look huge. As a result,
 the Legacy Collection release is not supported by this project for the time being.
 
+Unlike the Legacy Collection, setting the UI scale is not possible with this mod,
+except we have an experimental 150% scaling option [(with visual artifacts)](https://github.com/lah7/sims2-4k-ui-patch/issues/52)
+
+
+## Comparison
+
+The mod makes the UI playable at a 3840x2160 resolution.
+
+![Comparing 2160p gameplay before and after patching](https://github.com/user-attachments/assets/9b63fc77-86a9-4399-90ee-54fcaeeefbdc)
+
+Since our patcher modifies the geometry and assets directly, this mod provides a
+native 4K UI experience, providing much crisper fonts and Sim detail. Up to now,
+playing in 1080p and relying on the monitor was the best way to play.
+
+Here's how things compare pixel wise.
+Try clicking the images to open them in separate tabs, and compare between them.
+
+| Demonstration| 2160p, Retail Discs + Patches | 2160p, Legacy Collection |
+| ------------ | ----------------------------- | ------------------------ |
+|              | No support for UI scaling | `uintProp uiScaleFactor 1` (built-in software scaling) |
+| Sim detail   | ![Gameplay Menu - Legacy Collection](https://github.com/user-attachments/assets/bbacdfbd-b99b-4009-98ac-00cad854a5d6) | ![Gameplay Menu - Patched](https://github.com/user-attachments/assets/6580a4fe-9cb5-47cc-9781-b9ef16dae5ae) |
+| Text clarity | ![Lot Info - Legacy Collection](https://github.com/user-attachments/assets/a0f31540-cf52-4ca4-84a7-209dfe441c67) | ![Lot Info - After](https://github.com/user-attachments/assets/2add746d-d57b-498c-9c97-28692e05cffb) |
+| Dialog       | ![Dialog - Legacy Collection](https://github.com/user-attachments/assets/21f02a7d-681e-4e00-a027-dab66bb15ef1) | ![Dialog - After](https://github.com/user-attachments/assets/fad899bd-f3c2-4043-839a-8373e9d7f077) |
+
+For comparison, here are the 1080p equivalents from an unpatched retail game:
+[1 - Gameplay Menu](https://github.com/user-attachments/assets/1f805481-c9cf-4ea5-95ca-a743be9a3f73) |
+[2 - Lot Info](https://github.com/user-attachments/assets/2a6acec7-6e8b-4ba3-8314-12ffc755d5f0) |
+[3 - Dialog](https://github.com/user-attachments/assets/95d44383-301c-4354-8496-2ac665af6160)
+
 
 ## Compatibility
 
