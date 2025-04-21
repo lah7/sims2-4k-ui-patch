@@ -227,6 +227,15 @@ globally by adding a line to your latest game's `TSData/Res/Config/globalProps.x
 * <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>U</kbd> reloads the UI.
 
 
+## UI Inspector
+
+While developing this project, we developed our own UI inspector program,
+**S2UI Inspector**, to aid with the research and analysis for UI scripts,
+its elements and attributes.
+
+https://github.com/lah7/sims2-ui-inspector
+
+
 ## License
 
 [GNU General Public License v3](LICENSE) (GPLv3)
