@@ -1,3 +1,6 @@
+# Ignored for IDE
+/submodules/
+
 # Cache & Build
 __pycache__
 /build/

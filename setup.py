@@ -17,7 +17,10 @@ build_exe_options = {
         "unittest",
         "xml",
     ],
-    "includes": ["sims2patcher"],
+    "includes": [
+        "sims2patcher",
+        "submodules",
+    ],
     "include_files": [
         ("assets/banner@2x.png", "assets/banner@2x.png"),
         ("assets/icon.ico", "assets/icon.ico"),

@@ -28,6 +28,8 @@ from typing import Callable
 
 from PIL import Image
 
+import submodules.SimsReiaParser.SimsReiaPy.sims_reia as sims_reia
+
 from . import dbpf, errors, gamefile, uiscript
 
 # Density to multiply the UI dialog geometry and graphics
@@ -194,6 +196,43 @@ def _upscale_uiscript(entry: dbpf.Entry) -> bytes:
     return uiscript.deserialize_uiscript(data).encode("utf-8")
 
 
+def _upscale_loading_screen(entry: dbpf.Entry) -> bytes:
+    """
+    Return binary data for a modified loading screen.
+    These are reia files (a custom format) disguised with a RIFF header.
+
+    Uses this library: https://github.com/ammaraskar/SimsReiaParser
+    """
+    raw = io.BytesIO(entry.data_safe)
+    reia_file = sims_reia.read_from_file(raw)
+
+    new_frames: list[sims_reia.ReiaFrame] = []
+    new_width = int(reia_file.width * UI_MULTIPLIER)
+    new_height = int(reia_file.height * UI_MULTIPLIER)
+    new_fps = 45 # Original: 30
+
+    for _, reia_frame in enumerate(reia_file.frames):
+        assert isinstance(reia_frame, sims_reia.ReiaFrame)
+        assert isinstance(reia_frame.image, Image.Image)
+
+        new_image = Image.new("RGB", (new_width, new_height), (0, 0, 0, 0))
+        new_image.paste(reia_frame.image.resize((new_width, new_height), UPSCALE_FILTER), (0, 0))
+
+        new_frame = sims_reia.ReiaFrame(new_image)
+        new_frames.append(new_frame)
+
+    output = io.BytesIO()
+    reia_file.frames = new_frames # type: ignore
+    reia_file.height = new_height
+    reia_file.width = new_width
+    reia_file.frames_per_second = new_fps
+
+    sims_reia.write_reia_file(reia_file, output)
+
+    output.seek(0)
+    return output.getvalue()
+
+
 def process_package(file: gamefile.GameFile, ui_update_progress: Callable):
     """
     Processes a DBPF package and upscales the user interface resources.
@@ -212,7 +251,11 @@ def process_package(file: gamefile.GameFile, ui_update_progress: Callable):
             entry.compress = False
 
         ui_update_progress(current, total)
-        entry.data = _upscale_uiscript(entry)
+
+        if entry.data_safe[:4] == b"RIFF":
+            entry.data = _upscale_loading_screen(entry)
+        else:
+            entry.data = _upscale_uiscript(entry)
 
         entry.clear_cache()
         current += 1
@@ -235,6 +278,7 @@ def process_package(file: gamefile.GameFile, ui_update_progress: Callable):
             entry.compress = False
 
         ui_update_progress(current, total)
+
         try:
             entry.data = _upscale_graphic(entry)
         except errors.ArrayTooSmall:

@@ -1,0 +1,3 @@
+[submodule "submodules/SimsReiaParser"]
+	path = submodules/SimsReiaParser
+	url = https://github.com/ammaraskar/SimsReiaParser.git

@@ -4,6 +4,8 @@ This project is written in Python. To start hacking, clone this repository
 and set up a [virtual environment](https://docs.python.org/3/library/venv.html#creating-virtual-environments)
 to install [requirements.txt](requirements.txt).
 
+    git clone --recurse-submodules https://github.com/lah7/sims2-4k-ui-patcher.git
+
 Python 3.10 is the minimum supported version.
 
 ### Windows
@@ -47,6 +49,13 @@ that provides the dependencies. This might be more space efficient.
 **For Debian 12 /Ubuntu 24.04:**
 
     sudo apt install python3-pyqt6 python3-pillow python3-requests
+
+
+## Updating
+
+Since we use submodules, make sure to pull them too:
+
+    git pull --recurse-submodules --rebase origin master
 
 
 ## Testing
