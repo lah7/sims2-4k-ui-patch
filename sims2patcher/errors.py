@@ -17,7 +17,7 @@ Custom exceptions when files or entries cannot be processed.
 #
 # Copyright (C) 2024-2025 Luke Horwell <code@horwell.me>
 #
-from sims2patcher import dbpf
+from . import dbpf
 
 
 #########################

@@ -23,7 +23,7 @@ Supports DBPF 1.1 and index versions 7.0, 7.1, 7.2.
 import io
 from typing import Optional
 
-from sims2patcher import errors, qfs
+from . import errors, qfs
 
 TYPE_UI_DATA = 0
 TYPE_IMAGE = 0x856ddbac

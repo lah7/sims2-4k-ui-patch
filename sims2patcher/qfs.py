@@ -16,7 +16,7 @@ Handles QFS compressed data in DBPF files as used by The Sims 2.
 # Compression constants
 from typing import Literal
 
-from sims2patcher import errors
+from . import errors
 
 MAX_OFFSET = 0x20000
 MAX_COPY_COUNT = 0x404

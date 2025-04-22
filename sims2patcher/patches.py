@@ -28,8 +28,7 @@ from typing import Callable
 
 from PIL import Image
 
-from sims2patcher import dbpf, errors, uiscript
-from sims2patcher.gamefile import GameFile, GameFileOverride
+from . import dbpf, errors, gamefile, uiscript
 
 # Density to multiply the UI dialog geometry and graphics
 UI_MULTIPLIER: float = 2.0
@@ -195,7 +194,7 @@ def _upscale_uiscript(entry: dbpf.Entry) -> bytes:
     return uiscript.deserialize_uiscript(data).encode("utf-8")
 
 
-def process_package(file: GameFile, ui_update_progress: Callable):
+def process_package(file: gamefile.GameFile, ui_update_progress: Callable):
     """
     Processes a DBPF package and upscales the user interface resources.
 
@@ -247,7 +246,7 @@ def process_package(file: GameFile, ui_update_progress: Callable):
         current += 1
 
     # For packages to be stored in "Overrides", only save changes
-    if isinstance(file, GameFileOverride):
+    if isinstance(file, gamefile.GameFileOverride):
         package = dbpf.DBPF()
         for file_group in [ui_files, image_files]:
             package.index.entries.extend(e for e in file_group if e.modified)
@@ -257,7 +256,7 @@ def process_package(file: GameFile, ui_update_progress: Callable):
     file.write_meta_file()
 
 
-def process_fontstyle_ini(file: GameFile, write_meta_file=True):
+def process_fontstyle_ini(file: gamefile.GameFile, write_meta_file=True):
     """
     Parses FontStyle.ini (from the Fonts folder) and writes a new one with
     new font sizes.
@@ -291,7 +290,7 @@ def process_fontstyle_ini(file: GameFile, write_meta_file=True):
         file.write_meta_file()
 
 
-def patch_file(file: GameFile, ui_update_progress: Callable):
+def patch_file(file: gamefile.GameFile, ui_update_progress: Callable):
     """
     Patch a file with the appropriate function based on the filename.
     """
