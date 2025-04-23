@@ -127,6 +127,9 @@ You can change the slider if you wish to limit the CPU usage.
 
 The program automatically checks this repository for an update.
 
+For the absolute latest changes before a versioned release, download an artifact
+from the [latest workflow run.](https://github.com/lah7/sims2-4k-ui-patch/actions?query=event%3Apush+branch%3Amaster)
+
 
 ### Windows
 
