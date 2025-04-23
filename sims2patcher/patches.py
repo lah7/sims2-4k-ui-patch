@@ -41,6 +41,9 @@ LEAVE_UNCOMPRESSED: bool = False
 # Image upscaling filter
 UPSCALE_FILTER: Image.Resampling = Image.Resampling.NEAREST
 
+# Loading screen FPS
+LOADING_SCREEN_FPS: int = 45 # Original: 30
+
 
 class ImageFormat(enum.Enum):
     """File extension for known image formats"""
@@ -209,7 +212,6 @@ def _upscale_loading_screen(entry: dbpf.Entry) -> bytes:
     new_frames: list[sims_reia.ReiaFrame] = []
     new_width = int(reia_file.width * UI_MULTIPLIER)
     new_height = int(reia_file.height * UI_MULTIPLIER)
-    new_fps = 45 # Original: 30
 
     for _, reia_frame in enumerate(reia_file.frames):
         assert isinstance(reia_frame, sims_reia.ReiaFrame)
@@ -225,7 +227,7 @@ def _upscale_loading_screen(entry: dbpf.Entry) -> bytes:
     reia_file.frames = new_frames # type: ignore
     reia_file.height = new_height
     reia_file.width = new_width
-    reia_file.frames_per_second = new_fps
+    reia_file.frames_per_second = LOADING_SCREEN_FPS
 
     sims_reia.write_reia_file(reia_file, output)
 

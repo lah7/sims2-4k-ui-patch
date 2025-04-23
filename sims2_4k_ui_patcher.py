@@ -41,8 +41,8 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
                              QFileDialog, QFormLayout, QGroupBox, QHBoxLayout,
                              QHeaderView, QLabel, QLineEdit, QMainWindow,
                              QMessageBox, QProgressBar, QPushButton,
-                             QSizePolicy, QSlider, QStatusBar, QStyle,
-                             QTabWidget, QToolButton, QTreeWidget,
+                             QSizePolicy, QSlider, QSpinBox, QStatusBar,
+                             QStyle, QTabWidget, QToolButton, QTreeWidget,
                              QTreeWidgetItem, QVBoxLayout, QWidget)
 
 from sims2patcher import gamefile, patches
@@ -123,10 +123,13 @@ class State:
         # Session
         self.threads = os.cpu_count() or 1
 
-        # Options
+        # Patch Options
         self.scale: float = 2.0
-        self.filter: int = Image.Resampling.NEAREST
         self.leave_uncompressed: bool = False
+
+        # Experiments
+        self.filter: int = Image.Resampling.NEAREST
+        self.loading_screen_fps: int = 45
 
     def refresh_file_list(self):
         """
@@ -439,6 +442,15 @@ class PatcherApplication(QMainWindow):
         self.filter_option.currentIndexChanged.connect(_filter_changed)
         self.tab_experiments_layout.addRow("Upscale Filter:", self.filter_option)
 
+        self.load_fps = QSpinBox()
+        self.load_fps.setMinimum(1)
+        self.load_fps.setMaximum(120)
+        self.load_fps.setValue(45)
+        self.load_fps.setSuffix(" FPS")
+        self.load_fps.setToolTip("Frames per second for loading screen animations.\nOriginal: 30 FPS.\nOur choice: 45 FPS. Enables faster loading times.")
+        self.load_fps.valueChanged.connect(lambda value: setattr(self.state, "loading_screen_fps", value))
+        self.tab_experiments_layout.addRow("Loading Screen:", self.load_fps)
+
         self.tabs.addTab(self.tab_experiments, "Experiments")
 
         self.base_layout.addWidget(self.tabs)
@@ -729,6 +741,7 @@ class PatcherApplication(QMainWindow):
         patches.UI_MULTIPLIER = state.scale
         patches.LEAVE_UNCOMPRESSED = state.leave_uncompressed
         patches.UPSCALE_FILTER = state.filter
+        patches.LOADING_SCREEN_FPS = state.loading_screen_fps
 
         # Begin!
         _update_progress(0, 1)
