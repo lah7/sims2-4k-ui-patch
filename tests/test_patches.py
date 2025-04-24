@@ -3,108 +3,80 @@ Perform tests on the patches module to ensure that an input
 and output works as expected.
 """
 # pylint: disable=protected-access
-import hashlib
+import io
 import os
 import shutil
 import sys
-import tempfile
-import unittest
+
+import PIL.Image
 
 # Our modules are in the parent directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) # pylint: disable=wrong-import-position
 
-from sims2patcher import dbpf, patches, uiscript
+from sims2patcher import patches
+from sims2patcher.dbpf import TYPE_IMAGE, Entry
 from sims2patcher.gamefile import GameFileReplacement
+from tests.test_base import BaseTestCase
 
 
-class PatchesTest(unittest.TestCase):
+class FontsTest(BaseTestCase):
     """
-    Test our "patches" module against test files.
+    Test font styles upscale as expected.
     """
-    tmp_files = []
-
-    def _mktemp(self):
-        tmp = tempfile.NamedTemporaryFile()
-        self.tmp_files.append(tmp.name)
-        return tmp.name
-
-    @staticmethod
-    def _get_test_file_path(filename):
-        path = f"tests/files/{filename}"
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Missing test file: {path}")
-        return path
-
-    def _get_test_file_data(self, filename):
-        with open(self._get_test_file_path(filename), "r", encoding="utf-8") as f:
-            return f.read()
-
-    @classmethod
-    def setUpClass(cls):
-        os.chdir(os.path.join(os.path.dirname(__file__), ".."))
-        cls.ui_package = dbpf.DBPF(cls._get_test_file_path("ui.package"))
-        return super().setUpClass()
-
-    def tearDown(self) -> None:
-        # Clean up temporary files
-        for name in self.tmp_files:
-            if os.path.exists(name):
-                os.remove(name)
-        return super().tearDown()
-
     def test_fontstyle_ini(self):
         """Test font sizes are doubled in INI file"""
-        tmp_path = self._mktemp()
-        shutil.copy(self._get_test_file_path("FontStyle-A.ini"), tmp_path)
+        tmp_path = self.mktemp()
+        shutil.copy(self.get_test_file_path("FontStyle-A.ini"), tmp_path)
 
         dummy_file = GameFileReplacement(tmp_path)
-        dummy_file._backup_path = self._get_test_file_path("FontStyle-A.ini")
+        dummy_file._backup_path = self.get_test_file_path("FontStyle-A.ini")
         patches.process_fontstyle_ini(dummy_file, write_meta_file=False)
 
         # Compare output with expected output
-        expected = self._get_test_file_data("FontStyle-B.ini")
+        expected = self.get_test_file_text("FontStyle-B.ini")
         with open(tmp_path, "r", encoding="utf-8") as f:
             actual = f.read()
         self.assertEqual(actual, expected, "FontStyle.ini file was not modified correctly")
 
-    def test_uiscript_patch(self):
-        """Test a known UI script doubled its geometry/positions"""
-        entry = self.ui_package.get_entry(dbpf.TYPE_UI_DATA, 0x8000600, 0x3c605f90)
-        checksum_before = hashlib.md5(entry.data).hexdigest()
-        if checksum_before != "5a41f089015d0b2a3c5333661691044f":
-            raise ValueError("Bad test file, checksum mismatch")
 
-        new_data = patches._upscale_uiscript(entry)
-        checksum_after = hashlib.md5(new_data).hexdigest()
+class GraphicsTest(BaseTestCase):
+    """
+    Test graphics upscale as expected.
+    """
+    def _get_dimensions(self, data: bytes) -> tuple[int, int]:
+        """Get the dimensions of the image"""
+        with PIL.Image.open(io.BytesIO(data)) as img:
+            return img.size
 
-        self.assertEqual(checksum_after, "0d333c9741889560cca1236e6af681c5", "UI script was not modified as expected")
+    def _get_test_image_entry(self, filename: str) -> Entry:
+        """Get a placeholder entry for a test image"""
+        entry = Entry(io.BytesIO())
+        entry.type_id = TYPE_IMAGE
+        entry.data = self.get_test_file_bytes(filename)
+        return entry
+
+    def _test_graphic_dimensions(self, filename: str, filetype: str):
+        """Test a graphic image is modified and double its size"""
+        entry = self._get_test_image_entry(filename)
+        orig_width, orig_height = self._get_dimensions(entry.data)
+        new_data = patches._upscale_graphic(entry)
+        new_width, new_height = self._get_dimensions(new_data)
+        self.assertGreater(len(new_data), len(entry.data), f"{filetype} was not modified")
+        self.assertEqual(new_width, orig_width * 2, f"{filetype} width was not doubled")
+        self.assertEqual(new_height, orig_height * 2, f"{filetype} height was not doubled")
 
     def test_graphic_patch_bmp(self):
-        """Test a bitmap image is modified and at least double its size"""
-        entry = self.ui_package.get_entry(dbpf.TYPE_IMAGE, 0x499db772, 0xecdb3005)
-        new_data = patches._upscale_graphic(entry)
-        self.assertGreater(len(new_data), len(entry.data), "Bitmap image was not modified")
+        """Test a bitmap image is double its original dimensions"""
+        self._test_graphic_dimensions("src/image5.bmp", "Bitmap")
 
     def test_graphic_patch_tga(self):
-        """Test a Targa image is modified"""
-        entry = self.ui_package.get_entry(dbpf.TYPE_IMAGE, 0x499db772, 0xb1200)
-        new_data = patches._upscale_graphic(entry)
-        self.assertGreater(len(new_data), len(entry.data), "Targa image was not modified")
+        """Test a targa image is double its original dimensions"""
+        self._test_graphic_dimensions("src/image2.tga", "Targa")
 
     def test_graphic_patch_png(self):
-        """Test a PNG image is modified"""
-        entry = self.ui_package.get_entry(dbpf.TYPE_IMAGE, 0x499db772, 0x8da3adfa)
-        new_data = patches._upscale_graphic(entry)
-        self.assertGreater(len(new_data), len(entry.data), "PNG image was not modified")
+        """Test a targa image is double its original dimensions"""
+        self._test_graphic_dimensions("src/image3.png", "PNG")
 
-    def test_uiscript_constants(self):
-        """Test values in a "constants table" are doubled"""
-        entry = self.ui_package.get_entry(dbpf.TYPE_UI_DATA, 0xa99d8a11, 0x8c159244)
-
-        before = uiscript.serialize_uiscript(entry.data.decode("utf-8"))
-        self.assertEqual(len(before.get_elements_by_attribute("caption", "kListBoxRowHeight=20")), 1)
-
-        data = patches._upscale_uiscript(entry)
-
-        after = uiscript.serialize_uiscript(data.decode("utf-8"))
-        self.assertEqual(len(after.get_elements_by_attribute("caption", "kListBoxRowHeight=40")), 1)
+    def test_graphic_patch_jpg(self):
+        """Test a JPEG image is double its original dimensions"""
+        self._test_graphic_dimensions("src/image4.jpg", "JPEG")

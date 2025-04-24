@@ -1,0 +1,5 @@
+# This is a comment
+<LEGACY clsid=GZWinGen iid=IGZWinGen area=(8,16,32,48) >
+<CHILDREN>
+    <LEGACY captionres={12345678,12345678} wparam="0x030000f0,string,currentNeighborhoodType!=university and EPInstalled=EP6" wparam="0x030000f2,string,currentNeighborhoodType!=university and EPInstalled=EP6" winflag_visible=no >
+</CHILDREN>

@@ -6,8 +6,8 @@ __pycache__
 /build/
 /dist/
 
-# User must supply files
-/tests/files/ui.package
+# Optional tests: User must supply files from game
+/tests/gamefiles/*
 
 # Output from tools
 *.csv

@@ -60,14 +60,16 @@ Since we use submodules, make sure to pull them too:
 
 ## Testing
 
-Unit tests check everything is in working order.
+Unit tests check everything is in working order, such as the modules and
+compression procedures.
 
-You'll need to copy a file from The Sims 2 University (EP1) into the `tests/files` folder:
+Tests using real packages from the game are optional. To complete all tests,
+add some files into the `tests/gamefiles` folder:
 
-    724723ddc5b020a55bdefc60a7cf1304    The Sims 2 University/TSData/Res/UI/ui.package
+| Destination       | Source
+| ----------------- | -------------------------------------------------------- |
+| `EP1_ui.package`  | `TSData/Res/UI/ui.package` from The Sims 2 University (EP1)
 
-**File not included.** With this file present, you can locally run the tests:
+To run all tests from the command line:
 
     python -m unittest discover ./tests/
-
-This checks the modules and compression procedures are working correctly.

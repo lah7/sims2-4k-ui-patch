@@ -1,0 +1,6 @@
+# This is a comment
+<LEGACY clsid=GZWinGen iid=IGZWinGen area=(10,10,605,432) >
+<CHILDREN>
+    <LEGACY clsid=GZWinBMP iid=IGZWinBMP transparentbkg=yes >
+    <LEGACY clsid=GZWinText caption="Hello, World!" >
+</CHILDREN>

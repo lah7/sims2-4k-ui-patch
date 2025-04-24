@@ -1,0 +1,11 @@
+# This is a comment
+<LEGACY clsid=GZWinGen iid=IGZWinGen area=(8,16,32,48) >
+<CHILDREN>
+    <LEGACY captionres={12345678,12345678} caption="This is a multiline string.
+Example 1
+Example 2
+Example 3" winflag_visible=no >
+    <LEGACY caption="This is another multiline string.
+Example 4
+Example 5" >
+</CHILDREN>
