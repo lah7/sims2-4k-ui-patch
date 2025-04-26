@@ -68,6 +68,7 @@ add some files into the `tests/gamefiles` folder:
 
 | Destination       | Source
 | ----------------- | -------------------------------------------------------- |
+| `base_ui.package` | `TSData/Res/UI/ui.package` from The Sims 2 (base game)
 | `EP1_ui.package`  | `TSData/Res/UI/ui.package` from The Sims 2 University (EP1)
 
 To run all tests from the command line:

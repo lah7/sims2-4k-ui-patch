@@ -4,26 +4,49 @@ This test is optional and will be skipped if the files are not found.
 
 See the Testing section in DEVELOPMENT.md for a list of required files and expected filenames.
 """
+import io
 import os
 import sys
 
 # Our modules are in the parent directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) # pylint: disable=wrong-import-position
 
+import submodules.SimsReiaParser.SimsReiaPy.sims_reia as sims_reia
 from sims2patcher import dbpf, patches, uiscript
 from tests.test_base import BaseTestCase
 
 
-class RealPackageTest(BaseTestCase):
+class BasePackageTestCase(BaseTestCase):
     """
-    Test 'real' package files from the game against the modules.
+    Base class for test cases using a package file.
+    """
+    @classmethod
+    def uses_package(cls, game_file_name: str):
+        """
+        Use a game file package for testing this class.
+        """
+        os.chdir(os.path.join(os.path.dirname(__file__), ".."))
+        cls._package_loaded = False
+        cls.package_path = os.path.join("tests", "gamefiles", game_file_name)
+        cls.package = dbpf.DBPF() # Load later
+
+    def setUp(self) -> None:
+        super().setUp()
+        if not self._package_loaded:
+            if not os.path.exists(self.package_path):
+                self.skipTest(f"Missing test file: {self.package_path}")
+            self.package = dbpf.DBPF(self.package_path)
+            self._package_loaded = True
+
+
+class EP1UIPackageTest(BasePackageTestCase):
+    """
+    Test a smaller UI package from The Sims 2 University.
     """
     @classmethod
     def setUpClass(cls):
-        os.chdir(os.path.join(os.path.dirname(__file__), ".."))
-        cls._package_loaded = False
-        cls.package_path = "tests/gamefiles/EP1_ui.package"
-        cls.package = dbpf.DBPF() # Load later
+        super().setUpClass()
+        cls.uses_package("EP1_ui.package")
 
         # Known compressed file (TGA Image)
         cls.tga_index = 16
@@ -36,14 +59,6 @@ class RealPackageTest(BaseTestCase):
         cls.bmp_md5 = "4d450dd3b45e2cebae3ef949bde06292"
         cls.bmp_group_id = 0x499db772
         cls.bmp_instance_id = 0xecdb3005
-
-    def setUp(self) -> None:
-        if not self._package_loaded:
-            if not os.path.exists(self.package_path):
-                self.skipTest(f"Missing test file: {self.package_path}")
-            self.package = dbpf.DBPF(self.package_path)
-            self._package_loaded = True
-        return super().setUp()
 
     def test_change_uiscript(self):
         """Test a file is changed after patching"""
@@ -294,3 +309,27 @@ class RealPackageTest(BaseTestCase):
 
         after = uiscript.serialize_uiscript(data.decode("utf-8"))
         self.assertEqual(len(after.get_elements_by_attribute("caption", "kListBoxRowHeight=40")), 1)
+
+
+class BaseUIPackageTest(BasePackageTestCase):
+    """
+    Test for files only found in the base game.
+    """
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.uses_package("base_ui.package")
+
+    def test_change_loading_screens(self):
+        """Check the loading screens are upscaled"""
+        entry = self.package.get_entry(dbpf.TYPE_UI_DATA, 0x499db772, 0x8da3ade7)
+
+        reia_file = sims_reia.read_from_file(io.BytesIO(entry.data))
+        orig_height = reia_file.height
+        orig_width = reia_file.width
+
+        output = patches._upscale_loading_screen(entry) # pylint: disable=protected-access
+
+        reia_file = sims_reia.read_from_file(io.BytesIO(output))
+        self.assertEqual(reia_file.height, orig_height * 2)
+        self.assertEqual(reia_file.width, orig_width * 2)
