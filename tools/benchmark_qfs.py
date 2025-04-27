@@ -46,6 +46,10 @@ SAMPLES = args.samples
 MIN_LEVEL = args.min
 MAX_LEVEL = args.max
 
+if MIN_LEVEL < 2 or MAX_LEVEL > 255:
+    print("Error: QFS levels must be between 2 and 255.")
+    sys.exit(1)
+
 print("\nBenchmark Parameters")
 print("=============================")
 print("Package:", INPUT_PATH, f"({ORIG_SIZE} bytes)")
@@ -122,7 +126,7 @@ try:
     with Manager() as manager:
         pid_list = manager.list()
         CURRENT = manager.Value("i", -1)
-        RANGE = MAX_LEVEL - MIN_LEVEL + 1
+        RANGE = MAX_LEVEL - MIN_LEVEL
         with concurrent.futures.ProcessPoolExecutor(max_workers=THREADS) as executor:
             PACKAGE = dbpf.DBPF(INPUT_PATH)
 
@@ -133,7 +137,7 @@ try:
                 if _entry.compress:
                     _entry.data # pylint: disable=pointless-statement
 
-            tasks.extend([executor.submit(benchmark, PACKAGE, level, pid_list, CURRENT, RANGE * SAMPLES, OUTPUT_CSV) for level in range(MIN_LEVEL - 1, MAX_LEVEL + 1)])
+            tasks.extend([executor.submit(benchmark, PACKAGE, level, pid_list, CURRENT, RANGE * SAMPLES, OUTPUT_CSV) for level in range(MIN_LEVEL, MAX_LEVEL + 1)])
 
     # Sort results (except first line)
     with open(OUTPUT_CSV, "r", encoding="utf-8") as _f:
