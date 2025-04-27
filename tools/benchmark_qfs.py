@@ -19,6 +19,11 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) 
 
 from sims2patcher import dbpf, qfs
 
+# Script needs refactoring to work with Windows due to multiprocessing
+if os.name == "nt":
+    print("This script is not compatible with Windows.")
+    sys.exit(1)
+
 # Parse parameters
 parser = argparse.ArgumentParser(description="Benchmark QFS compression levels")
 parser.add_argument("-o", "--output", type=str, default="benchmark.csv", help="Write results to CSV file. Default: benchmark.csv", metavar="")

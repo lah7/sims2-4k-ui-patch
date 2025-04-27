@@ -35,6 +35,10 @@ class ToolsTest(BaseTestCase):
 
     def test_benchmark_qfs(self):
         """Test QFS benchmark works with expected differences in results"""
+        # Script does not run on Windows due to multiprocessing
+        if os.name == "nt":
+            self.skipTest("Script not compatible with Windows.")
+
         tmp_path = self.mktemp()
         self._run_tool("benchmark_qfs.py", ["-o", tmp_path, "-f", self.package.path, "-s", "3", "-m", "2", "-x", "16"])
 
