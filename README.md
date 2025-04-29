@@ -76,22 +76,27 @@ The mod makes the UI playable at a 3840x2160 resolution.
 
 Since our patcher modifies the geometry and assets directly, this mod provides a
 native 4K UI experience, providing much crisper fonts and Sim detail. Up to now,
-playing in 1080p and relying on the monitor was the best way to play.
+playing in 1080p was the best way to play.
 
 Here's how things compare pixel wise.
-Try clicking the images to open them in separate tabs, and compare between them.
+Click the image to open in a new tab, and switch between them to take a closer look.
 
-| Demonstration| 2160p, Retail Discs + Patches | 2160p, Legacy Collection |
-| ------------ | ----------------------------- | ------------------------ |
-|              | No support for UI scaling | `uintProp uiScaleFactor 1` (built-in software scaling) |
-| Sim detail   | ![Gameplay Menu - Legacy Collection](https://github.com/user-attachments/assets/bbacdfbd-b99b-4009-98ac-00cad854a5d6) | ![Gameplay Menu - Patched](https://github.com/user-attachments/assets/6580a4fe-9cb5-47cc-9781-b9ef16dae5ae) |
-| Text clarity | ![Lot Info - Legacy Collection](https://github.com/user-attachments/assets/a0f31540-cf52-4ca4-84a7-209dfe441c67) | ![Lot Info - After](https://github.com/user-attachments/assets/2add746d-d57b-498c-9c97-28692e05cffb) |
-| Dialog       | ![Dialog - Legacy Collection](https://github.com/user-attachments/assets/21f02a7d-681e-4e00-a027-dab66bb15ef1) | ![Dialog - After](https://github.com/user-attachments/assets/fad899bd-f3c2-4043-839a-8373e9d7f077) |
+| Legacy Collection    | Retail Discs + Patch |
+| -------------------- | -------------------- |
+| ![Gameplay Menu - Legacy Collection](https://github.com/user-attachments/assets/bbacdfbd-b99b-4009-98ac-00cad854a5d6) | ![Gameplay Menu - Patched](https://github.com/user-attachments/assets/6580a4fe-9cb5-47cc-9781-b9ef16dae5ae) |
+| ![Lot Info - Legacy Collection](https://github.com/user-attachments/assets/a0f31540-cf52-4ca4-84a7-209dfe441c67) | ![Lot Info - After](https://github.com/user-attachments/assets/2add746d-d57b-498c-9c97-28692e05cffb) |
+| ![Dialog - Legacy Collection](https://github.com/user-attachments/assets/21f02a7d-681e-4e00-a027-dab66bb15ef1) | ![Dialog - After](https://github.com/user-attachments/assets/fad899bd-f3c2-4043-839a-8373e9d7f077) |
 
-For comparison, here are the 1080p equivalents from an unpatched retail game:
-[1 - Gameplay Menu](https://github.com/user-attachments/assets/1f805481-c9cf-4ea5-95ca-a743be9a3f73) |
-[2 - Lot Info](https://github.com/user-attachments/assets/2a6acec7-6e8b-4ba3-8314-12ffc755d5f0) |
-[3 - Dialog](https://github.com/user-attachments/assets/95d44383-301c-4354-8496-2ac665af6160)
+To compare 1080p, here are the equivalent images from an unpatched retail game.
+Zoom these to 200%.
+
+* [Image 1 - Gameplay Menu (1080p)](https://github.com/user-attachments/assets/1f805481-c9cf-4ea5-95ca-a743be9a3f73)
+* [Image 2 - Lot Info (1080p)](https://github.com/user-attachments/assets/2a6acec7-6e8b-4ba3-8314-12ffc755d5f0)
+* [Image 3 - Dialog (1080p)](https://github.com/user-attachments/assets/95d44383-301c-4354-8496-2ac665af6160)
+
+<sub>(1080p and the Legacy Collection at 2160p (4K) are identical in terms of
+UI sharpness. It's not you, the UI isn't as sharp with the 2025 re-release
+"4K support")</sub>
 
 
 ## Compatibility
