@@ -20,6 +20,12 @@ jobs:
             cache: 'pip'
             cache-dependency-path: '**/requirements.txt'
 
+      - name: Get Version
+        run: |
+          git fetch --tags --unshallow
+          VERSION="$(git describe --tags)"
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
@@ -27,14 +33,13 @@ jobs:
       - name: Build
         run: |
           python setup.py build
-          git fetch --tags --unshallow
           git describe --tags > dist/version.txt
           echo "https://github.com/lah7/sims2-4k-ui-patch" > "dist/View on GitHub.txt"
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-            name: "build-linux-x64"
+            name: "build-linux-x64-${{ env.VERSION }}"
             path: "dist"
 
   windows_x64:
@@ -52,6 +57,12 @@ jobs:
             cache: 'pip'
             cache-dependency-path: '**/requirements.txt'
 
+      - name: Get Version
+        run: |
+          git fetch --tags --unshallow
+          $VERSION = git describe --tags
+          echo "VERSION=$VERSION" >> $env:GITHUB_ENV
+
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
@@ -59,12 +70,11 @@ jobs:
       - name: Build
         run: |
           python setup.py build
-          git fetch --tags --unshallow
           git describe --tags > dist\version.txt
           copy assets\github.url "dist\View on GitHub.url"
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-            name: "build-windows-x64"
+            name: "build-windows-x64-${{ env.VERSION }}"
             path: "dist"
