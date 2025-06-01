@@ -13,7 +13,7 @@ import PIL.Image
 # Our modules are in the parent directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) # pylint: disable=wrong-import-position
 
-from sims2patcher import patches
+from sims2patcher import dbpf, patches
 from sims2patcher.dbpf import TYPE_IMAGE, Entry
 from sims2patcher.gamefile import GameFileReplacement
 from tests.test_base import BaseTestCase
@@ -80,3 +80,37 @@ class GraphicsTest(BaseTestCase):
     def test_graphic_patch_jpg(self):
         """Test a JPEG image is double its original dimensions"""
         self._test_graphic_dimensions("src/image4.jpg", "JPEG")
+
+
+class UIScriptTest(BaseTestCase):
+    """
+    Test specific UI script patch scenarios.
+    """
+    def test_uiscript_patch_skipped(self):
+        """Test a known debug UI script is not patched"""
+        entry = Entry(io.BytesIO())
+        entry.type_id = dbpf.TYPE_UI_DATA
+        entry.group_id = 0xa99d8a11
+        entry.instance_id = 0x8baff56f
+        entry.data = b"12345678789"
+        patches._upscale_uiscript(entry)
+        self.assertEqual(entry.data, b"12345678789", "Known UI script should be skipped")
+
+    def test_uiscript_attribute_new(self):
+        """Test a specific UI script adds an additional attribute"""
+        script_id = (0xa99d8a11, 0x49064905)
+        attributes = {"caption": "Needs"}
+        expected = {"caption": "Needs", "font": "GenHeader"}
+        result = patches._fix_uiscript_element_attributes(script_id, attributes)
+        self.assertEqual(result, expected, "UI script attribute was not added correctly")
+
+    def test_uiscript_upscaled(self):
+        """Test UI scripts are upscaled/fixed correctly"""
+        entry = Entry(io.BytesIO())
+        entry.type_id = dbpf.TYPE_UI_DATA
+        entry.group_id = 0xa99d8a11
+        entry.instance_id = 0x49064905
+        entry.data = b"# Test\r\n<LEGACY iid=IGZWinGen area=(5,10,15,20) >\r\n<LEGACY iid=IGZWinText caption=\"Needs\" >\r\n"
+        result = patches._upscale_uiscript(entry)
+        expected = b"# Test\r\n<LEGACY iid=IGZWinGen area=(10,20,30,40) >\r\n<LEGACY iid=IGZWinText caption=\"Needs\" font=GenHeader >\r\n"
+        self.assertEqual(result, expected, "UI script was not upscaled as expected")
