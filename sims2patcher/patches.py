@@ -116,15 +116,65 @@ def _upscale_graphic(entry: dbpf.Entry) -> bytes:
     return output.getvalue()
 
 
+def _fix_uiscript_element_attributes(script_id: tuple[int, int], attributes: dict) -> dict:
+    """
+    Apply fixes to UI script bugs from the original game for a specified element.
+    """
+    attributes2 = attributes.copy()
+
+    # Missing font for "Needs" in newer expansions
+    if script_id == (0xa99d8a11, 0x49064905):
+        if "caption" in attributes and attributes["caption"] == "Needs":
+            attributes2["font"] = "GenHeader"
+
+    # Missing font for build mode browser titles in most expansions
+    elif script_id == (0xa99d8a11, 0x49060003) or script_id == (0xa99d8a11, 0x49060004):
+        if "caption" in attributes:
+            if attributes["caption"] == "info text":
+                attributes2["font"] = "DefaultFont14"
+            elif attributes["caption"] == "Roof Angle Chooser":
+                attributes2["font"] = "DefaultFont14"
+
+    # Missing fonts for new baby/twins/pet/robot in newer expansions
+    elif script_id == (0xa99d8a11, 0x2d91050a):
+        if "area" in attributes:
+            value = attributes["area"]
+            if value in ["(18,12,315,46)", "(18,13,315,53)"]:
+                attributes2["font"] = "GenHeader"
+            elif value in ["(18,43,315,109)", "(18,63,315,133)", "(18,11,305,45)"]:
+                attributes2["font"] = "GenSubHeader"
+            elif value in ["(75,241,307,267)", "(75,291,307,317)", "(75,121,307,147)", "(75,141,307,167)", "(75,191,307,217)", "(31,74,289,101)"]:
+                attributes2["font"] = "NeighborhoodButton"
+            elif value in ["(105,123,147,156)"]:
+                attributes2["font"] = "GenButton"
+
+    # Missing fonts in "Game Options" in newer expansions
+    elif script_id in [(0xa99d8a11, 0x49060f02), (0x8000600, 0x49060f02)]:
+        if attributes.get("iid") in ["IGZWinText", "IGZWinBtn"] and "caption" in attributes:
+            attributes2["font"] = "OptionsText"
+
+        if attributes.get("caption", "") == "Game Options":
+            attributes2["font"] = "OptionsHeader"
+
+    # Missing fonts in "Game Tip Encyclopedia" in newer expansions
+    elif script_id in [(0xa99d8a11, 0x49060f06), (0x8000600, 0x49060f06)]:
+        if attributes.get("iid") in ["IGZWinText", "IGZWinTextEdit"] and "caption" in attributes:
+            attributes2["font"] = "NeighborhoodBody"
+
+        if attributes.get("caption", "") == "Game Tip Encyclopedia":
+            attributes2["font"] = "OptionsHeader"
+
+    return attributes2
+
+
 def _upscale_uiscript(entry: dbpf.Entry) -> bytes:
     """
-    Return binary data for a modified .uiScript file.
-
-    .uiScript is a modified XML file that specifies the dialog geometry and element positions.
+    Return binary data for a modified UI Script.
+    These files are modified XML files specifying the dialog geometry and element positions.
 
     To upscale, multiply attributes with dimension/position values by UI_MULTIPLIER.
     """
-    # Skip debugging UI
+    # Skip debugging UI - they break!
     script_id = (entry.group_id, entry.instance_id)
     if script_id in [
         (0xa99d8a11, 0xfffffff0), # Skin Browser
@@ -134,12 +184,9 @@ def _upscale_uiscript(entry: dbpf.Entry) -> bytes:
     ]:
         return entry.data
 
-    try:
-        data: uiscript.UIScriptRoot = uiscript.serialize_uiscript(entry.data.decode("utf-8"))
-    except UnicodeDecodeError:
-        # Skip binary .uiScript file
-        return entry.data
+    root: uiscript.UIScriptRoot = uiscript.serialize_uiscript(entry.data.decode("utf-8"))
 
+    # Function for patching "Constants Table" later
     def _patched_constant(caption: str):
         """
         The 'Constants Table' are text elements nested together holding
@@ -185,7 +232,12 @@ def _upscale_uiscript(entry: dbpf.Entry) -> bytes:
 
         return f"{key}={value}"
 
-    for element in data.get_all_elements():
+    # Patch attributes as needed
+    for element in root.get_all_elements():
+        # Add new attributes
+        element.attributes = _fix_uiscript_element_attributes(script_id, element.attributes)
+
+        # Upscale existing attributes
         for attrib, value in element.attributes.items():
             if attrib in ["area", "gutters", "imagerect"]:
                 assert isinstance(value, str)
@@ -196,7 +248,7 @@ def _upscale_uiscript(entry: dbpf.Entry) -> bytes:
             elif attrib == "caption" and isinstance(value, str) and value.startswith("k") and value.find("=") != -1:
                 element.attributes[attrib] = _patched_constant(value)
 
-    return uiscript.deserialize_uiscript(data).encode("utf-8")
+    return uiscript.deserialize_uiscript(root).encode("utf-8")
 
 
 def _upscale_loading_screen(entry: dbpf.Entry) -> bytes:
