@@ -187,6 +187,15 @@ def _fix_uiscript_element_attributes(script_id: tuple[int, int], attributes: dic
         if attributes.get("captionres") in ["{7f96c284,00e80006}", "{7f96c284,00e80026}", "{7f96c284,00e80027}", "{7f96c284,00e80028}"]:
             attributes2["font"] = "OptionsText"
 
+    # "Customise Novel" dialog never had fonts defined
+    if script_id == (0xa99d8a11, 0xbb40021):
+        if attributes.get("iid") == "IGZWinText":
+            attributes2["font"] = "GenHeader"
+        elif attributes.get("id") == "0x00002002":
+            attributes2["font"] = "GenSubHeader"
+        elif attributes.get("id") == "0x00002003":
+            attributes2["font"] = "NeighborhoodBody"
+
     return attributes2
 
 
