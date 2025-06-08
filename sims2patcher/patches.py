@@ -164,6 +164,29 @@ def _fix_uiscript_element_attributes(script_id: tuple[int, int], attributes: dic
         if attributes.get("caption", "") == "Game Tip Encyclopedia":
             attributes2["font"] = "OptionsHeader"
 
+    # Missing fonts for pet employment panel
+    elif script_id == (0xa99d8a11, 0xfeed2006):
+        if attributes.get("id") in ["0x77e74b47", "0x2d0a50a7"]:
+            attributes2["font"] = "LiveModePanelHeader"
+
+        elif attributes.get("id") in ["0x27e74b64", "0x47e74b6d", "0xec2cfcfd", "0x0c1fc411", "0x0c1fc412", "0x0c1fc413", "0x0c1fc414", "0x0c1fc415", "0x0c1fc416", "0x0c1fc417", "0x2d0a50a6", "0x71ecc381", "0x71ecc38b"]:
+            attributes2["font"] = "LiveModePanelBody"
+
+        elif attributes.get("id") == "0x0000d0a1":
+            attributes2["font"] = "LiveModePanelSmallBody"
+
+        elif attributes.get("id") in ["0xccc728cd", "0x0c1fc419"]:
+            attributes2["font"] = "DefaultFont14"
+
+        elif attributes.get("id") == "0xabcd0002":
+            attributes2["font"] = "OptionsText"
+
+        if attributes.get("clsid") == "0x4ca92f03":
+            attributes2["font"] = "LiveModePanelSubHeader"
+
+        if attributes.get("captionres") in ["{7f96c284,00e80006}", "{7f96c284,00e80026}", "{7f96c284,00e80027}", "{7f96c284,00e80028}"]:
+            attributes2["font"] = "OptionsText"
+
     return attributes2
 
 
