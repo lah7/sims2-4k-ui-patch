@@ -156,6 +156,24 @@ def _fix_uiscript_element_attributes(script_id: tuple[int, int], attributes: dic
         if attributes.get("caption", "") == "Game Options":
             attributes2["font"] = "OptionsHeader"
 
+        if attributes.get("caption", "") in ["Lot View Options", "House-Specific Options"]:
+            attributes2["font"] = "GenButton"
+
+        # Improve padding in Game Options
+        if attributes.get("area", "") == "(6,1,488,23)": # "Lot View Options"
+            attributes2["area"] = "(6,9,488,31)" # +8 pixels down
+
+        elif attributes.get("id", "") in [
+            "0x000000a8", # "View Distance"
+            "0x000000a7", # "Neighbors"
+            "0x000000a6", # "Decorations"
+            "0x000000aa", # "Fade Distance"
+        ]:
+            area = attributes.get("area", "(0,0,0,0)")
+            parts = area.strip("()").split(",")
+            x, y, width, height = map(int, parts)
+            attributes2["area"] = f"({x},{y + 10},{width},{height})"
+
     # Missing fonts in "Game Tip Encyclopedia" in newer expansions
     elif script_id in [(0xa99d8a11, 0x49060f06), (0x8000600, 0x49060f06)]:
         if attributes.get("iid") in ["IGZWinText", "IGZWinTextEdit"] and "caption" in attributes:
