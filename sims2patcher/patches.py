@@ -188,13 +188,21 @@ def _fix_uiscript_element_attributes(script_id: tuple[int, int], attributes: dic
             attributes2["font"] = "OptionsText"
 
     # "Customise Novel" dialog never had fonts defined
-    if script_id == (0xa99d8a11, 0xbb40021):
+    elif script_id == (0xa99d8a11, 0xbb40021):
         if attributes.get("iid") == "IGZWinText":
             attributes2["font"] = "GenHeader"
         elif attributes.get("id") == "0x00002002":
             attributes2["font"] = "GenSubHeader"
         elif attributes.get("id") == "0x00002003":
             attributes2["font"] = "NeighborhoodBody"
+
+    # Increase list box height in Graphics Options
+    elif script_id == (0xa99d8a11, 0x49060f03):
+        if attributes.get("iid") == "IGZWinBMP":
+            if attributes.get("area") == "(1,17,111,102)":
+                attributes2["area"] = "(1,17,111,113)" # +11 pixels height for Screen Size
+            elif attributes.get("area") == "(1,17,100,102)":
+                attributes2["area"] = "(1,17,100,113)" # +11 pixels height for Refresh Rate
 
     return attributes2
 
