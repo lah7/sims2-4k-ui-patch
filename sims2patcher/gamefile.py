@@ -30,13 +30,24 @@ def get_patchable_paths(install_dir: str) -> list[str]:
     """
     Return a list of game files paths that can be patched.
     """
-    paths: List[str] = []
+    found: List[str] = []
 
     for filename in ["ui.package", "FontStyle.ini", "CaSIEUI.data", "Objects/objects.package"]:
-        paths += glob.glob(install_dir + f"/**/{filename}", recursive=True)
+        found += glob.glob(install_dir + f"/**/{filename}", recursive=True)
 
-    if not paths:
+    if not found:
         raise ValueError("No patchable files found")
+
+    # Optimise patch multiprocessing by starting with largest files
+    found.sort(key=os.path.getsize, reverse=True)
+
+    # Give the base game a head start, it has the most work to do.
+    paths: List[str] = []
+    for path in found:
+        if ("Base" in path or f"Sims 2{os.sep}" in path) and not "Locale" in path:
+            paths.insert(0, path)
+        else:
+            paths.append(path)
 
     return paths
 
