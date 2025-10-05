@@ -242,6 +242,10 @@ def _upscale_uiscript(entry: dbpf.Entry) -> bytes:
     ]:
         return entry.data
 
+    # Skip 800x600 UI scripts in case the game resolution resets
+    if entry.group_id == 0x8000600:
+        return entry.data
+
     root: uiscript.UIScriptRoot = uiscript.serialize_uiscript(entry.data.decode("utf-8"))
 
     # Function for patching "Constants Table" later
