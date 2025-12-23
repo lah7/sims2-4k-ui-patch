@@ -14,7 +14,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))) 
 
 from sims2patcher import dbpf, errors
 
-WRITE_CSV = False
+write_csv = False
 
 
 def inspect(package_path: str):
@@ -89,7 +89,7 @@ def inspect(package_path: str):
         )
     print("")
 
-    if WRITE_CSV:
+    if write_csv:
         print(f"Exporting {os.path.basename(package_path)}.csv", end="")
         with open(f"{package_path}.csv", "w", encoding="utf-8") as f:
             f.write("File Type,Type ID,Group ID,Instance ID,Resource ID,Compressed,Size in index (bytes),Uncompressed (bytes),Index MD5,Data MD5\n")
@@ -127,7 +127,7 @@ if __name__ == "__main__":
         path = paths.pop(0)
 
         if path == "--csv":
-            WRITE_CSV = True
+            write_csv = True
             continue
 
         if not os.path.exists(path):
