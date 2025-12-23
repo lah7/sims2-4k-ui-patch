@@ -35,7 +35,7 @@ build_exe_options = {
 
 setup(
     name="sims2_4k_ui_patcher",
-    version="0.3.0",
+    version="0.4.0",
     description="4K UI Patcher for The Sims 2",
     options={"build_exe": build_exe_options},
     executables=[Executable("sims2_4k_ui_patcher.py", base="gui", icon="assets/icon")],
