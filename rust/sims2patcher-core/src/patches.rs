@@ -342,9 +342,45 @@ fn upscale_graphic(entry: &Entry, scale: f32, filter: ImageFilter) -> Result<Vec
     let format = image_format(kind)?;
     let original = image::load_from_memory_with_format(&data, format)?;
     let resized = resize_image(original, scale, filter);
+    if kind == ImageKind::Tga {
+        return Ok(write_uncompressed_tga(&resized));
+    }
+
     let mut output = Cursor::new(Vec::new());
     resized.write_to(&mut output, format)?;
     Ok(output.into_inner())
+}
+
+fn write_uncompressed_tga(image: &DynamicImage) -> Vec<u8> {
+    let rgba = image.to_rgba8();
+    let width = rgba.width();
+    let height = rgba.height();
+    let mut output = Vec::with_capacity(18 + (width * height * 4) as usize);
+
+    output.extend_from_slice(&[
+        0, // ID length
+        0, // no color map
+        2, // uncompressed true-color image
+        0, 0, 0, 0, 0, // color map specification
+        0, 0, // x origin
+        0, 0, // y origin
+    ]);
+    output.extend_from_slice(&(width as u16).to_le_bytes());
+    output.extend_from_slice(&(height as u16).to_le_bytes());
+    output.push(32);
+    output.push(8);
+
+    for y in (0..height).rev() {
+        for x in 0..width {
+            let pixel = rgba.get_pixel(x, y);
+            output.push(pixel[2]);
+            output.push(pixel[1]);
+            output.push(pixel[0]);
+            output.push(pixel[3]);
+        }
+    }
+
+    output
 }
 
 fn resize_image(image: DynamicImage, scale: f32, filter: ImageFilter) -> DynamicImage {
@@ -932,6 +968,7 @@ fn offset_area_y(area: &str) -> Option<String> {
 mod tests {
     use super::*;
     use crate::dbpf::Entry;
+    use image::{Rgba, RgbaImage};
 
     #[test]
     fn upscales_uiscript_and_adds_font() {
@@ -960,6 +997,28 @@ mod tests {
         assert_eq!(image_file_type(b"\xff\xd8\xff\x00"), ImageKind::Jpeg);
         assert_eq!(image_file_type(b"\x89PNG"), ImageKind::Png);
         assert_eq!(image_file_type(b"\x00\x00\x02\x00"), ImageKind::Tga);
+    }
+
+    #[test]
+    fn writes_uncompressed_bottom_origin_tga() {
+        let mut image = RgbaImage::new(2, 2);
+        image.put_pixel(0, 0, Rgba([1, 2, 3, 4]));
+        image.put_pixel(1, 0, Rgba([5, 6, 7, 8]));
+        image.put_pixel(0, 1, Rgba([9, 10, 11, 12]));
+        image.put_pixel(1, 1, Rgba([13, 14, 15, 16]));
+
+        let output = write_uncompressed_tga(&DynamicImage::ImageRgba8(image));
+
+        assert_eq!(output.len(), 18 + 2 * 2 * 4);
+        assert_eq!(output[2], 2);
+        assert_eq!(&output[12..14], &2u16.to_le_bytes());
+        assert_eq!(&output[14..16], &2u16.to_le_bytes());
+        assert_eq!(output[16], 32);
+        assert_eq!(output[17], 8);
+        assert_eq!(&output[18..22], &[11, 10, 9, 12]);
+        assert_eq!(&output[22..26], &[15, 14, 13, 16]);
+        assert_eq!(&output[26..30], &[3, 2, 1, 4]);
+        assert_eq!(&output[30..34], &[7, 6, 5, 8]);
     }
 
     #[test]
