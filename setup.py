@@ -22,6 +22,10 @@ build_exe_options = {
         "sims2patcher_rust",
         "submodules",
     ],
+    "packages": [
+        "certifi",
+        "requests",
+    ],
     "include_files": [
         ("assets/banner@2x.png", "assets/banner@2x.png"),
         ("assets/icon.ico", "assets/icon.ico"),

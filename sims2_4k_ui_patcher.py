@@ -33,7 +33,6 @@ from enum import Enum
 from multiprocessing.managers import DictProxy, SyncManager
 from typing import Callable, List
 
-import requests
 from PIL import Image
 from PyQt6.QtCore import Qt, QThread, QTimer
 from PyQt6.QtGui import QCloseEvent, QIcon, QMouseEvent, QPixmap
@@ -578,7 +577,11 @@ class PatcherApplication(QMainWindow):
         Check the GitHub repository for a newer version and quietly inform the user.
         """
         try:
+            import requests
+
             r = requests.get("https://raw.githubusercontent.com/lah7/sims2-4k-ui-patch/master/version.txt", timeout=3)
+        except ImportError:
+            return
         except (requests.exceptions.RequestException, requests.exceptions.Timeout):
             return
 
