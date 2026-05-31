@@ -23,9 +23,21 @@ jobs:
             cache: 'pip'
             cache-dependency-path: '**/requirements.txt'
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
+
+      - name: Run Rust Unit Tests
+        run: |
+          cargo test -p sims2patcher-core
+
+      - name: Build Rust Extension
+        run: |
+          python -m maturin build --release --manifest-path rust/sims2patcher-py/Cargo.toml --out wheels
+          python -m pip install wheels/*.whl
 
       - name: Run Unit Tests
         run: |
@@ -48,9 +60,21 @@ jobs:
             cache: 'pip'
             cache-dependency-path: '**/requirements.txt'
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
+
+      - name: Run Rust Unit Tests
+        run: |
+          cargo test -p sims2patcher-core
+
+      - name: Build Rust Extension
+        run: |
+          python -m maturin build --release --manifest-path rust/sims2patcher-py/Cargo.toml --out wheels
+          python -m pip install (Get-ChildItem wheels\*.whl).FullName
 
       - name: Run Unit Tests
         run: |

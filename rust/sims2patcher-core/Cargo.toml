@@ -1,0 +1,14 @@
+[package]
+name = "sims2patcher-core"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+image = { version = "0.25", default-features = false, features = ["bmp", "jpeg", "png", "tga"] }
+rayon = "1.10"
+thiserror = "2.0"
+
+[dev-dependencies]
+tempfile = "3.14"

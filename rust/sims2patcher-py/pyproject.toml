@@ -1,0 +1,13 @@
+[build-system]
+requires = ["maturin>=1.8,<2"]
+build-backend = "maturin"
+
+[project]
+name = "sims2patcher-rust"
+version = "0.1.0"
+requires-python = ">=3.10"
+description = "Rust acceleration module for sims2-4k-ui-patch"
+
+[tool.maturin]
+bindings = "pyo3"
+manifest-path = "Cargo.toml"

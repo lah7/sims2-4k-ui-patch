@@ -4,4 +4,5 @@ requests
 
 # Build only
 cx_Freeze
+maturin
 pylint

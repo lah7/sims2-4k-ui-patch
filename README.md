@@ -129,6 +129,11 @@ or to repatch later with a newer version of this program containing fixes and im
 By default, the patcher utilises as much CPU as possible to speed up the patching process.
 **About 2 GB of RAM free** is a recommended, but more may be needed if your CPU has many threads.
 You can change the slider if you wish to limit the CPU usage.
+Newer builds use a Rust patching engine when available and default to writing
+patched resources uncompressed for much faster patching. Disable "Uncompressed
+files" to use compact mode if you prefer smaller package files over patch speed.
+If the Rust engine is unavailable for a file, the patcher falls back to the
+original Python implementation.
 
 The program automatically checks this repository for an update.
 

@@ -8,6 +8,22 @@ to install [requirements.txt](requirements.txt).
 
 Python 3.10 is the minimum supported version.
 
+The patching engine can be accelerated by an optional Rust extension. The Rust
+workspace currently contains `sims2patcher-core` for DBPF/QFS/patching logic and
+`sims2patcher-py` for the PyO3 bindings used by the GUI.
+
+Install a Rust toolchain, then build the extension into the active Python
+environment:
+
+    python -m maturin develop --release --manifest-path rust/sims2patcher-py/Cargo.toml
+
+If the extension is not installed, the GUI automatically falls back to the
+original Python implementation. Set `SIMS2PATCHER_DISABLE_RUST=1` to force the
+fallback path, or `SIMS2PATCHER_REQUIRE_RUST=1` to fail instead of falling back.
+During GUI patching, package-level parallelism is controlled by the existing
+Patch Threads slider. Rust entry-level worker threads default to 1 to avoid
+oversubscription; set `SIMS2PATCHER_RUST_ENTRY_THREADS` for benchmarking.
+
 ### Windows
 
 [Install Python 3.13](https://www.python.org/downloads/windows/), then run:
@@ -74,3 +90,15 @@ add some files into the `tests/gamefiles` folder:
 To run all tests from the command line:
 
     python -m unittest discover ./tests/
+
+To run the Rust tests:
+
+    cargo test --workspace
+
+To build a release wheel without installing it:
+
+    python -m maturin build --release --manifest-path rust/sims2patcher-py/Cargo.toml --out build/wheels
+
+To build a frozen application bundle:
+
+    python setup.py build

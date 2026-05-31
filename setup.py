@@ -19,7 +19,12 @@ build_exe_options = {
     ],
     "includes": [
         "sims2patcher",
+        "sims2patcher_rust",
         "submodules",
+    ],
+    "packages": [
+        "certifi",
+        "requests",
     ],
     "include_files": [
         ("assets/banner@2x.png", "assets/banner@2x.png"),
