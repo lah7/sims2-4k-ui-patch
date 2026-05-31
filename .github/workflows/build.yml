@@ -25,8 +25,8 @@ jobs:
 
       - name: Get Version
         run: |
-          git fetch --tags --unshallow
-          VERSION="$(git describe --tags)"
+          git fetch --tags --force --unshallow || git fetch --tags --force
+          VERSION="$(git describe --tags --always)"
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Install Dependencies
@@ -41,7 +41,7 @@ jobs:
       - name: Build
         run: |
           python setup.py build
-          python -c "from pathlib import Path; import subprocess; Path('dist/version.txt').write_text(subprocess.check_output(['git', 'describe', '--tags'], text=True), encoding='utf-8')"
+          python -c "from pathlib import Path; import os; Path('dist/version.txt').write_text(os.environ['VERSION'] + '\n', encoding='utf-8')"
           echo "https://github.com/lah7/sims2-4k-ui-patch" > "dist/View on GitHub.txt"
 
       - name: Upload
@@ -72,8 +72,9 @@ jobs:
 
       - name: Get Version
         run: |
-          git fetch --tags --unshallow
-          $VERSION = git describe --tags
+          git fetch --tags --force --unshallow
+          if ($LASTEXITCODE -ne 0) { git fetch --tags --force }
+          $VERSION = git describe --tags --always
           echo "VERSION=$VERSION" >> $env:GITHUB_ENV
 
       - name: Install Dependencies
@@ -88,7 +89,7 @@ jobs:
       - name: Build
         run: |
           python setup.py build
-          python -c "from pathlib import Path; import subprocess; Path('dist/version.txt').write_text(subprocess.check_output(['git', 'describe', '--tags'], text=True), encoding='utf-8')"
+          python -c "from pathlib import Path; import os; Path('dist/version.txt').write_text(os.environ['VERSION'] + '\n', encoding='utf-8')"
           copy assets\github.url "dist\View on GitHub.url"
 
       - name: Upload

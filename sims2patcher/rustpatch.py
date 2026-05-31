@@ -33,7 +33,7 @@ def _load_extension():
         raise RustPatchUnavailable("Rust patcher disabled by environment")
 
     try:
-        import sims2patcher_rust  # type: ignore
+        import sims2patcher_rust  # type: ignore  # pylint: disable=import-outside-toplevel
     except ImportError as e:
         if os.environ.get(REQUIRE_ENV):
             raise
@@ -76,9 +76,9 @@ def patch_game_file(file: gamefile.GameFile, state, ui_update_progress: Callable
 
     try:
         if file.filename == "FontStyle.ini":
-            extension.patch_fontstyle(file.original_file_path, file.file_path, float(state.scale))
+            extension.patch_fontstyle(file.original_file_path, file.file_path, float(state.scale))  # pylint: disable=no-member
         elif file.filename in ["ui.package", "CaSIEUI.data", "objects.package"]:
-            extension.patch_dbpf_package(
+            extension.patch_dbpf_package(  # pylint: disable=no-member
                 file.original_file_path,
                 file.target_file_path,
                 file.filename,

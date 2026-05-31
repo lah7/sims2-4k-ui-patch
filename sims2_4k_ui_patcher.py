@@ -577,7 +577,7 @@ class PatcherApplication(QMainWindow):
         Check the GitHub repository for a newer version and quietly inform the user.
         """
         try:
-            import requests
+            import requests  # pylint: disable=import-outside-toplevel
 
             r = requests.get("https://raw.githubusercontent.com/lah7/sims2-4k-ui-patch/master/version.txt", timeout=3)
         except ImportError:
@@ -1033,7 +1033,7 @@ if __name__ == "__main__":
         CTRL+C (or press the window close button) twice is necessary.
         """
         if multiprocessing.parent_process():
-            os.kill(os.getpid(), signal.SIGKILL)
+            os.kill(os.getpid(), getattr(signal, "SIGKILL", signal.SIGTERM))
             return
         else:
             if window.patch_thread.isRunning():
