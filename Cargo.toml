@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "rust/sims2patcher-core",
+    "rust/sims2patcher-py",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/lah7/sims2-4k-ui-patch"

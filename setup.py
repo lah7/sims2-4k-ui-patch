@@ -19,6 +19,7 @@ build_exe_options = {
     ],
     "includes": [
         "sims2patcher",
+        "sims2patcher_rust",
         "submodules",
     ],
     "include_files": [

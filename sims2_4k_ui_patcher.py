@@ -45,7 +45,7 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
                              QStyle, QTabWidget, QToolButton, QTreeWidget,
                              QTreeWidgetItem, QVBoxLayout, QWidget)
 
-from sims2patcher import gamefile, patches
+from sims2patcher import gamefile, patches, rustpatch
 from sims2patcher.gamefile import GameFile
 
 VERSION_STRING = "v0.4.0"
@@ -105,6 +105,20 @@ def get_resource(relative_path: str) -> str:
     return os.path.join(data_dir, relative_path)
 
 
+def read_version_file(filename: str) -> str:
+    """Read generated version metadata from source or frozen builds."""
+    with open(filename, "rb") as f:
+        data = f.read()
+
+    for encoding in ("utf-8", "utf-8-sig", "utf-16"):
+        try:
+            return data.decode(encoding).strip()
+        except UnicodeDecodeError:
+            continue
+
+    return data.decode("utf-8", errors="replace").strip()
+
+
 class State:
     """
     Store details about the current patcher inputs.
@@ -125,7 +139,7 @@ class State:
 
         # Patch Options
         self.scale: float = 2.0
-        self.leave_uncompressed: bool = False
+        self.leave_uncompressed: bool = True
 
         # Experiments
         self.filter: int = Image.Resampling.NEAREST
@@ -424,7 +438,7 @@ class PatcherApplication(QMainWindow):
         self.tab_options_layout.addRow("Patch Threads:", self.threads_slider)
 
         self.compress_option = QCheckBox("Uncompressed files")
-        self.compress_option.setChecked(False)
+        self.compress_option.setChecked(self.state.leave_uncompressed)
         self.compress_option.setToolTip("Patch faster, but use more disk space.")
         self.compress_option.stateChanged.connect(_compress_changed)
         self.tab_options_layout.addRow("Storage:", self.compress_option)
@@ -612,6 +626,7 @@ class PatcherApplication(QMainWindow):
         # Use the first patched file as the baseline for options
         self.scale_option.setEnabled(True)
         self.filter_option.setEnabled(True)
+        self.compress_option.setEnabled(True)
 
         for file in self.state.game_files:
             if file.patched and not file.outdated:
@@ -630,6 +645,10 @@ class PatcherApplication(QMainWindow):
                 except StopIteration:
                     self.state.filter = Image.Resampling.NEAREST
                     self.filter_option.setCurrentIndex(0)
+
+                self.state.leave_uncompressed = file.uncompressed
+                self.compress_option.setChecked(file.uncompressed)
+                self.compress_option.setEnabled(False)
                 break
 
         # Keep patches are consistent with options
@@ -637,7 +656,7 @@ class PatcherApplication(QMainWindow):
             if not file.patched:
                 continue
 
-            if file.scale != self.state.scale or file.upscale_filter != self.state.filter:
+            if file.scale != self.state.scale or file.upscale_filter != self.state.filter or file.uncompressed != self.state.leave_uncompressed:
                 file.outdated = True
 
         # Counts
@@ -768,8 +787,12 @@ class PatcherApplication(QMainWindow):
             # Always create a copy of the original before processing
             file.backup()
 
-            # Patch the file!
-            patches.patch_file(file, _update_progress)
+            # Patch the file! Prefer the Rust engine when available, while keeping
+            # the Python implementation as a compatibility fallback.
+            try:
+                rustpatch.patch_game_file(file, state, _update_progress)
+            except (rustpatch.RustPatchUnavailable, rustpatch.RustPatchUnsupported):
+                patches.patch_file(file, _update_progress)
 
         except PermissionError:
             _fail(f"Insufficient file permissions:\n{file.file_path}\n\nThe file might be in use by another program. Please close any processes using the file and try again.")
@@ -988,8 +1011,7 @@ if __name__ == "__main__":
 
     if os.path.exists("version.txt") and os.path.exists("assets") and os.path.exists("lib"):
         # Read version for dist builds
-        with open("version.txt", "r", encoding="utf-8") as _f:
-            VERSION_STRING = _f.read().strip()
+        VERSION_STRING = read_version_file("version.txt")
 
     app = QApplication(sys.argv)
     window = PatcherApplication()
