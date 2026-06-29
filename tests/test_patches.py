@@ -6,6 +6,7 @@ and output works as expected.
 import io
 import os
 import shutil
+import struct
 import sys
 
 import PIL.Image
@@ -114,3 +115,130 @@ class UIScriptTest(BaseTestCase):
         result = patches._upscale_uiscript(entry)
         expected = b"# Test\r\n<LEGACY iid=IGZWinGen area=(10,20,30,40) >\r\n<LEGACY iid=IGZWinText caption=\"Needs\" font=GenHeader >\r\n"
         self.assertEqual(result, expected, "UI script was not upscaled as expected")
+
+
+class ExecutablePatchTest(BaseTestCase):
+    """
+    Test the pie menu binary patching for Sims2EP9.exe.
+    Uses synthetic data — no real game executable needed.
+    """
+    def _make_fake_exe(self) -> bytearray:
+        """Create a minimal bytearray with correct original bytes at all patch offsets."""
+        max_offset = max(
+            max(o for o, _ in patches._PIE_MENU_SECTOR_OFFSETS),
+            patches._PIE_MENU_FILD_SITE_2 + 9,
+            patches._PIE_MENU_CAVE_ADDR + 40,
+        )
+        data = bytearray(max_offset + 64)
+        for offset, orig_val in patches._PIE_MENU_SECTOR_OFFSETS:
+            data[offset] = orig_val
+        site1 = patches._PIE_MENU_FILD_SITE_1
+        data[site1:site1+8] = patches._PIE_MENU_FILD_ORIG_1
+        site2 = patches._PIE_MENU_FILD_SITE_2
+        data[site2:site2+9] = patches._PIE_MENU_FILD_ORIG_2
+        return data
+
+    def test_verify_original_passes(self):
+        """Verification passes for unmodified original bytes"""
+        data = bytes(self._make_fake_exe())
+        self.assertTrue(patches._verify_exe_bytes(data))
+
+    def test_verify_wrong_bytes_fails(self):
+        """Verification fails when bytes don't match"""
+        data = self._make_fake_exe()
+        data[patches._PIE_MENU_SECTOR_OFFSETS[0][0]] = 0xFF
+        self.assertFalse(patches._verify_exe_bytes(bytes(data)))
+
+    def test_verify_wrong_fild_fails(self):
+        """Verification fails when fild site bytes don't match"""
+        data = self._make_fake_exe()
+        data[patches._PIE_MENU_FILD_SITE_1] = 0x00
+        self.assertFalse(patches._verify_exe_bytes(bytes(data)))
+
+    def test_sector_offsets_scaled_2x(self):
+        """Sector offsets are doubled at 2.0x scale"""
+        data = bytes(self._make_fake_exe())
+        result = patches._build_pie_menu_patch(data, 2.0)
+        for offset, orig_val in patches._PIE_MENU_SECTOR_OFFSETS:
+            expected = min(int(orig_val * 2.0), 127)
+            self.assertEqual(result[offset], expected,
+                f"Sector offset at 0x{offset:X}: expected {expected}, got {result[offset]}")
+
+    def test_sector_offsets_scaled_1_5x(self):
+        """Sector offsets are correctly scaled at 1.5x"""
+        data = bytes(self._make_fake_exe())
+        result = patches._build_pie_menu_patch(data, 1.5)
+        for offset, orig_val in patches._PIE_MENU_SECTOR_OFFSETS:
+            expected = min(int(orig_val * 1.5), 127)
+            self.assertEqual(result[offset], expected)
+
+    def test_sector_offset_capped_at_127(self):
+        """Scaled values exceeding 127 are capped (signed byte limit)"""
+        data = bytes(self._make_fake_exe())
+        result = patches._build_pie_menu_patch(data, 3.0)
+        offset_48 = 0x001A6A62
+        self.assertEqual(result[offset_48], 127, "48 * 3 = 144 should be capped to 127")
+
+    def test_code_cave_written(self):
+        """Code cave is written at the correct address with multiplier float"""
+        data = bytes(self._make_fake_exe())
+        result = patches._build_pie_menu_patch(data, 2.0)
+        cave = patches._PIE_MENU_CAVE_ADDR
+        stored_float = struct.unpack_from("<f", result, cave)[0]
+        self.assertAlmostEqual(stored_float, 2.0, places=5, msg="Multiplier float not stored correctly")
+        self.assertEqual(result[cave + 4], 0xDB, "Cave1 should start with fild opcode")
+        self.assertEqual(result[cave + 4 + 14], 0xC3, "Cave1 should end with ret")
+        self.assertEqual(result[cave + 19], 0xDB, "Cave2 should start with fild opcode")
+        self.assertEqual(result[cave + 19 + 14], 0xC3, "Cave2 should end with ret")
+
+    def test_call_site_1_redirected(self):
+        """First fild+fmul site is replaced with call to cave + nops"""
+        data = bytes(self._make_fake_exe())
+        result = patches._build_pie_menu_patch(data, 2.0)
+        site1 = patches._PIE_MENU_FILD_SITE_1
+        self.assertEqual(result[site1], 0xE8, "Site 1 should have call opcode")
+        self.assertEqual(result[site1+5:site1+8], bytes([0x90, 0x90, 0x90]), "Site 1 should be nop-padded")
+
+    def test_call_site_2_redirected(self):
+        """Second fild site is replaced with call + pop ecx + nops"""
+        data = bytes(self._make_fake_exe())
+        result = patches._build_pie_menu_patch(data, 2.0)
+        site2 = patches._PIE_MENU_FILD_SITE_2
+        self.assertEqual(result[site2], 0xE8, "Site 2 should have call opcode")
+        self.assertEqual(result[site2+5], 0x59, "Site 2 should keep pop ecx")
+        self.assertEqual(result[site2+6:site2+9], bytes([0x90, 0x90, 0x90]), "Site 2 should be nop-padded")
+
+    def test_call_targets_are_correct(self):
+        """Call instructions point to the correct cave addresses"""
+        data = bytes(self._make_fake_exe())
+        result = patches._build_pie_menu_patch(data, 2.0)
+        cave = patches._PIE_MENU_CAVE_ADDR
+        base = patches._PIE_MENU_IMAGE_BASE
+
+        site1 = patches._PIE_MENU_FILD_SITE_1
+        rel1 = struct.unpack_from("<i", result, site1 + 1)[0]
+        target1 = site1 + 5 + rel1
+        self.assertEqual(target1, cave + 4, "Call site 1 should target cave1")
+
+        site2 = patches._PIE_MENU_FILD_SITE_2
+        rel2 = struct.unpack_from("<i", result, site2 + 1)[0]
+        target2 = site2 + 5 + rel2
+        self.assertEqual(target2, cave + 19, "Call site 2 should target cave2")
+
+    def test_unpatched_bytes_preserved(self):
+        """Bytes outside patch areas remain unchanged"""
+        data = bytes(self._make_fake_exe())
+        result = patches._build_pie_menu_patch(data, 2.0)
+        patch_ranges = set()
+        for offset, _ in patches._PIE_MENU_SECTOR_OFFSETS:
+            patch_ranges.add(offset)
+        for i in range(patches._PIE_MENU_FILD_SITE_1, patches._PIE_MENU_FILD_SITE_1 + 8):
+            patch_ranges.add(i)
+        for i in range(patches._PIE_MENU_FILD_SITE_2, patches._PIE_MENU_FILD_SITE_2 + 9):
+            patch_ranges.add(i)
+        for i in range(patches._PIE_MENU_CAVE_ADDR, patches._PIE_MENU_CAVE_ADDR + 40):
+            patch_ranges.add(i)
+        for i in range(min(len(data), len(result))):
+            if i not in patch_ranges:
+                self.assertEqual(result[i], data[i],
+                    f"Byte at 0x{i:X} was unexpectedly modified")
