@@ -213,7 +213,6 @@ class ExecutablePatchTest(BaseTestCase):
         data = bytes(self._make_fake_exe())
         result = patches._build_pie_menu_patch(data, 2.0)
         cave = patches._PIE_MENU_CAVE_ADDR
-        base = patches._PIE_MENU_IMAGE_BASE
 
         site1 = patches._PIE_MENU_FILD_SITE_1
         rel1 = struct.unpack_from("<i", result, site1 + 1)[0]
