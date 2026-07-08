@@ -676,11 +676,6 @@ class PatcherApplication(QMainWindow):
         if any_backups:
             self.btn_revert.setEnabled(True)
 
-        exe_paths = gamefile.get_exe_paths(self.state.game_install_dir)
-        exe_already_patched = any(
-            gamefile.GameFileReplacement(p).patched for p in exe_paths
-        )
-
         self.tabs.setEnabled(True)
         self.status_progress.setValue(patch_count - update_count)
 
