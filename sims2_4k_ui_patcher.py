@@ -126,6 +126,7 @@ class State:
         # Patch Options
         self.scale: float = 2.0
         self.leave_uncompressed: bool = False
+        self.fix_pie_menu: bool = True
 
         # Experiments
         self.filter: int = Image.Resampling.NEAREST
@@ -136,6 +137,8 @@ class State:
         Return a list of files that will be patched by this program.
         """
         self.game_paths = gamefile.get_patchable_paths(self.game_install_dir)
+        if self.fix_pie_menu:
+            self.game_paths += gamefile.get_exe_paths(self.game_install_dir)
         self.game_files = gamefile.get_patchable_files(self.game_paths)
 
     def set_game_install_path(self, path: str):
@@ -428,6 +431,20 @@ class PatcherApplication(QMainWindow):
         self.compress_option.setToolTip("Patch faster, but use more disk space.")
         self.compress_option.stateChanged.connect(_compress_changed)
         self.tab_options_layout.addRow("Storage:", self.compress_option)
+
+        def _fix_pie_menu_changed():
+            self.state.fix_pie_menu = self.fix_pie_menu_option.isChecked()
+            self.refresh_patch_state()
+
+        self.fix_pie_menu_option = QCheckBox("Fix pie menu positioning")
+        self.fix_pie_menu_option.setChecked(True)
+        self.fix_pie_menu_option.setToolTip(
+            "Patches Sims2EP9.exe to scale pie menu item positions.\n"
+            "Fixes overlapping/small pie menus at high resolutions.\n"
+            "Only supported for Mansion && Garden Stuff (EP9)."
+        )
+        self.fix_pie_menu_option.stateChanged.connect(_fix_pie_menu_changed)
+        self.tab_options_layout.addRow("Pie Menu:", self.fix_pie_menu_option)
 
         self.tabs.addTab(self.tab_options, "Options")
 
@@ -742,6 +759,7 @@ class PatcherApplication(QMainWindow):
         patches.LEAVE_UNCOMPRESSED = state.leave_uncompressed
         patches.UPSCALE_FILTER = state.filter
         patches.LOADING_SCREEN_FPS = state.loading_screen_fps
+        patches.FIX_PIE_MENU = state.fix_pie_menu
 
         # Begin!
         _update_progress(0, 1)

@@ -29,6 +29,7 @@ from typing import Callable
 from PIL import Image
 
 import submodules.SimsReiaParser.SimsReiaPy.sims_reia as sims_reia
+from sims2patcher.exe_patches import build_pie_menu_patch, verify_exe_bytes
 
 from . import dbpf, errors, gamefile, uiscript
 
@@ -37,6 +38,9 @@ UI_MULTIPLIER: float = 2.0
 
 # Compression keeps the package files small, but takes longer to process
 LEAVE_UNCOMPRESSED: bool = False
+
+# Patch the executable to fix the pie menu item positioning
+FIX_PIE_MENU: bool = True
 
 # Image upscaling filter
 UPSCALE_FILTER: Image.Resampling = Image.Resampling.NEAREST
@@ -450,6 +454,28 @@ def process_fontstyle_ini(file: gamefile.GameFile, write_meta_file=True):
         file.write_meta_file()
 
 
+def process_executable(file: gamefile.GameFile):
+    """
+    Patches the game executable to fix pie menu item positioning.
+    Applies a code cave to scale the item radius calculation and
+    adjusts sector fine-tuning offsets.
+    """
+    with open(file.original_file_path, "rb") as f:
+        data = f.read()
+
+    if not verify_exe_bytes(data):
+        print(f"Skipping pie menu fix: {file.filename} has unexpected bytes (unsupported version or already patched)")
+        return
+
+    patched_data = build_pie_menu_patch(data, UI_MULTIPLIER)
+
+    with open(file.target_file_path, "wb") as f:
+        f.write(patched_data)
+
+    file.patched = True
+    file.write_meta_file()
+
+
 def patch_file(file: gamefile.GameFile, ui_update_progress: Callable):
     """
     Patch a file with the appropriate function based on the filename.
@@ -459,6 +485,9 @@ def patch_file(file: gamefile.GameFile, ui_update_progress: Callable):
 
     elif file.filename in ["ui.package", "CaSIEUI.data", "objects.package"]:
         process_package(file, ui_update_progress)
+
+    elif file.filename.lower() == "sims2ep9.exe" and FIX_PIE_MENU:
+        process_executable(file)
 
     else:
         raise NotImplementedError(f"Unknown patch operation: {file.file_path}")
