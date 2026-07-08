@@ -523,13 +523,6 @@ class PatcherApplication(QMainWindow):
         self.btn_revert.clicked.connect(self.revert_patches)
         self.layout_buttons.addWidget(self.btn_revert)
 
-        self.btn_pie_menu = QPushButton()
-        self.btn_pie_menu.setText("Fix Pie Menu")
-        self.btn_pie_menu.setToolTip("Patch only Sims2EP9.exe to fix pie menu positioning.\nUse this if the game is already patched.")
-        self.btn_pie_menu.setEnabled(False)
-        self.btn_pie_menu.clicked.connect(self.patch_pie_menu_only)
-        self.layout_buttons.addWidget(self.btn_pie_menu)
-
         self.btn_patch = QPushButton()
         self.btn_patch.setText("Patch")
         self.btn_patch.setToolTip("Begin the patching process")
@@ -687,7 +680,6 @@ class PatcherApplication(QMainWindow):
         exe_already_patched = any(
             gamefile.GameFileReplacement(p).patched for p in exe_paths
         )
-        self.btn_pie_menu.setEnabled(bool(exe_paths) and not exe_already_patched)
 
         self.tabs.setEnabled(True)
         self.status_progress.setValue(patch_count - update_count)
@@ -856,7 +848,6 @@ class PatcherApplication(QMainWindow):
         # Swap buttons
         self.btn_patch.setHidden(True)
         self.btn_revert.setHidden(True)
-        self.btn_pie_menu.setHidden(True)
         self.btn_details.setHidden(False)
         self.btn_cancel.setHidden(False)
 
@@ -925,7 +916,6 @@ class PatcherApplication(QMainWindow):
         # Swap buttons
         self.btn_patch.setHidden(False)
         self.btn_revert.setHidden(False)
-        self.btn_pie_menu.setHidden(False)
         self.btn_details.setHidden(True)
         self.btn_cancel.setHidden(True)
 
@@ -967,57 +957,6 @@ class PatcherApplication(QMainWindow):
 
         self.state.refresh_file_list()
         self.refresh_patch_state()
-
-    def patch_pie_menu_only(self):
-        """
-        Patch only Sims2EP9.exe to fix pie menu positioning.
-        Useful when the game is already patched and only the EXE fix is needed.
-        """
-        exe_paths = gamefile.get_exe_paths(self.state.game_install_dir)
-        if not exe_paths:
-            QMessageBox.warning(self, "Not Found", "Sims2EP9.exe was not found in the game directory.")
-            return
-
-        self.btn_patch.setEnabled(False)
-        self.btn_revert.setEnabled(False)
-        self.btn_pie_menu.setEnabled(False)
-        self.update_status_icon(StatusIcon.YELLOW)
-        self.status_text.setText("Patching pie menu...")
-
-        patches.UI_MULTIPLIER = self.state.scale
-        patches.FIX_PIE_MENU = True
-        patched_count = 0
-
-        try:
-            for path in exe_paths:
-                exe_file = gamefile.GameFileReplacement(path)
-                if not exe_file.backed_up:
-                    exe_file.backup()
-                patches.process_executable(exe_file)
-                if exe_file.patched:
-                    patched_count += 1
-
-        except PermissionError:
-            self.update_status_icon(StatusIcon.RED)
-            self.status_text.setText("Insufficient file permissions")
-            QMessageBox.critical(self, "Insufficient File Permissions", "Please run this program as an administrator.")
-            self.state.refresh_file_list()
-            self.refresh_patch_state()
-            return
-
-        except Exception as e: # pylint: disable=broad-except
-            QMessageBox.critical(self, "Patch Failed", "An exception occurred.\n\n" + str(e))
-            self.state.refresh_file_list()
-            self.refresh_patch_state()
-            return
-
-        self.state.refresh_file_list()
-        self.refresh_patch_state()
-
-        if patched_count:
-            QMessageBox.information(self, "Pie Menu Fixed", f"Patched {patched_count} executable(s) successfully!")
-        else:
-            QMessageBox.warning(self, "No Changes", "No executables were patched. They may be unsupported versions or already patched.")
 
 
 class QueueWindow(QDialog):
