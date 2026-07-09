@@ -54,10 +54,17 @@ def get_patchable_paths(install_dir: str) -> list[str]:
 
 def get_exe_paths(install_dir: str) -> list[str]:
     """
-    Return paths to Sims2EP9.exe files in the installation directory.
-    Only Sims2EP9.exe is supported for pie menu binary patching.
+    Return paths to game executables in the installation directory that
+    support the pie menu binary patch:
+
+    - Sims2EP9.exe (Mansion & Garden Stuff)
+    - Sims2EP9RPC.exe, a copy of the executable created by the
+      Sims 2 RPC launcher (https://github.com/LazyDuchess/Sims2RPC.com)
     """
-    return glob.glob(install_dir + "/**/Sims2EP9.exe", recursive=True)
+    found: List[str] = []
+    for filename in ["Sims2EP9.exe", "Sims2EP9RPC.exe"]:
+        found += glob.glob(install_dir + f"/**/{filename}", recursive=True)
+    return found
 
 
 def get_game_file(path: str) -> 'GameFile':

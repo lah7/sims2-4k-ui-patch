@@ -88,6 +88,24 @@ class GameFileTest(unittest.TestCase):
         paths = gamefile.get_patchable_paths(self.game_dir)
         gamefile.get_patchable_files(paths)
 
+    def test_exe_paths(self):
+        """Check we find supported executables, including the Sims 2 RPC copy"""
+        tsbin = self._abspath("Test Games/The Sims 2 Mansion and Garden Stuff/TSBin")
+        wanted = [os.path.join(tsbin, "Sims2EP9.exe"), os.path.join(tsbin, "Sims2EP9RPC.exe")]
+        unwanted = [os.path.join(tsbin, "Sims2EP4.exe"), os.path.join(tsbin, "Sims2RPC.exe")]
+
+        os.makedirs(tsbin, exist_ok=True)
+        for path in wanted + unwanted:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("")
+
+        try:
+            paths = [os.path.normpath(p) for p in gamefile.get_exe_paths(self.game_dir)]
+            self.assertEqual(sorted(paths), sorted(os.path.normpath(p) for p in wanted))
+        finally:
+            for path in wanted + unwanted:
+                os.remove(path)
+
     def test_game_file(self):
         """Check we create the correct kind of GameFile objects"""
         self.assertIsInstance(gamefile.get_game_file(self._abspath("Test Games/The Sims 2/TSData/Res/Objects/objects.package")), gamefile.GameFileOverride)

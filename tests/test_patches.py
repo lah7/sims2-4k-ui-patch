@@ -117,6 +117,23 @@ class UIScriptTest(BaseTestCase):
         self.assertEqual(result, expected, "UI script was not upscaled as expected")
 
 
+def make_fake_exe() -> bytearray:
+    """Create a minimal bytearray with correct original bytes at all patch offsets."""
+    max_offset = max(
+        max(o for o, _ in exe_patches._PIE_MENU_SECTOR_OFFSETS),
+        exe_patches._PIE_MENU_FILD_SITE_2 + 9,
+        exe_patches._PIE_MENU_CAVE_ADDR + 40,
+    )
+    data = bytearray(max_offset + 64)
+    for offset, orig_val in exe_patches._PIE_MENU_SECTOR_OFFSETS:
+        data[offset] = orig_val
+    site1 = exe_patches._PIE_MENU_FILD_SITE_1
+    data[site1:site1+8] = exe_patches._PIE_MENU_FILD_ORIG_1
+    site2 = exe_patches._PIE_MENU_FILD_SITE_2
+    data[site2:site2+9] = exe_patches._PIE_MENU_FILD_ORIG_2
+    return data
+
+
 class ExecutablePatchTest(BaseTestCase):
     """
     Test the pie menu binary patching for Sims2EP9.exe.
@@ -124,19 +141,7 @@ class ExecutablePatchTest(BaseTestCase):
     """
     def _make_fake_exe(self) -> bytearray:
         """Create a minimal bytearray with correct original bytes at all patch offsets."""
-        max_offset = max(
-            max(o for o, _ in exe_patches._PIE_MENU_SECTOR_OFFSETS),
-            exe_patches._PIE_MENU_FILD_SITE_2 + 9,
-            exe_patches._PIE_MENU_CAVE_ADDR + 40,
-        )
-        data = bytearray(max_offset + 64)
-        for offset, orig_val in exe_patches._PIE_MENU_SECTOR_OFFSETS:
-            data[offset] = orig_val
-        site1 = exe_patches._PIE_MENU_FILD_SITE_1
-        data[site1:site1+8] = exe_patches._PIE_MENU_FILD_ORIG_1
-        site2 = exe_patches._PIE_MENU_FILD_SITE_2
-        data[site2:site2+9] = exe_patches._PIE_MENU_FILD_ORIG_2
-        return data
+        return make_fake_exe()
 
     def test_verify_original_passes(self):
         """Verification passes for unmodified original bytes"""
@@ -241,3 +246,49 @@ class ExecutablePatchTest(BaseTestCase):
             if i not in patch_ranges:
                 self.assertEqual(result[i], data[i],
                     f"Byte at 0x{i:X} was unexpectedly modified")
+
+
+class ExecutableRoutingTest(BaseTestCase):
+    """
+    Test supported executables are routed through the pie menu patch,
+    based on their filename.
+    """
+    def _patch_fake_exe(self, filename: str) -> str:
+        """Write a synthetic executable and run it through patch_file(). Returns the patched path."""
+        data = bytes(make_fake_exe())
+
+        backup_path = self.mktemp()
+        with open(backup_path, "wb") as f:
+            f.write(data)
+
+        tmp_path = os.path.join(os.path.dirname(backup_path), filename)
+        with open(tmp_path, "wb") as f:
+            f.write(data)
+        self.tmp_files.append(tmp_path)
+        self.tmp_files.append(tmp_path + ".patched")
+
+        patches.UI_MULTIPLIER = 2.0
+        patches.FIX_PIE_MENU = True
+
+        dummy_file = GameFileReplacement(tmp_path)
+        dummy_file._backup_path = backup_path
+        patches.patch_file(dummy_file, lambda current, total: None)
+
+        self.assertTrue(dummy_file.patched, f"{filename} was not patched")
+        return tmp_path
+
+    def test_exe_patched(self):
+        """Sims2EP9.exe is patched with scaled sector offsets"""
+        path = self._patch_fake_exe("Sims2EP9.exe")
+        with open(path, "rb") as f:
+            result = f.read()
+        offset, orig_val = exe_patches._PIE_MENU_SECTOR_OFFSETS[0]
+        self.assertEqual(result[offset], orig_val * 2, "Sector offset was not scaled")
+
+    def test_rpc_exe_patched(self):
+        """Sims2EP9RPC.exe (Sims 2 RPC launcher) is patched with scaled sector offsets"""
+        path = self._patch_fake_exe("Sims2EP9RPC.exe")
+        with open(path, "rb") as f:
+            result = f.read()
+        offset, orig_val = exe_patches._PIE_MENU_SECTOR_OFFSETS[0]
+        self.assertEqual(result[offset], orig_val * 2, "Sector offset was not scaled")
