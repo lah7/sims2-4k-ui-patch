@@ -443,7 +443,7 @@ class PatcherApplication(QMainWindow):
             "Patches the game executable to scale pie menu item positions.\n"
             "Fixes overlapping/small pie menus at high resolutions.\n"
             "Only supported for Mansion & Garden Stuff (Sims2EP9.exe), including\n"
-            "Sims2EP9RPC.exe used by the Sims 2 RPC launcher."
+            "the Sims 2 RPC launcher (Sims2EP9RPC.exe)."
         )
         self.patch_executable_option.stateChanged.connect(_executable_changed)
         self.tab_options_layout.addRow("Executable:", self.patch_executable_option)
