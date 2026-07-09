@@ -486,7 +486,7 @@ def patch_file(file: gamefile.GameFile, ui_update_progress: Callable):
     elif file.filename in ["ui.package", "CaSIEUI.data", "objects.package"]:
         process_package(file, ui_update_progress)
 
-    elif file.filename.lower() == "sims2ep9.exe" and FIX_PIE_MENU:
+    elif file.filename in ["Sims2EP9.exe", "Sims2EP9RPC.exe"] and FIX_PIE_MENU:
         process_executable(file)
 
     else:

@@ -440,9 +440,8 @@ class PatcherApplication(QMainWindow):
         self.patch_executable_option = QCheckBox("Apply additional UI fixes")
         self.patch_executable_option.setChecked(True)
         self.patch_executable_option.setToolTip(
-            "Patches Sims2EP9.exe to scale pie menu item positions.\n"
-            "Fixes overlapping/small pie menus at high resolutions.\n"
-            "Only supported for Mansion & Garden Stuff (Sims2EP9.exe)."
+            "Fixes overlapping/small pie menus by patching the executable.\n"
+            "Only supported for Mansion & Garden Stuff (EP9)."
         )
         self.patch_executable_option.stateChanged.connect(_executable_changed)
         self.tab_options_layout.addRow("Executable:", self.patch_executable_option)
