@@ -68,3 +68,10 @@ class UnknownImageFormatError(ValueError):
     A file describing itself as an image has an unknown image header.
     Raise this exception to skip the file.
     """
+
+
+class ExeSecuROMError(Exception):
+    """
+    The EXE is protected by SecuROM: its code sections are encrypted
+    on disk and decrypted at runtime, so static patching is not possible.
+    """

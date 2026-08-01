@@ -29,7 +29,8 @@ from typing import Callable
 from PIL import Image
 
 import submodules.SimsReiaParser.SimsReiaPy.sims_reia as sims_reia
-from sims2patcher.exe_patches import build_pie_menu_patch, verify_exe_bytes
+from sims2patcher.exe_patches import (build_pie_menu_patch,
+                                      is_securom_protected, verify_exe_bytes)
 
 from . import dbpf, errors, gamefile, uiscript
 
@@ -462,6 +463,13 @@ def process_executable(file: gamefile.GameFile):
     """
     with open(file.original_file_path, "rb") as f:
         data = f.read()
+
+    if is_securom_protected(data):
+        raise errors.ExeSecuROMError(
+            "This executable is protected by SecuROM. "
+            "Its code sections are encrypted on disk and cannot be statically patched.\n\n"
+            "To patch this executable, use a No-CD executable of the game."
+        )
 
     if not verify_exe_bytes(data):
         print(f"Skipping pie menu fix: {file.filename} has unexpected bytes (unsupported version or already patched)")

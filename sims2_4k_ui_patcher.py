@@ -45,7 +45,7 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
                              QStyle, QTabWidget, QToolButton, QTreeWidget,
                              QTreeWidgetItem, QVBoxLayout, QWidget)
 
-from sims2patcher import gamefile, patches
+from sims2patcher import errors, gamefile, patches
 from sims2patcher.gamefile import GameFile
 
 VERSION_STRING = "v0.4.1"
@@ -791,6 +791,10 @@ class PatcherApplication(QMainWindow):
 
         except PermissionError:
             _fail(f"Insufficient file permissions:\n{file.file_path}\n\nThe file might be in use by another program. Please close any processes using the file and try again.")
+            return
+
+        except errors.ExeSecuROMError as e:
+            _fail(f"Cannot patch: {file.file_path}\n\n{str(e)}")
             return
 
         except Exception as e: # pylint: disable=broad-except

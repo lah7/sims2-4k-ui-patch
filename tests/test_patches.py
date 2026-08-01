@@ -5,6 +5,7 @@ and output works as expected.
 # pylint: disable=protected-access
 import io
 import os
+import random
 import shutil
 import struct
 import sys
@@ -241,3 +242,100 @@ class ExecutablePatchTest(BaseTestCase):
             if i not in patch_ranges:
                 self.assertEqual(result[i], data[i],
                     f"Byte at 0x{i:X} was unexpectedly modified")
+
+
+class SecuROMDetectionTest(BaseTestCase):
+    """
+    Tests for is_securom_protected().
+    Uses a minimal synthetic PE so no real game executable is needed.
+    """
+
+    def _make_pe(self, *, encrypted: bool, has_securom_section: bool) -> bytes:
+        """
+        Build the smallest valid PE that exercises is_securom_protected().
+        Layout: DOS stub | PE signature | COFF header | optional header | section table | .text data
+        The .text raw data is filled with high-entropy bytes when encrypted=True,
+        or low-entropy repeated bytes when encrypted=False.
+        """
+        # High-entropy pseudo-random block that scores >7.5 bits/byte.
+        # Seeded so tests are deterministic.
+        rng = random.Random(0xDEADBEEF)
+        encrypted_block = bytes(rng.randint(0, 255) for _ in range(4096))
+        plaintext_block = bytes(4096)  # all zeros → entropy 0.0
+
+        text_data = encrypted_block if encrypted else plaintext_block
+
+        # Section names and their data; .securom is virtual-only (rawoff=0, rawsz=0)
+        section_defs = [(".text", text_data)]
+        if has_securom_section:
+            section_defs.append((".securom", b""))
+
+        n_sec = len(section_defs)
+        opt_sz = 28  # minimal PE32 optional header
+
+        # PE layout: DOS stub (0x40) | PE sig (4) | COFF header (20) | opt (opt_sz) | sections (n*40)
+        # is_securom_protected reads: sec_table = pe_off + 24 + opt_size
+        # (pe_off + 4-byte PE sig + 20-byte COFF = pe_off + 24)
+        dos_size    = 0x40
+        pe_sig_off  = dos_size           # "PE\0\0" at this file offset
+        sec_tab_off = pe_sig_off + 24 + opt_sz  # matches reader: pe_off+24+opt_sz
+        header_end  = sec_tab_off + n_sec * 40
+        text_raw_off = header_end
+
+        # --- DOS stub ---
+        dos = bytearray(dos_size)
+        dos[0:2] = b"MZ"
+        struct.pack_into("<I", dos, 0x3C, pe_sig_off)
+
+        # --- PE signature (4 bytes) + COFF header (20 bytes) = 24 bytes ---
+        # COFF IMAGE_FILE_HEADER fields (at pe_sig_off+4+offset):
+        #   +0: Machine(2), +2: NumberOfSections(2), +4: TimeDateStamp(4),
+        #   +8: PointerToSymbolTable(4), +12: NumberOfSymbols(4),
+        #   +16: SizeOfOptionalHeader(2), +18: Characteristics(2)
+        # In the file (pe_sig_off+4+field_offset = pe_sig_off+{4,6,20,...})
+        coff = bytearray(24)
+        coff[0:4] = b"PE\x00\x00"         # PE signature
+        struct.pack_into("<H", coff,  4, 0x014C)    # Machine = i386
+        struct.pack_into("<H", coff,  6, n_sec)     # NumberOfSections
+        struct.pack_into("<H", coff, 20, opt_sz)    # SizeOfOptionalHeader
+
+        # --- Minimal PE32 optional header (28 bytes) ---
+        opt = bytearray(opt_sz)
+        struct.pack_into("<H", opt, 0, 0x010B)       # Magic = PE32
+
+        # --- Section table ---
+        sec_table = bytearray()
+        raw_cursor = text_raw_off
+        for name, sec_data in section_defs:
+            entry = bytearray(40)
+            entry[0:8] = name.encode("ascii").ljust(8, b"\x00")
+            raw_sz  = len(sec_data)
+            raw_off = raw_cursor if raw_sz else 0
+            struct.pack_into("<I", entry,  8, raw_sz)   # VirtualSize
+            struct.pack_into("<I", entry, 12, raw_off)  # VirtualAddress (reused as RVA)
+            struct.pack_into("<I", entry, 16, raw_sz)   # SizeOfRawData
+            struct.pack_into("<I", entry, 20, raw_off)  # PointerToRawData
+            sec_table += entry
+            raw_cursor += raw_sz
+
+        return bytes(dos) + bytes(coff) + bytes(opt) + bytes(sec_table) + text_data
+
+    def test_securom_active_detected(self):
+        """Encrypted .text + .securom section → SecuROM active"""
+        data = self._make_pe(encrypted=True, has_securom_section=True)
+        self.assertTrue(exe_patches.is_securom_protected(data))
+
+    def test_plaintext_with_securom_section_not_active(self):
+        """Decrypted .text (No-CD build) + .securom section header → not active"""
+        data = self._make_pe(encrypted=False, has_securom_section=True)
+        self.assertFalse(exe_patches.is_securom_protected(data))
+
+    def test_no_securom_section_not_active(self):
+        """.securom section absent → not active regardless of entropy"""
+        data = self._make_pe(encrypted=True, has_securom_section=False)
+        self.assertFalse(exe_patches.is_securom_protected(data))
+
+    def test_empty_data_not_active(self):
+        """Empty / truncated data does not raise"""
+        self.assertFalse(exe_patches.is_securom_protected(b""))
+        self.assertFalse(exe_patches.is_securom_protected(b"MZ"))

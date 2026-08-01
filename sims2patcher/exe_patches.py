@@ -16,10 +16,18 @@ Module containing upscaling patches and fixes for The Sims 2 executable.
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import math
+import struct
+
 # Sims2EP9.exe: # The game hardcodes pixel offsets for pie menu item
 # positions. These sector offsets and the item radius calculation
 # need scaling to match the UI density.
-import struct
+
+# Threshold above which .text entropy indicates SecuROM-encrypted code.
+# Normal x86 code scores ~5–7; SecuROM V7 packs it to ~7.95.
+_SECUROM_ENTROPY_THRESHOLD = 7.5
+_SECUROM_SECTION_NAME = ".securom"
+_TEXT_SAMPLE_SIZE = 4096  # bytes to sample from the start of .text for entropy check
 
 _PIE_MENU_SECTOR_OFFSETS: list[tuple[int, int]] = [
     (0x001A6A1E, 0x11),  # edx=17
@@ -43,6 +51,68 @@ _PIE_MENU_IMAGE_BASE = 0x00400000
 # Expected original bytes at the fild sites for verification
 _PIE_MENU_FILD_ORIG_1 = bytes([0xDB, 0x83, 0xF0, 0x01, 0x00, 0x00, 0xD8, 0xC9])
 _PIE_MENU_FILD_ORIG_2 = bytes([0xDB, 0x83, 0xF0, 0x01, 0x00, 0x00, 0x59, 0xD8, 0xC9])
+
+
+def is_securom_protected(data: bytes) -> bool:
+    """
+    Return True if this EXE has active SecuROM protection (encrypted code sections).
+
+    SecuROM V7 encrypts the first several MB of the .text section at rest,
+    decrypting them into RAM at runtime.  Patching encrypted bytes on disk
+    would corrupt the code after decryption, so the patch cannot be applied.
+
+    Detection works by:
+      1. Checking for a '.securom' PE section (necessary but not sufficient -
+         No-CD patched builds keep the section header but leave code decrypted).
+      2. Measuring Shannon entropy of the first 4 KB of .text.  Encrypted code
+         scores ~7.95/8; normal x86 code scores ~5-7.
+    """
+
+    # --- Parse PE header ---
+    if len(data) < 0x40:
+        return False
+    pe_off = struct.unpack_from("<I", data, 0x3C)[0]
+    if pe_off + 24 + 28 + 4 > len(data):
+        return False
+    if data[pe_off:pe_off+4] != b"PE\x00\x00":
+        return False
+
+    n_sections = struct.unpack_from("<H", data, pe_off + 6)[0]
+    opt_size   = struct.unpack_from("<H", data, pe_off + 20)[0]
+    sec_table  = pe_off + 24 + opt_size
+
+    has_securom_section = False
+    text_raw_off = None
+
+    for i in range(n_sections):
+        base = sec_table + i * 40
+        if base + 40 > len(data):
+            break
+        name    = data[base:base+8].rstrip(b"\x00").decode("ascii", errors="replace")
+        raw_off = struct.unpack_from("<I", data, base + 20)[0]
+        if name == _SECUROM_SECTION_NAME:
+            has_securom_section = True
+        if name == ".text":
+            text_raw_off = raw_off
+
+    if not has_securom_section or text_raw_off is None:
+        return False
+
+    # --- Entropy check ---
+    sample = data[text_raw_off : text_raw_off + _TEXT_SAMPLE_SIZE]
+    if not sample:
+        return False
+
+    counts: dict[int, int] = {}
+    for b in sample:
+        counts[b] = counts.get(b, 0) + 1
+    entropy = 0.0
+    n = len(sample)
+    for c in counts.values():
+        p = c / n
+        entropy -= p * math.log2(p)
+
+    return entropy > _SECUROM_ENTROPY_THRESHOLD
 
 
 def verify_exe_bytes(data: bytes) -> bool:
