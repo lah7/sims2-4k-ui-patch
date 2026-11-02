@@ -29,8 +29,7 @@ from typing import Callable
 from PIL import Image
 
 import submodules.SimsReiaParser.SimsReiaPy.sims_reia as sims_reia
-from sims2patcher.exe_patches import (build_pie_menu_patch,
-                                      is_securom_protected, verify_exe_bytes)
+from sims2patcher.exe_patches import apply_exe_patches, is_securom_protected
 
 from . import dbpf, errors, gamefile, uiscript
 
@@ -457,9 +456,7 @@ def process_fontstyle_ini(file: gamefile.GameFile, write_meta_file=True):
 
 def process_executable(file: gamefile.GameFile):
     """
-    Patches the game executable to fix pie menu item positioning.
-    Applies a code cave to scale the item radius calculation and
-    adjusts sector fine-tuning offsets.
+    Patches the game executable to fix any hardcoded constants as a result of upscaling UI data.
     """
     with open(file.original_file_path, "rb") as f:
         data = f.read()
@@ -471,11 +468,9 @@ def process_executable(file: gamefile.GameFile):
             "To patch this executable, use a No-CD executable of the game."
         )
 
-    if not verify_exe_bytes(data):
-        print(f"Skipping pie menu fix: {file.filename} has unexpected bytes (unsupported version or already patched)")
+    patched_data = apply_exe_patches(data, UI_MULTIPLIER)
+    if patched_data == data:
         return
-
-    patched_data = build_pie_menu_patch(data, UI_MULTIPLIER)
 
     with open(file.target_file_path, "wb") as f:
         f.write(patched_data)

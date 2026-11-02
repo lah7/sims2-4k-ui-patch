@@ -159,7 +159,7 @@ class ExecutablePatchTest(BaseTestCase):
     def test_sector_offsets_scaled_2x(self):
         """Sector offsets are doubled at 2.0x scale"""
         data = bytes(self._make_fake_exe())
-        result = exe_patches.build_pie_menu_patch(data, 2.0)
+        result = exe_patches.apply_exe_patches(data, 2.0)
         for offset, orig_val in exe_patches._PIE_MENU_SECTOR_OFFSETS:
             expected = min(int(orig_val * 2.0), 127)
             self.assertEqual(result[offset], expected,
@@ -168,7 +168,7 @@ class ExecutablePatchTest(BaseTestCase):
     def test_sector_offsets_scaled_1_5x(self):
         """Sector offsets are correctly scaled at 1.5x"""
         data = bytes(self._make_fake_exe())
-        result = exe_patches.build_pie_menu_patch(data, 1.5)
+        result = exe_patches.apply_exe_patches(data, 1.5)
         for offset, orig_val in exe_patches._PIE_MENU_SECTOR_OFFSETS:
             expected = min(int(orig_val * 1.5), 127)
             self.assertEqual(result[offset], expected)
@@ -176,14 +176,14 @@ class ExecutablePatchTest(BaseTestCase):
     def test_sector_offset_capped_at_127(self):
         """Scaled values exceeding 127 are capped (signed byte limit)"""
         data = bytes(self._make_fake_exe())
-        result = exe_patches.build_pie_menu_patch(data, 3.0)
+        result = exe_patches.apply_exe_patches(data, 3.0)
         offset_48 = 0x001A6A62
         self.assertEqual(result[offset_48], 127, "48 * 3 = 144 should be capped to 127")
 
     def test_code_cave_written(self):
         """Code cave is written at the correct address with multiplier float"""
         data = bytes(self._make_fake_exe())
-        result = exe_patches.build_pie_menu_patch(data, 2.0)
+        result = exe_patches.apply_exe_patches(data, 2.0)
         cave = exe_patches._PIE_MENU_CAVE_ADDR
         stored_float = struct.unpack_from("<f", result, cave)[0]
         self.assertAlmostEqual(stored_float, 2.0, places=5, msg="Multiplier float not stored correctly")
@@ -195,7 +195,7 @@ class ExecutablePatchTest(BaseTestCase):
     def test_call_site_1_redirected(self):
         """First fild+fmul site is replaced with call to cave + nops"""
         data = bytes(self._make_fake_exe())
-        result = exe_patches.build_pie_menu_patch(data, 2.0)
+        result = exe_patches.apply_exe_patches(data, 2.0)
         site1 = exe_patches._PIE_MENU_FILD_SITE_1
         self.assertEqual(result[site1], 0xE8, "Site 1 should have call opcode")
         self.assertEqual(result[site1+5:site1+8], bytes([0x90, 0x90, 0x90]), "Site 1 should be nop-padded")
@@ -203,7 +203,7 @@ class ExecutablePatchTest(BaseTestCase):
     def test_call_site_2_redirected(self):
         """Second fild site is replaced with call + pop ecx + nops"""
         data = bytes(self._make_fake_exe())
-        result = exe_patches.build_pie_menu_patch(data, 2.0)
+        result = exe_patches.apply_exe_patches(data, 2.0)
         site2 = exe_patches._PIE_MENU_FILD_SITE_2
         self.assertEqual(result[site2], 0xE8, "Site 2 should have call opcode")
         self.assertEqual(result[site2+5], 0x59, "Site 2 should keep pop ecx")
@@ -212,7 +212,7 @@ class ExecutablePatchTest(BaseTestCase):
     def test_call_targets_are_correct(self):
         """Call instructions point to the correct cave addresses"""
         data = bytes(self._make_fake_exe())
-        result = exe_patches.build_pie_menu_patch(data, 2.0)
+        result = exe_patches.apply_exe_patches(data, 2.0)
         cave = exe_patches._PIE_MENU_CAVE_ADDR
 
         site1 = exe_patches._PIE_MENU_FILD_SITE_1
@@ -228,7 +228,7 @@ class ExecutablePatchTest(BaseTestCase):
     def test_unpatched_bytes_preserved(self):
         """Bytes outside patch areas remain unchanged"""
         data = bytes(self._make_fake_exe())
-        result = exe_patches.build_pie_menu_patch(data, 2.0)
+        result = exe_patches.apply_exe_patches(data, 2.0)
         patch_ranges = set()
         for offset, _ in exe_patches._PIE_MENU_SECTOR_OFFSETS:
             patch_ranges.add(offset)

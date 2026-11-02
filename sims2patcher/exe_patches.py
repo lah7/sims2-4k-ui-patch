@@ -133,10 +133,23 @@ def verify_exe_bytes(data: bytes) -> bool:
     return True
 
 
-def build_pie_menu_patch(data: bytes, scale: float) -> bytes:
+def apply_exe_patches(data: bytes, scale: float) -> bytes:
     """
-    Apply pie menu positioning fix to the EXE binary data.
+    Applies UI patches to the executable:
+    - Fix pie menu positioning
+    Skip patches that don't have the expected original bytes.
+    """
+    if _verify_pie_menu_bytes(data):
+        data = _apply_pie_menu_patch(data, scale)
+    else:
+        print("Skipping pie menu fix: unexpected bytes (unsupported version or already patched)")
 
+
+    return data
+
+
+def _apply_pie_menu_patch(data: bytes, scale: float) -> bytes:
+    """
     Writes a code cave that multiplies kItemRadius by the scale factor
     before the sin/cos calculation, and scales sector fine-tuning offsets.
     """
