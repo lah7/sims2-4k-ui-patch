@@ -127,11 +127,12 @@ class ExecutablePatchTest(BaseTestCase):
         """Create a minimal bytearray with correct original bytes at all patch offsets."""
         max_offset = max(
             max(o for o, _ in exe_patches._PIE_MENU_SECTOR_OFFSETS),
+            max(o for o, _ in exe_patches._PADDING_LITERAL_OFFSETS),
             exe_patches._PIE_MENU_FILD_SITE_2 + 9,
             exe_patches._PIE_MENU_CAVE_ADDR + 40,
         )
         data = bytearray(max_offset + 64)
-        for offset, orig_val in exe_patches._PIE_MENU_SECTOR_OFFSETS:
+        for offset, orig_val in exe_patches._PIE_MENU_SECTOR_OFFSETS + exe_patches._PADDING_LITERAL_OFFSETS:
             data[offset] = orig_val
         site1 = exe_patches._PIE_MENU_FILD_SITE_1
         data[site1:site1+8] = exe_patches._PIE_MENU_FILD_ORIG_1
@@ -155,6 +156,13 @@ class ExecutablePatchTest(BaseTestCase):
         data = self._make_fake_exe()
         data[exe_patches._PIE_MENU_FILD_SITE_1] = 0x00
         self.assertFalse(exe_patches.verify_exe_bytes(bytes(data)))
+
+    def test_tooltip_padding_scaled_2x(self):
+        """Tooltip padding literals are doubled at 2.0x scale"""
+        data = bytes(self._make_fake_exe())
+        result = exe_patches.apply_exe_patches(data, 2.0)
+        for offset, orig_val in exe_patches._PADDING_LITERAL_OFFSETS:
+            self.assertEqual(result[offset], orig_val * 2)
 
     def test_sector_offsets_scaled_2x(self):
         """Sector offsets are doubled at 2.0x scale"""
@@ -230,7 +238,7 @@ class ExecutablePatchTest(BaseTestCase):
         data = bytes(self._make_fake_exe())
         result = exe_patches.apply_exe_patches(data, 2.0)
         patch_ranges = set()
-        for offset, _ in exe_patches._PIE_MENU_SECTOR_OFFSETS:
+        for offset, _ in exe_patches._PIE_MENU_SECTOR_OFFSETS + exe_patches._PADDING_LITERAL_OFFSETS:
             patch_ranges.add(offset)
         for i in range(exe_patches._PIE_MENU_FILD_SITE_1, exe_patches._PIE_MENU_FILD_SITE_1 + 8):
             patch_ranges.add(i)

@@ -52,6 +52,13 @@ _PIE_MENU_IMAGE_BASE = 0x00400000
 _PIE_MENU_FILD_ORIG_1 = bytes([0xDB, 0x83, 0xF0, 0x01, 0x00, 0x00, 0xD8, 0xC9])
 _PIE_MENU_FILD_ORIG_2 = bytes([0xDB, 0x83, 0xF0, 0x01, 0x00, 0x00, 0x59, 0xD8, 0xC9])
 
+# Immediates of "push 6; push 8" passed with the tooltip background image (0x14416190)
+# at VA 0x0064E1F7. These control the padding around tooltip text.
+_PADDING_LITERAL_OFFSETS: list[tuple[int, int]] = [
+    (0x0024E1F8, 0x06),
+    (0x0024E1FA, 0x08),
+]
+
 
 def is_securom_protected(data: bytes) -> bool:
     """
@@ -117,6 +124,10 @@ def is_securom_protected(data: bytes) -> bool:
 
 def verify_exe_bytes(data: bytes) -> bool:
     """Check that the EXE contains expected original bytes at all patch offsets."""
+    return _verify_pie_menu_bytes(data) and _verify_tooltip_padding_bytes(data)
+
+
+def _verify_pie_menu_bytes(data: bytes) -> bool:
     for offset, orig_val in _PIE_MENU_SECTOR_OFFSETS:
         if offset >= len(data) or data[offset] != orig_val:
             return False
@@ -133,10 +144,20 @@ def verify_exe_bytes(data: bytes) -> bool:
     return True
 
 
+def _verify_tooltip_padding_bytes(data: bytes) -> bool:
+    for offset, orig_val in _PADDING_LITERAL_OFFSETS:
+        if offset >= len(data) or data[offset] != orig_val:
+            return False
+
+    return True
+
+
 def apply_exe_patches(data: bytes, scale: float) -> bytes:
     """
     Applies UI patches to the executable:
     - Fix pie menu positioning
+    - Fix tooltip padding for new UI scale
+
     Skip patches that don't have the expected original bytes.
     """
     if _verify_pie_menu_bytes(data):
@@ -144,6 +165,10 @@ def apply_exe_patches(data: bytes, scale: float) -> bytes:
     else:
         print("Skipping pie menu fix: unexpected bytes (unsupported version or already patched)")
 
+    if _verify_tooltip_padding_bytes(data):
+        data = _apply_tooltip_padding_patch(data, scale)
+    else:
+        print("Skipping tooltip padding fix: unexpected bytes (unsupported version or already patched)")
 
     return data
 
@@ -197,5 +222,18 @@ def _apply_pie_menu_patch(data: bytes, scale: float) -> bytes:
     for offset, orig_val in _PIE_MENU_SECTOR_OFFSETS:
         new_val = min(int(orig_val * scale), 127)
         patched[offset] = new_val
+
+    return bytes(patched)
+
+
+def _apply_tooltip_padding_patch(data: bytes, scale: float) -> bytes:
+    """
+    Scales tooltip padding literals in the executable.
+    """
+    patched = bytearray(data)
+
+    # --- Scale tooltip padding (push imm8 is sign-extended) ---
+    for offset, orig_val in _PADDING_LITERAL_OFFSETS:
+        patched[offset] = min(int(orig_val * scale), 127)
 
     return bytes(patched)
