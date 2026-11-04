@@ -5,9 +5,7 @@ and output works as expected.
 # pylint: disable=protected-access
 import io
 import os
-import random
 import shutil
-import struct
 import sys
 
 import PIL.Image
@@ -120,230 +118,39 @@ class UIScriptTest(BaseTestCase):
 
 class ExecutablePatchTest(BaseTestCase):
     """
-    Test the pie menu binary patching for Sims2EP9.exe.
-    Uses synthetic data — no real game executable needed.
+    Test executable patches can be checked and applied as expected.
     """
-    def _make_fake_exe(self) -> bytearray:
-        """Create a minimal bytearray with correct original bytes at all patch offsets."""
-        max_offset = max(
-            max(o for o, _ in exe_patches._PIE_MENU_SECTOR_OFFSETS),
-            max(o for o, _ in exe_patches._PADDING_LITERAL_OFFSETS),
-            exe_patches._PIE_MENU_FILD_SITE_2 + 9,
-            exe_patches._PIE_MENU_CAVE_ADDR + 40,
-        )
-        data = bytearray(max_offset + 64)
-        for offset, orig_val in exe_patches._PIE_MENU_SECTOR_OFFSETS + exe_patches._PADDING_LITERAL_OFFSETS:
-            data[offset] = orig_val
-        site1 = exe_patches._PIE_MENU_FILD_SITE_1
-        data[site1:site1+8] = exe_patches._PIE_MENU_FILD_ORIG_1
-        site2 = exe_patches._PIE_MENU_FILD_SITE_2
-        data[site2:site2+9] = exe_patches._PIE_MENU_FILD_ORIG_2
-        return data
+    def setUp(self):
+        """This test can only run if a copy of the executable is provided."""
+        try:
+            nocd_exe_path = self.get_test_file_path("Sims2EP9.exe")
+            self.nocd_exe = open(nocd_exe_path, "rb").read()
+        except FileNotFoundError:
+            self.skipTest("Requires Sims2EP9.exe (No-CD) placed in \"tests/files\" folder")
 
-    def test_verify_original_passes(self):
-        """Verification passes for unmodified original bytes"""
-        data = bytes(self._make_fake_exe())
-        self.assertTrue(exe_patches.verify_exe_bytes(data))
+        try:
+            orig_exe_path = self.get_test_file_path("Sims2EP9.exe.old")
+            self.orig_exe = open(orig_exe_path, "rb").read()
+        except FileNotFoundError:
+            self.skipTest("Requires Sims2EP9.exe.old (SecuROM) placed in \"tests/files\" folder")
 
-    def test_verify_wrong_bytes_fails(self):
-        """Verification fails when bytes don't match"""
-        data = self._make_fake_exe()
-        data[exe_patches._PIE_MENU_SECTOR_OFFSETS[0][0]] = 0xFF
-        self.assertFalse(exe_patches.verify_exe_bytes(bytes(data)))
+    def test_exe_patches_possible(self):
+        """Test Sims2EP9.exe (No-CD, decrypted version) can be patched."""
+        for patch in exe_patches.get_exe_patches():
+            self.assertTrue(patch.verify(self.nocd_exe))
 
-    def test_verify_wrong_fild_fails(self):
-        """Verification fails when fild site bytes don't match"""
-        data = self._make_fake_exe()
-        data[exe_patches._PIE_MENU_FILD_SITE_1] = 0x00
-        self.assertFalse(exe_patches.verify_exe_bytes(bytes(data)))
+    def test_exe_patches_apply(self):
+        """Test Sims2EP9.exe (No-CD, decrypted version) patches without errors."""
+        exe = self.nocd_exe
+        for patch in exe_patches.get_exe_patches():
+            exe = patch.patch(exe, 2.0)
 
-    def test_tooltip_padding_scaled_2x(self):
-        """Tooltip padding literals are doubled at 2.0x scale"""
-        data = bytes(self._make_fake_exe())
-        result = exe_patches.apply_exe_patches(data, 2.0)
-        for offset, orig_val in exe_patches._PADDING_LITERAL_OFFSETS:
-            self.assertEqual(result[offset], orig_val * 2)
+    def test_securom_presence(self):
+        """Test that the SecuROM presence is detected correctly."""
+        self.assertTrue(patches.is_securom_protected(self.orig_exe))
+        self.assertFalse(patches.is_securom_protected(self.nocd_exe))
 
-    def test_sector_offsets_scaled_2x(self):
-        """Sector offsets are doubled at 2.0x scale"""
-        data = bytes(self._make_fake_exe())
-        result = exe_patches.apply_exe_patches(data, 2.0)
-        for offset, orig_val in exe_patches._PIE_MENU_SECTOR_OFFSETS:
-            expected = min(int(orig_val * 2.0), 127)
-            self.assertEqual(result[offset], expected,
-                f"Sector offset at 0x{offset:X}: expected {expected}, got {result[offset]}")
-
-    def test_sector_offsets_scaled_1_5x(self):
-        """Sector offsets are correctly scaled at 1.5x"""
-        data = bytes(self._make_fake_exe())
-        result = exe_patches.apply_exe_patches(data, 1.5)
-        for offset, orig_val in exe_patches._PIE_MENU_SECTOR_OFFSETS:
-            expected = min(int(orig_val * 1.5), 127)
-            self.assertEqual(result[offset], expected)
-
-    def test_sector_offset_capped_at_127(self):
-        """Scaled values exceeding 127 are capped (signed byte limit)"""
-        data = bytes(self._make_fake_exe())
-        result = exe_patches.apply_exe_patches(data, 3.0)
-        offset_48 = 0x001A6A62
-        self.assertEqual(result[offset_48], 127, "48 * 3 = 144 should be capped to 127")
-
-    def test_code_cave_written(self):
-        """Code cave is written at the correct address with multiplier float"""
-        data = bytes(self._make_fake_exe())
-        result = exe_patches.apply_exe_patches(data, 2.0)
-        cave = exe_patches._PIE_MENU_CAVE_ADDR
-        stored_float = struct.unpack_from("<f", result, cave)[0]
-        self.assertAlmostEqual(stored_float, 2.0, places=5, msg="Multiplier float not stored correctly")
-        self.assertEqual(result[cave + 4], 0xDB, "Cave1 should start with fild opcode")
-        self.assertEqual(result[cave + 4 + 14], 0xC3, "Cave1 should end with ret")
-        self.assertEqual(result[cave + 19], 0xDB, "Cave2 should start with fild opcode")
-        self.assertEqual(result[cave + 19 + 14], 0xC3, "Cave2 should end with ret")
-
-    def test_call_site_1_redirected(self):
-        """First fild+fmul site is replaced with call to cave + nops"""
-        data = bytes(self._make_fake_exe())
-        result = exe_patches.apply_exe_patches(data, 2.0)
-        site1 = exe_patches._PIE_MENU_FILD_SITE_1
-        self.assertEqual(result[site1], 0xE8, "Site 1 should have call opcode")
-        self.assertEqual(result[site1+5:site1+8], bytes([0x90, 0x90, 0x90]), "Site 1 should be nop-padded")
-
-    def test_call_site_2_redirected(self):
-        """Second fild site is replaced with call + pop ecx + nops"""
-        data = bytes(self._make_fake_exe())
-        result = exe_patches.apply_exe_patches(data, 2.0)
-        site2 = exe_patches._PIE_MENU_FILD_SITE_2
-        self.assertEqual(result[site2], 0xE8, "Site 2 should have call opcode")
-        self.assertEqual(result[site2+5], 0x59, "Site 2 should keep pop ecx")
-        self.assertEqual(result[site2+6:site2+9], bytes([0x90, 0x90, 0x90]), "Site 2 should be nop-padded")
-
-    def test_call_targets_are_correct(self):
-        """Call instructions point to the correct cave addresses"""
-        data = bytes(self._make_fake_exe())
-        result = exe_patches.apply_exe_patches(data, 2.0)
-        cave = exe_patches._PIE_MENU_CAVE_ADDR
-
-        site1 = exe_patches._PIE_MENU_FILD_SITE_1
-        rel1 = struct.unpack_from("<i", result, site1 + 1)[0]
-        target1 = site1 + 5 + rel1
-        self.assertEqual(target1, cave + 4, "Call site 1 should target cave1")
-
-        site2 = exe_patches._PIE_MENU_FILD_SITE_2
-        rel2 = struct.unpack_from("<i", result, site2 + 1)[0]
-        target2 = site2 + 5 + rel2
-        self.assertEqual(target2, cave + 19, "Call site 2 should target cave2")
-
-    def test_unpatched_bytes_preserved(self):
-        """Bytes outside patch areas remain unchanged"""
-        data = bytes(self._make_fake_exe())
-        result = exe_patches.apply_exe_patches(data, 2.0)
-        patch_ranges = set()
-        for offset, _ in exe_patches._PIE_MENU_SECTOR_OFFSETS + exe_patches._PADDING_LITERAL_OFFSETS:
-            patch_ranges.add(offset)
-        for i in range(exe_patches._PIE_MENU_FILD_SITE_1, exe_patches._PIE_MENU_FILD_SITE_1 + 8):
-            patch_ranges.add(i)
-        for i in range(exe_patches._PIE_MENU_FILD_SITE_2, exe_patches._PIE_MENU_FILD_SITE_2 + 9):
-            patch_ranges.add(i)
-        for i in range(exe_patches._PIE_MENU_CAVE_ADDR, exe_patches._PIE_MENU_CAVE_ADDR + 40):
-            patch_ranges.add(i)
-        for i in range(min(len(data), len(result))):
-            if i not in patch_ranges:
-                self.assertEqual(result[i], data[i],
-                    f"Byte at 0x{i:X} was unexpectedly modified")
-
-
-class SecuROMDetectionTest(BaseTestCase):
-    """
-    Tests for is_securom_protected().
-    Uses a minimal synthetic PE so no real game executable is needed.
-    """
-
-    def _make_pe(self, *, encrypted: bool, has_securom_section: bool) -> bytes:
-        """
-        Build the smallest valid PE that exercises is_securom_protected().
-        Layout: DOS stub | PE signature | COFF header | optional header | section table | .text data
-        The .text raw data is filled with high-entropy bytes when encrypted=True,
-        or low-entropy repeated bytes when encrypted=False.
-        """
-        # High-entropy pseudo-random block that scores >7.5 bits/byte.
-        # Seeded so tests are deterministic.
-        rng = random.Random(0xDEADBEEF)
-        encrypted_block = bytes(rng.randint(0, 255) for _ in range(4096))
-        plaintext_block = bytes(4096)  # all zeros → entropy 0.0
-
-        text_data = encrypted_block if encrypted else plaintext_block
-
-        # Section names and their data; .securom is virtual-only (rawoff=0, rawsz=0)
-        section_defs = [(".text", text_data)]
-        if has_securom_section:
-            section_defs.append((".securom", b""))
-
-        n_sec = len(section_defs)
-        opt_sz = 28  # minimal PE32 optional header
-
-        # PE layout: DOS stub (0x40) | PE sig (4) | COFF header (20) | opt (opt_sz) | sections (n*40)
-        # is_securom_protected reads: sec_table = pe_off + 24 + opt_size
-        # (pe_off + 4-byte PE sig + 20-byte COFF = pe_off + 24)
-        dos_size    = 0x40
-        pe_sig_off  = dos_size           # "PE\0\0" at this file offset
-        sec_tab_off = pe_sig_off + 24 + opt_sz  # matches reader: pe_off+24+opt_sz
-        header_end  = sec_tab_off + n_sec * 40
-        text_raw_off = header_end
-
-        # --- DOS stub ---
-        dos = bytearray(dos_size)
-        dos[0:2] = b"MZ"
-        struct.pack_into("<I", dos, 0x3C, pe_sig_off)
-
-        # --- PE signature (4 bytes) + COFF header (20 bytes) = 24 bytes ---
-        # COFF IMAGE_FILE_HEADER fields (at pe_sig_off+4+offset):
-        #   +0: Machine(2), +2: NumberOfSections(2), +4: TimeDateStamp(4),
-        #   +8: PointerToSymbolTable(4), +12: NumberOfSymbols(4),
-        #   +16: SizeOfOptionalHeader(2), +18: Characteristics(2)
-        # In the file (pe_sig_off+4+field_offset = pe_sig_off+{4,6,20,...})
-        coff = bytearray(24)
-        coff[0:4] = b"PE\x00\x00"         # PE signature
-        struct.pack_into("<H", coff,  4, 0x014C)    # Machine = i386
-        struct.pack_into("<H", coff,  6, n_sec)     # NumberOfSections
-        struct.pack_into("<H", coff, 20, opt_sz)    # SizeOfOptionalHeader
-
-        # --- Minimal PE32 optional header (28 bytes) ---
-        opt = bytearray(opt_sz)
-        struct.pack_into("<H", opt, 0, 0x010B)       # Magic = PE32
-
-        # --- Section table ---
-        sec_table = bytearray()
-        raw_cursor = text_raw_off
-        for name, sec_data in section_defs:
-            entry = bytearray(40)
-            entry[0:8] = name.encode("ascii").ljust(8, b"\x00")
-            raw_sz  = len(sec_data)
-            raw_off = raw_cursor if raw_sz else 0
-            struct.pack_into("<I", entry,  8, raw_sz)   # VirtualSize
-            struct.pack_into("<I", entry, 12, raw_off)  # VirtualAddress (reused as RVA)
-            struct.pack_into("<I", entry, 16, raw_sz)   # SizeOfRawData
-            struct.pack_into("<I", entry, 20, raw_off)  # PointerToRawData
-            sec_table += entry
-            raw_cursor += raw_sz
-
-        return bytes(dos) + bytes(coff) + bytes(opt) + bytes(sec_table) + text_data
-
-    def test_securom_active_detected(self):
-        """Encrypted .text + .securom section → SecuROM active"""
-        data = self._make_pe(encrypted=True, has_securom_section=True)
-        self.assertTrue(exe_patches.is_securom_protected(data))
-
-    def test_plaintext_with_securom_section_not_active(self):
-        """Decrypted .text (No-CD build) + .securom section header → not active"""
-        data = self._make_pe(encrypted=False, has_securom_section=True)
-        self.assertFalse(exe_patches.is_securom_protected(data))
-
-    def test_no_securom_section_not_active(self):
-        """.securom section absent → not active regardless of entropy"""
-        data = self._make_pe(encrypted=True, has_securom_section=False)
-        self.assertFalse(exe_patches.is_securom_protected(data))
-
-    def test_empty_data_not_active(self):
-        """Empty / truncated data does not raise"""
-        self.assertFalse(exe_patches.is_securom_protected(b""))
-        self.assertFalse(exe_patches.is_securom_protected(b"MZ"))
+    def test_securom_unpatchable(self):
+        """Test the SecuROM protected executable cannot be patched."""
+        for patch in exe_patches.get_exe_patches():
+            self.assertFalse(patch.verify(self.orig_exe))

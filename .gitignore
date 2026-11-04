@@ -8,6 +8,7 @@ __pycache__
 
 # Optional tests: User must supply files from game
 /tests/gamefiles/*
+/tests/files/*.exe
 
 # Output from tools
 *.csv

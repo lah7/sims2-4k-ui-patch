@@ -19,45 +19,128 @@ Module containing upscaling patches and fixes for The Sims 2 executable.
 import math
 import struct
 
-# Sims2EP9.exe: # The game hardcodes pixel offsets for pie menu item
-# positions. These sector offsets and the item radius calculation
-# need scaling to match the UI density.
 
-# Threshold above which .text entropy indicates SecuROM-encrypted code.
-# Normal x86 code scores ~5–7; SecuROM V7 packs it to ~7.95.
-_SECUROM_ENTROPY_THRESHOLD = 7.5
-_SECUROM_SECTION_NAME = ".securom"
-_TEXT_SAMPLE_SIZE = 4096  # bytes to sample from the start of .text for entropy check
+class ExecutablePatch():
+    """
+    Base class to organise a patch for The Sims 2 executable.
+    """
+    NAME = "Unknown Patch"
 
-_PIE_MENU_SECTOR_OFFSETS: list[tuple[int, int]] = [
-    (0x001A6A1E, 0x11),  # edx=17
-    (0x001A6A21, 0x0E),  # eax=14
-    (0x001A6A24, 0x15),  # ecx=21
-    (0x001A6A27, 0x10),  # esi=16
-    (0x001A6A62, 0x30),  # imm32=48
-    (0x001A6A6C, 0x1A),  # imm32=26
-    (0x001A6A9A, 0x1A),  # imm32=26
-]
+    def verify(self, data: bytes) -> bool:
+        """
+        Verify that the bytes at the expected locations match the original bytes.
+        If this fails, that particular game version is not supported/unknown.
+        """
+        raise NotImplementedError()
 
-# Two fild instructions load kItemRadius for the item position formula
-# (radius * sin/cos). A code cave multiplies by UI_MULTIPLIER before
-# the sin/cos multiplication, scaling item positions without affecting
-# the zombie head (3D Sim portrait) which shares the same field.
-_PIE_MENU_FILD_SITE_1 = 0x001A90A9  # fild+fmul for sin path (8 bytes)
-_PIE_MENU_FILD_SITE_2 = 0x001A90C6  # fild+pop+fmul for cos path (9 bytes)
-_PIE_MENU_CAVE_ADDR = 0x00DD2C19    # unused padding at end of .text section
-_PIE_MENU_IMAGE_BASE = 0x00400000
+    def patch(self, data: bytes, scale: float) -> bytes:
+        """
+        Apply the patch to the executable data and return the new executable bytes.
+        """
+        raise NotImplementedError()
 
-# Expected original bytes at the fild sites for verification
-_PIE_MENU_FILD_ORIG_1 = bytes([0xDB, 0x83, 0xF0, 0x01, 0x00, 0x00, 0xD8, 0xC9])
-_PIE_MENU_FILD_ORIG_2 = bytes([0xDB, 0x83, 0xF0, 0x01, 0x00, 0x00, 0x59, 0xD8, 0xC9])
 
-# Immediates of "push 6; push 8" passed with the tooltip background image (0x14416190)
-# at VA 0x0064E1F7. These control the padding around tooltip text.
-_PADDING_LITERAL_OFFSETS: list[tuple[int, int]] = [
-    (0x0024E1F8, 0x06),
-    (0x0024E1FA, 0x08),
-]
+class PieMenuPatch(ExecutablePatch):
+    """
+    Scale the pie menu sector offsets and item positions in Sims2EP9.exe.
+    """
+    NAME = "Fix pie menu item positions"
+
+    SECTOR_OFFSETS: list[tuple[int, int]] = [
+        (0x001A6A1E, 0x11),  # edx=17
+        (0x001A6A21, 0x0E),  # eax=14
+        (0x001A6A24, 0x15),  # ecx=21
+        (0x001A6A27, 0x10),  # esi=16
+        (0x001A6A62, 0x30),  # imm32=48
+        (0x001A6A6C, 0x1A),  # imm32=26
+        (0x001A6A9A, 0x1A),  # imm32=26
+    ]
+
+    # Two fild instructions load kItemRadius for the item position formula.
+    # Scale these calculations without changing the zombie head that shares the field.
+    FILD_SITE_1 = 0x001A90A9
+    FILD_SITE_2 = 0x001A90C6
+    CAVE_ADDR = 0x00DD2C19
+    IMAGE_BASE = 0x00400000
+    FILD_ORIG_1 = bytes([0xDB, 0x83, 0xF0, 0x01, 0x00, 0x00, 0xD8, 0xC9])
+    FILD_ORIG_2 = bytes([0xDB, 0x83, 0xF0, 0x01, 0x00, 0x00, 0x59, 0xD8, 0xC9])
+
+    def verify(self, data: bytes) -> bool:
+        for offset, original_value in self.SECTOR_OFFSETS:
+            if offset >= len(data) or data[offset] != original_value:
+                return False
+
+        if self.FILD_SITE_1 + 8 > len(data) or self.FILD_SITE_2 + 9 > len(data):
+            return False
+        if data[self.FILD_SITE_1:self.FILD_SITE_1 + 8] != self.FILD_ORIG_1:
+            return False
+        if data[self.FILD_SITE_2:self.FILD_SITE_2 + 9] != self.FILD_ORIG_2:
+            return False
+        return True
+
+    def patch(self, data: bytes, scale: float) -> bytes:
+        """Scale pie menu offsets and route item-radius calculations through a code cave."""
+        patched = bytearray(data)
+        cave = self.CAVE_ADDR
+        cave_va = self.IMAGE_BASE + cave
+
+        struct.pack_into("<f", patched, cave, scale)
+
+        c1 = cave + 4
+        patched[c1:c1 + 6] = bytes([0xDB, 0x83, 0xF0, 0x01, 0x00, 0x00])
+        patched[c1 + 6:c1 + 12] = bytes([0xD8, 0x0D]) + struct.pack("<I", cave_va)
+        patched[c1 + 12:c1 + 14] = bytes([0xD8, 0xC9])
+        patched[c1 + 14] = 0xC3
+
+        c2 = cave + 19
+        patched[c2:c2 + 6] = bytes([0xDB, 0x83, 0xF0, 0x01, 0x00, 0x00])
+        patched[c2 + 6:c2 + 12] = bytes([0xD8, 0x0D]) + struct.pack("<I", cave_va)
+        patched[c2 + 12:c2 + 14] = bytes([0xD8, 0xC9])
+        patched[c2 + 14] = 0xC3
+
+        site1 = self.FILD_SITE_1
+        rel1 = (c1 + self.IMAGE_BASE) - (site1 + self.IMAGE_BASE + 5)
+        patched[site1] = 0xE8
+        struct.pack_into("<i", patched, site1 + 1, rel1)
+        patched[site1 + 5:site1 + 8] = bytes([0x90, 0x90, 0x90])
+
+        site2 = self.FILD_SITE_2
+        rel2 = (c2 + self.IMAGE_BASE) - (site2 + self.IMAGE_BASE + 5)
+        patched[site2] = 0xE8
+        struct.pack_into("<i", patched, site2 + 1, rel2)
+        patched[site2 + 5] = 0x59
+        patched[site2 + 6:site2 + 9] = bytes([0x90, 0x90, 0x90])
+
+        for offset, original_value in self.SECTOR_OFFSETS:
+            patched[offset] = min(int(original_value * scale), 127)
+
+        return bytes(patched)
+
+
+class TooltipPaddingPatch(ExecutablePatch):
+    """
+    Scale the padding of general UI tooltips in Sims2EP9.exe.
+    """
+    NAME = "General tooltip padding"
+
+    # Immediates of "push 6; push 8" passed with the tooltip background image.
+    PADDING_LITERAL_OFFSETS: list[tuple[int, int]] = [
+        (0x0024E1F8, 0x06),
+        (0x0024E1FA, 0x08),
+    ]
+
+    def verify(self, data: bytes) -> bool:
+        for offset, original_value in self.PADDING_LITERAL_OFFSETS:
+            if offset >= len(data) or data[offset] != original_value:
+                return False
+        return True
+
+    def patch(self, data: bytes, scale: float) -> bytes:
+        """Scale tooltip padding literals."""
+        patched = bytearray(data)
+        for offset, original_value in self.PADDING_LITERAL_OFFSETS:
+            patched[offset] = min(int(original_value * scale), 127)
+        return bytes(patched)
 
 
 def is_securom_protected(data: bytes) -> bool:
@@ -74,6 +157,11 @@ def is_securom_protected(data: bytes) -> bool:
       2. Measuring Shannon entropy of the first 4 KB of .text.  Encrypted code
          scores ~7.95/8; normal x86 code scores ~5-7.
     """
+    # Threshold above which .text entropy indicates SecuROM-encrypted code.
+    # Normal x86 code scores ~5–7; SecuROM V7 packs it to ~7.95.
+    entropy_threshold = 7.5
+    section_name = ".securom"
+    text_sample_size = 4096  # bytes to sample from the start of .text for entropy check
 
     # --- Parse PE header ---
     if len(data) < 0x40:
@@ -97,7 +185,7 @@ def is_securom_protected(data: bytes) -> bool:
             break
         name    = data[base:base+8].rstrip(b"\x00").decode("ascii", errors="replace")
         raw_off = struct.unpack_from("<I", data, base + 20)[0]
-        if name == _SECUROM_SECTION_NAME:
+        if name == section_name:
             has_securom_section = True
         if name == ".text":
             text_raw_off = raw_off
@@ -106,7 +194,7 @@ def is_securom_protected(data: bytes) -> bool:
         return False
 
     # --- Entropy check ---
-    sample = data[text_raw_off : text_raw_off + _TEXT_SAMPLE_SIZE]
+    sample = data[text_raw_off : text_raw_off + text_sample_size]
     if not sample:
         return False
 
@@ -119,121 +207,24 @@ def is_securom_protected(data: bytes) -> bool:
         p = c / n
         entropy -= p * math.log2(p)
 
-    return entropy > _SECUROM_ENTROPY_THRESHOLD
+    return entropy > entropy_threshold
 
 
-def verify_exe_bytes(data: bytes) -> bool:
-    """Check that the EXE contains expected original bytes at all patch offsets."""
-    return _verify_pie_menu_bytes(data) and _verify_tooltip_padding_bytes(data)
-
-
-def _verify_pie_menu_bytes(data: bytes) -> bool:
-    for offset, orig_val in _PIE_MENU_SECTOR_OFFSETS:
-        if offset >= len(data) or data[offset] != orig_val:
-            return False
-
-    site1 = _PIE_MENU_FILD_SITE_1
-    site2 = _PIE_MENU_FILD_SITE_2
-    if site1 + 8 > len(data) or site2 + 9 > len(data):
-        return False
-    if data[site1:site1+8] != _PIE_MENU_FILD_ORIG_1:
-        return False
-    if data[site2:site2+9] != _PIE_MENU_FILD_ORIG_2:
-        return False
-
-    return True
-
-
-def _verify_tooltip_padding_bytes(data: bytes) -> bool:
-    for offset, orig_val in _PADDING_LITERAL_OFFSETS:
-        if offset >= len(data) or data[offset] != orig_val:
-            return False
-
-    return True
+def get_exe_patches() -> list[ExecutablePatch]:
+    """
+    Return a list of supported executable patches and their descriptions.
+    """
+    return [PieMenuPatch(), TooltipPaddingPatch()]
 
 
 def apply_exe_patches(data: bytes, scale: float) -> bytes:
     """
-    Applies UI patches to the executable:
-    - Fix pie menu positioning
-    - Fix tooltip padding for new UI scale
-
-    Skip patches that don't have the expected original bytes.
+    Apply supported UI patches to the executable and return the bytes.
     """
-    if _verify_pie_menu_bytes(data):
-        data = _apply_pie_menu_patch(data, scale)
-    else:
-        print("Skipping pie menu fix: unexpected bytes (unsupported version or already patched)")
-
-    if _verify_tooltip_padding_bytes(data):
-        data = _apply_tooltip_padding_patch(data, scale)
-    else:
-        print("Skipping tooltip padding fix: unexpected bytes (unsupported version or already patched)")
+    for patch in get_exe_patches():
+        if patch.verify(data):
+            data = patch.patch(data, scale)
+        else:
+            print(f"Skipping {patch.NAME}: unexpected bytes (unsupported version or already patched)")
 
     return data
-
-
-def _apply_pie_menu_patch(data: bytes, scale: float) -> bytes:
-    """
-    Writes a code cave that multiplies kItemRadius by the scale factor
-    before the sin/cos calculation, and scales sector fine-tuning offsets.
-    """
-    patched = bytearray(data)
-    cave = _PIE_MENU_CAVE_ADDR
-    cave_va = _PIE_MENU_IMAGE_BASE + cave
-
-    # --- Write code cave ---
-    # Layout: [float scale] [cave1: 15 bytes] [cave2: 15 bytes]
-
-    # Float multiplier at cave_addr (4 bytes)
-    struct.pack_into("<f", patched, cave, scale)
-
-    # cave1 at cave+4: fild [ebx+0x1F0]; fmul [multiplier]; fmul st,st1; ret
-    c1 = cave + 4
-    patched[c1:c1+6] = bytes([0xDB, 0x83, 0xF0, 0x01, 0x00, 0x00])  # fild [ebx+0x1F0]
-    patched[c1+6:c1+12] = bytes([0xD8, 0x0D]) + struct.pack("<I", cave_va)  # fmul [cave_va]
-    patched[c1+12:c1+14] = bytes([0xD8, 0xC9])  # fmul st(0), st(1)
-    patched[c1+14] = 0xC3  # ret
-
-    # cave2 at cave+19: same structure
-    c2 = cave + 19
-    patched[c2:c2+6] = bytes([0xDB, 0x83, 0xF0, 0x01, 0x00, 0x00])  # fild [ebx+0x1F0]
-    patched[c2+6:c2+12] = bytes([0xD8, 0x0D]) + struct.pack("<I", cave_va)  # fmul [cave_va]
-    patched[c2+12:c2+14] = bytes([0xD8, 0xC9])  # fmul st(0), st(1)
-    patched[c2+14] = 0xC3  # ret
-
-    # --- Patch call site 1 (sin path, 8 bytes) ---
-    site1 = _PIE_MENU_FILD_SITE_1
-    rel1 = (c1 + _PIE_MENU_IMAGE_BASE) - (site1 + _PIE_MENU_IMAGE_BASE + 5)
-    patched[site1] = 0xE8  # call
-    struct.pack_into("<i", patched, site1 + 1, rel1)
-    patched[site1+5:site1+8] = bytes([0x90, 0x90, 0x90])  # nop pad
-
-    # --- Patch call site 2 (cos path, 9 bytes) ---
-    # Keep the pop ecx at its original position
-    site2 = _PIE_MENU_FILD_SITE_2
-    rel2 = (c2 + _PIE_MENU_IMAGE_BASE) - (site2 + _PIE_MENU_IMAGE_BASE + 5)
-    patched[site2] = 0xE8  # call
-    struct.pack_into("<i", patched, site2 + 1, rel2)
-    patched[site2+5] = 0x59  # pop ecx (stack cleanup, was at site2+6 originally)
-    patched[site2+6:site2+9] = bytes([0x90, 0x90, 0x90])  # nop pad
-
-    # --- Scale sector offsets ---
-    for offset, orig_val in _PIE_MENU_SECTOR_OFFSETS:
-        new_val = min(int(orig_val * scale), 127)
-        patched[offset] = new_val
-
-    return bytes(patched)
-
-
-def _apply_tooltip_padding_patch(data: bytes, scale: float) -> bytes:
-    """
-    Scales tooltip padding literals in the executable.
-    """
-    patched = bytearray(data)
-
-    # --- Scale tooltip padding (push imm8 is sign-extended) ---
-    for offset, orig_val in _PADDING_LITERAL_OFFSETS:
-        patched[offset] = min(int(orig_val * scale), 127)
-
-    return bytes(patched)
