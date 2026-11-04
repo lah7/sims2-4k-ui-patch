@@ -27,7 +27,7 @@ class BasePackageTestCase(BaseTestCase):
         """
         os.chdir(os.path.join(os.path.dirname(__file__), ".."))
         cls._package_loaded = False
-        cls.package_path = os.path.join("tests", "gamefiles", game_file_name)
+        cls.package_path = cls("runTest").get_test_file_path(game_file_name)
         cls.package = dbpf.DBPF() # Load later
 
     def setUp(self) -> None:

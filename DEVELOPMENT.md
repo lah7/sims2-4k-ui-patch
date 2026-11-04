@@ -64,12 +64,14 @@ Unit tests check everything is in working order, such as the modules and
 compression procedures.
 
 Tests using real packages from the game are optional. To complete all tests,
-add some files into the `tests/gamefiles` folder:
+add some files into the `tests/files` folder:
 
 | Destination       | Source
 | ----------------- | -------------------------------------------------------- |
 | `base_ui.package` | `TSData/Res/UI/ui.package` from The Sims 2 (base game)
 | `EP1_ui.package`  | `TSData/Res/UI/ui.package` from The Sims 2 University (EP1)
+| `Sims2EP9.exe`    | A No-CD executable of The Sims 2 Mansion & Garden Stuff (disc version), or EP9 equivalent.
+| `Sims2EP9.exe.old`| A copy of the original executable with SecuROM.
 
 To run all tests from the command line:
 

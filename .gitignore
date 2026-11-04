@@ -7,8 +7,10 @@ __pycache__
 /dist/
 
 # Optional tests: User must supply files from game
-/tests/gamefiles/*
-/tests/files/*.exe
+/tests/files/base_ui.package
+/tests/files/EP1_ui.package
+/tests/files/Sims2EP9.exe
+/tests/files/Sims2EP9.exe.old
 
 # Output from tools
 *.csv
