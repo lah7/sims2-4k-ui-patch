@@ -63,15 +63,15 @@ class EP1UIPackageTest(BasePackageTestCase):
 
     def test_change_uiscript(self):
         """Test a file is changed after patching"""
-        entry = self.package.get_entry(dbpf.TYPE_UI_DATA, 0x8000600, 0x3c605f90)
+        entry = self.package.get_entry(dbpf.TYPE_UI_DATA, 0xa99d8a11, 0x3c605f90)
         checksum_before = self.md5(entry.data)
-        if checksum_before != "5a41f089015d0b2a3c5333661691044f":
+        if checksum_before != "432004db1069accb88ecd0ec9633addd":
             raise ValueError("Bad test file, checksum mismatch")
 
         new_data = patches._upscale_uiscript(entry) # pylint: disable=protected-access
         checksum_after = self.md5(new_data)
 
-        self.assertEqual(checksum_after, "0d333c9741889560cca1236e6af681c5", "UI script was not modified as expected")
+        self.assertEqual(checksum_after, "5e075de730ec90a8d39205955a0e7380", "UI script was not modified as expected")
 
     def test_change_graphic_tga(self):
         """Test a Targa image is modified"""
