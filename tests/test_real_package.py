@@ -20,33 +20,34 @@ class BasePackageTestCase(BaseTestCase):
     """
     Base class for test cases using a package file.
     """
+    TEST_FILE = "unknown.package"
+
     @classmethod
-    def uses_package(cls, game_file_name: str):
-        """
-        Use a game file package for testing this class.
-        """
-        os.chdir(os.path.join(os.path.dirname(__file__), ".."))
-        cls._package_loaded = False
-        cls.package_path = cls("runTest").get_test_file_path(game_file_name)
-        cls.package = dbpf.DBPF() # Load later
+    def setUpClass(cls):
+        super().setUpClass()
+
+        cls.package_path = os.path.join(os.path.dirname(__file__), "files", cls.TEST_FILE)
+        cls.testable = os.path.exists(cls.package_path)
+        cls.package = dbpf.DBPF()
 
     def setUp(self) -> None:
         super().setUp()
-        if not self._package_loaded:
-            if not os.path.exists(self.package_path):
-                self.skipTest(f"Missing test file: {self.package_path}")
+
+        if self.testable:
             self.package = dbpf.DBPF(self.package_path)
-            self._package_loaded = True
+        else:
+            self.skipTest(f"Requires {self.TEST_FILE} placed in \"tests/files\" folder")
 
 
 class EP1UIPackageTest(BasePackageTestCase):
     """
     Test a smaller UI package from The Sims 2 University.
     """
+    TEST_FILE = "EP1_ui.package"
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.uses_package("EP1_ui.package")
 
         # Known compressed file (TGA Image)
         cls.tga_index = 16
@@ -315,10 +316,7 @@ class BaseUIPackageTest(BasePackageTestCase):
     """
     Test for files only found in the base game.
     """
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.uses_package("base_ui.package")
+    TEST_FILE = "base_ui.package"
 
     def test_change_loading_screens(self):
         """Check the loading screens are upscaled"""
