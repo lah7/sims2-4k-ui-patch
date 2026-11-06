@@ -10,7 +10,7 @@ Python 3.10 is the minimum supported version.
 
 ### Windows
 
-[Install Python 3.13](https://www.python.org/downloads/windows/), then run:
+[Install Python 3.14](https://www.python.org/downloads/windows/), then run:
 
     python -m venv venv
     venv\Scripts\activate
@@ -20,7 +20,7 @@ Python 3.10 is the minimum supported version.
 
 ### macOS
 
-[Install Python 3.13](https://www.python.org/downloads/macos/), then run:
+[Install Python 3.14](https://www.python.org/downloads/macos/), then run:
 
     python3 -m venv venv
     source venv/bin/activate
