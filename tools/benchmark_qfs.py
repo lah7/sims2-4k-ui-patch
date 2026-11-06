@@ -122,50 +122,54 @@ def benchmark(package: dbpf.DBPF, level: int, _pid_list, current, total: int, ou
     print(f"[{current.value}/{total}] Finished benchmarking level {level} (took {round(end - start, 3)} secs)")
 
 
-print("Starting benchmark...", end="\r")
-with open(OUTPUT_CSV, "w", encoding="utf-8") as _f:
-    _f.write("QFS Level,File Size (MB),Compress Time (Sec),Decompress Time (Sec)\n")
+if __name__ == "__main__":
+    from multiprocessing import freeze_support
 
-try:
-    tasks = []
-    with Manager() as manager:
-        pid_list = manager.list()
-        CURRENT = manager.Value("i", -1)
-        RANGE = MAX_LEVEL - MIN_LEVEL
-        with concurrent.futures.ProcessPoolExecutor(max_workers=THREADS) as executor:
-            PACKAGE = dbpf.DBPF(INPUT_PATH)
-
-            # Preload files into memory
-            print("Loading files: ", end="\r")
-            for i, _entry in enumerate(PACKAGE.entries):
-                print(f"Loading files: {i}/{len(PACKAGE.entries)}", end="\r")
-                if _entry.compress:
-                    _entry.data # pylint: disable=pointless-statement
-
-            tasks.extend([executor.submit(benchmark, PACKAGE, level, pid_list, CURRENT, RANGE * SAMPLES, OUTPUT_CSV) for level in range(MIN_LEVEL, MAX_LEVEL + 1)])
-
-    # Sort results (except first line)
-    with open(OUTPUT_CSV, "r", encoding="utf-8") as _f:
-        lines = _f.readlines()
-        header = lines[0]
-        lines = lines[1:]
-        lines.sort(key=lambda x: int(x.split(",")[0]))
-        lines.insert(0, header)
-
+    freeze_support()
+    print("Starting benchmark...", end="\r")
     with open(OUTPUT_CSV, "w", encoding="utf-8") as _f:
-        _f.writelines(lines)
+        _f.write("QFS Level,File Size (MB),Compress Time (Sec),Decompress Time (Sec)\n")
 
-    print("\nBenchmark completed.")
-
-except KeyboardInterrupt:
-    print("\nBenchmark aborted.\n")
-    for task in tasks:
-        assert isinstance(task, concurrent.futures.Future)
-        task.cancel()
-    for pid in pid_list:
-        os.kill(pid, 9)
     try:
-        executor.shutdown(wait=False)
-    except FileNotFoundError:
-        pass
-    sys.exit(130)
+        tasks = []
+        with Manager() as manager:
+            pid_list = manager.list()
+            CURRENT = manager.Value("i", -1)
+            RANGE = MAX_LEVEL - MIN_LEVEL
+            with concurrent.futures.ProcessPoolExecutor(max_workers=THREADS) as executor:
+                PACKAGE = dbpf.DBPF(INPUT_PATH)
+
+                # Preload files into memory
+                print("Loading files: ", end="\r")
+                for i, _entry in enumerate(PACKAGE.entries):
+                    print(f"Loading files: {i}/{len(PACKAGE.entries)}", end="\r")
+                    if _entry.compress:
+                        _entry.data # pylint: disable=pointless-statement
+
+                tasks.extend([executor.submit(benchmark, PACKAGE, level, pid_list, CURRENT, RANGE * SAMPLES, OUTPUT_CSV) for level in range(MIN_LEVEL, MAX_LEVEL + 1)])
+
+        # Sort results (except first line)
+        with open(OUTPUT_CSV, "r", encoding="utf-8") as _f:
+            lines = _f.readlines()
+            header = lines[0]
+            lines = lines[1:]
+            lines.sort(key=lambda x: int(x.split(",")[0]))
+            lines.insert(0, header)
+
+        with open(OUTPUT_CSV, "w", encoding="utf-8") as _f:
+            _f.writelines(lines)
+
+        print("\nBenchmark completed.")
+
+    except KeyboardInterrupt:
+        print("\nBenchmark aborted.\n")
+        for task in tasks:
+            assert isinstance(task, concurrent.futures.Future)
+            task.cancel()
+        for pid in pid_list:
+            os.kill(pid, 9)
+        try:
+            executor.shutdown(wait=False)
+        except FileNotFoundError:
+            pass
+        sys.exit(130)
